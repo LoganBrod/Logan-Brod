@@ -7,6 +7,7 @@ import {
   RouletteIcon,
   CrashIcon,
   MinesIcon,
+  GiftIcon,
   CloseIcon,
 } from '../icons'
 
@@ -20,6 +21,8 @@ const games = [
   { to: '/blackjack', label: 'Blackjack', icon: CardsIcon },
   { to: '/plinko', label: 'Plinko', icon: PlinkoIcon },
 ]
+
+const earn = [{ to: '/rewards', label: 'Rewards', icon: GiftIcon }]
 
 const comingSoon = [
   { label: 'Dice', icon: DiceIcon },
@@ -69,6 +72,25 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               key={to}
               to={to}
               end={end}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  isActive
+                    ? 'bg-linear-to-r from-(--color-primary)/20 to-(--color-accent)/10 text-(--color-primary) shadow-[inset_0_0_0_1px_rgba(60,242,129,0.25)]'
+                    : 'text-gray-300 hover:bg-(--color-surface-2) hover:text-white'
+                }`
+              }
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </NavLink>
+          ))}
+
+          <p className="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-widest text-gray-500">Earn</p>
+          {earn.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
               onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${

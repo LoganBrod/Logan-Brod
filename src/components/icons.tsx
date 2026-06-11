@@ -140,6 +140,28 @@ export function CloseIcon(props: IconProps) {
   )
 }
 
+export function GiftIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <rect x="3" y="8" width="18" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3 12h18" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 8v13" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 8c0-2.5-1.5-4.5-3.5-4.5S5 5 7 6.5C8.5 7.6 12 8 12 8Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 8c0-2.5 1.5-4.5 3.5-4.5S19 5 17 6.5C15.5 7.6 12 8 12 8Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function TrophyIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>

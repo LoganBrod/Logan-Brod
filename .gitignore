@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (secrets for the Kick rewards API)
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
