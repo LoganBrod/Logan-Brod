@@ -1,0 +1,18 @@
+export const LOCKBOX_ABI = [
+  "function lockETH(uint256 duration) payable returns (uint256 lockId)",
+  "function withdrawETH(uint256 lockId)",
+  "function extendETHLock(uint256 lockId, uint256 additionalDuration)",
+  "function topUpETH(uint256 lockId) payable",
+  "function lockToken(address token, uint256 amount, uint256 duration) returns (uint256 lockId)",
+  "function withdrawToken(address token, uint256 lockId)",
+  "function extendTokenLock(address token, uint256 lockId, uint256 additionalDuration)",
+  "function topUpToken(address token, uint256 lockId, uint256 amount)",
+  "function getETHLockCount(address user) view returns (uint256)",
+  "function getETHLock(address user, uint256 lockId) view returns (tuple(uint256 amount, uint256 unlockTime, bool withdrawn))",
+  "function getTokenLockCount(address user, address token) view returns (uint256)",
+  "function getTokenLock(address user, address token, uint256 lockId) view returns (tuple(uint256 amount, uint256 unlockTime, bool withdrawn))",
+  "function getTimeRemaining(address user, uint256 lockId) view returns (uint256)",
+  "function getTokenTimeRemaining(address user, address token, uint256 lockId) view returns (uint256)",
+  "event ETHLocked(address indexed user, uint256 indexed lockId, uint256 amount, uint256 unlockTime)",
+  "event ETHWithdrawn(address indexed user, uint256 indexed lockId, uint256 amount)",
+];

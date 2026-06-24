@@ -1,0 +1,19 @@
+{
+  "name": "lockbox-wallet",
+  "version": "1.0.0",
+  "description": "Time-lock crypto wallet for gamblers",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "frontend": "cd frontend && npm start"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.28.6"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1"
+  }
+}
