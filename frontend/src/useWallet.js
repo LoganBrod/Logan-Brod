@@ -84,7 +84,7 @@ export function useWallet() {
     if (!contract) return;
     setLoading(true);
     try {
-      const tx = await contract.lockETH(durationSeconds, { value: parseEther(amountEth) });
+      const tx = await contract.lockETH(durationSeconds, { value: parseEther(amountEth), gasLimit: 200000 });
       setStatus("Locking funds...");
       const receipt = await tx.wait();
 
