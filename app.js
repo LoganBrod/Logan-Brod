@@ -338,19 +338,18 @@ function initSectionCharts(section) {
 });
 
 // ===== TICKER ANIMATION =====
-const ticker = document.querySelector('.market-ticker');
-if (ticker) {
-  const content = ticker.innerHTML;
-  ticker.innerHTML = content + content;
+const tickerInner = document.getElementById('tickerInner');
+if (tickerInner) {
+  // duplicate content for seamless loop
+  tickerInner.innerHTML += tickerInner.innerHTML;
 
   let pos = 0;
-  const items = ticker.querySelectorAll('.ticker-item');
-  const totalW = () => Array.from(items).slice(0, items.length / 2).reduce((s, i) => s + i.offsetWidth + 20, 0);
+  const halfW = () => tickerInner.scrollWidth / 2;
 
   function animateTicker() {
-    pos -= 0.5;
-    if (Math.abs(pos) >= totalW()) pos = 0;
-    ticker.style.transform = `translateX(${pos}px)`;
+    pos -= 0.6;
+    if (Math.abs(pos) >= halfW()) pos = 0;
+    tickerInner.style.transform = `translateX(${pos}px)`;
     requestAnimationFrame(animateTicker);
   }
   requestAnimationFrame(animateTicker);

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WristFlip — Watch Trading Academy</title>
+  <title>Watch Batcave — Trading Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -14,37 +14,41 @@
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <span class="logo-icon">⌚</span>
-    <span class="logo-text">WristFlip</span>
+    <div class="logo-mark">WB</div>
+    <div class="logo-words">
+      <span class="logo-top">WATCH</span>
+      <span class="logo-bottom">BATCAVE</span>
+    </div>
   </div>
+  <div class="sidebar-divider"></div>
   <div class="sidebar-links">
     <a href="#" class="nav-link active" data-section="dashboard">
-      <span class="nav-icon">◈</span> Dashboard
+      <span class="nav-dot"></span> Dashboard
     </a>
     <a href="#" class="nav-link" data-section="market">
-      <span class="nav-icon">◈</span> Market Trends
+      <span class="nav-dot"></span> Market Trends
     </a>
     <a href="#" class="nav-link" data-section="drops">
-      <span class="nav-icon">◈</span> New Drops
+      <span class="nav-dot"></span> New Drops
     </a>
     <a href="#" class="nav-link" data-section="news">
-      <span class="nav-icon">◈</span> Watch News
+      <span class="nav-dot"></span> Watch News
     </a>
     <a href="#" class="nav-link" data-section="comps">
-      <span class="nav-icon">◈</span> Comp Sites
+      <span class="nav-dot"></span> Comp Sites
     </a>
     <a href="#" class="nav-link" data-section="calculator">
-      <span class="nav-icon">◈</span> Flip Calculator
+      <span class="nav-dot"></span> Flip Calculator
     </a>
     <a href="#" class="nav-link" data-section="study">
-      <span class="nav-icon">◈</span> Study Materials
+      <span class="nav-dot"></span> Study Materials
     </a>
     <a href="#" class="nav-link" data-section="glossary">
-      <span class="nav-icon">◈</span> Glossary
+      <span class="nav-dot"></span> Glossary
     </a>
   </div>
   <div class="sidebar-footer">
-    <div class="sidebar-badge">Beta v1.0</div>
+    <div class="sidebar-badge">Intelligence v1.0</div>
   </div>
 </nav>
 
@@ -53,132 +57,138 @@
 
   <!-- TOP BAR -->
   <header class="topbar">
-    <button class="menu-toggle" id="menuToggle">☰</button>
-    <div class="topbar-title" id="topbarTitle">Dashboard</div>
-    <div class="topbar-right">
-      <div class="market-ticker">
-        <span class="ticker-item up">SUB 41mm +12%</span>
-        <span class="ticker-item up">GMT-II BLNR +8%</span>
-        <span class="ticker-item down">AP ROO 15400 -3%</span>
-        <span class="ticker-item up">PP Nautilus +6%</span>
-        <span class="ticker-item up">Daytona 116500 +11%</span>
+    <button class="menu-toggle" id="menuToggle">&#9776;</button>
+    <div class="topbar-left">
+      <span class="topbar-label" id="topbarTitle">Dashboard</span>
+    </div>
+    <div class="ticker-wrap">
+      <div class="ticker-inner" id="tickerInner">
+        <span class="ticker-item up">SUB 41 +12%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item up">GMT BATMAN +8%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item down">AP ROO 15400 −3%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item up">PP NAUTILUS +6%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item up">DAYTONA 116500 +11%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item up">FPJ CHRONO +28%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item down">OMEGA MOONSWATCH −1%</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item up">LANGE DATOGRAPH +9%</span>
+        <span class="ticker-sep">·</span>
       </div>
     </div>
   </header>
 
-  <!-- SECTIONS -->
-
-  <!-- DASHBOARD -->
+  <!-- ══ DASHBOARD ══ -->
   <section class="section active" id="section-dashboard">
     <div class="section-header">
-      <h1>Market Overview</h1>
-      <p class="section-sub">Your watch flipping command center</p>
+      <div class="section-eyebrow">Live Overview</div>
+      <h1>Market Intelligence</h1>
+      <p class="section-sub">Your watch flipping command centre — updated daily</p>
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card gold">
+      <div class="stat-card featured">
         <div class="stat-label">Hottest Flip Right Now</div>
         <div class="stat-value">Rolex Sub 41</div>
-        <div class="stat-change up">+12% (30d)</div>
+        <div class="stat-change up">+12% over 30 days</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Flip Margin</div>
         <div class="stat-value">$1,800</div>
-        <div class="stat-change up">↑ From $1,200 last month</div>
+        <div class="stat-change up">Up from $1,200 last month</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Market Sentiment</div>
-        <div class="stat-value">Bullish 🟢</div>
+        <div class="stat-value">Bullish</div>
         <div class="stat-change">Steel sports refs leading</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">New Drops This Week</div>
-        <div class="stat-value">7 Refs</div>
-        <div class="stat-change up">↑ 3 High-flip potential</div>
+        <div class="stat-value">7 References</div>
+        <div class="stat-change up">3 rated high flip potential</div>
       </div>
     </div>
 
     <div class="two-col">
       <div class="card">
-        <div class="card-title">🔥 Top Flips Right Now</div>
+        <div class="card-title">Top Flips Right Now</div>
         <table class="flip-table">
           <thead>
-            <tr><th>Watch</th><th>Retail</th><th>Market</th><th>Margin</th><th>Trend</th></tr>
+            <tr><th>Reference</th><th>Retail</th><th>Market</th><th>Margin</th><th>Signal</th></tr>
           </thead>
           <tbody>
             <tr>
-              <td><b>Rolex Sub 41 Black</b><br><small>126610LN</small></td>
-              <td>$9,100</td>
-              <td>$14,500</td>
+              <td><b>Rolex Submariner 41 Black</b><br><small>126610LN</small></td>
+              <td>$9,100</td><td>$14,500</td>
               <td class="up">+$5,400</td>
-              <td><span class="badge green">↑ HOT</span></td>
+              <td><span class="badge green">HOT</span></td>
             </tr>
             <tr>
-              <td><b>Rolex GMT-II BLNR</b><br><small>126710BLNR</small></td>
-              <td>$10,700</td>
-              <td>$18,200</td>
+              <td><b>Rolex GMT-Master II Batman</b><br><small>126710BLNR</small></td>
+              <td>$10,700</td><td>$18,200</td>
               <td class="up">+$7,500</td>
-              <td><span class="badge green">↑ HOT</span></td>
+              <td><span class="badge green">HOT</span></td>
             </tr>
             <tr>
-              <td><b>AP Royal Oak 15500</b><br><small>15500ST</small></td>
-              <td>$26,000</td>
-              <td>$48,000</td>
+              <td><b>AP Royal Oak 15500</b><br><small>15500ST.OO.1220ST</small></td>
+              <td>$26,000</td><td>$48,000</td>
               <td class="up">+$22,000</td>
-              <td><span class="badge green">↑ STRONG</span></td>
+              <td><span class="badge green">STRONG</span></td>
             </tr>
             <tr>
-              <td><b>PP Nautilus 5711</b><br><small>5711/1A-010</small></td>
-              <td>$34,893</td>
-              <td>$120,000</td>
+              <td><b>Patek Philippe Nautilus</b><br><small>5711/1A-010</small></td>
+              <td>$34,893</td><td>$120,000</td>
               <td class="up">+$85,107</td>
-              <td><span class="badge gold">👑 GRAIL</span></td>
+              <td><span class="badge gold">GRAIL</span></td>
             </tr>
             <tr>
-              <td><b>Rolex Daytona</b><br><small>116500LN</small></td>
-              <td>$14,550</td>
-              <td>$32,000</td>
+              <td><b>Rolex Daytona White</b><br><small>116500LN</small></td>
+              <td>$14,550</td><td>$32,000</td>
               <td class="up">+$17,450</td>
-              <td><span class="badge green">↑ VERY HOT</span></td>
+              <td><span class="badge green">VERY HOT</span></td>
             </tr>
             <tr>
-              <td><b>Omega Moonwatch Pro</b><br><small>310.30.42.50.01.001</small></td>
-              <td>$6,200</td>
-              <td>$6,800</td>
+              <td><b>Omega Speedmaster Pro</b><br><small>310.30.42.50.01.001</small></td>
+              <td>$6,200</td><td>$6,800</td>
               <td class="neutral">+$600</td>
-              <td><span class="badge grey">→ FLAT</span></td>
+              <td><span class="badge grey">FLAT</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div class="card">
-        <div class="card-title">📈 Market Index (90 Days)</div>
+        <div class="card-title">Market Index — 90 Days</div>
         <canvas id="dashboardChart" height="200"></canvas>
       </div>
     </div>
 
     <div class="two-col">
       <div class="card">
-        <div class="card-title">⚡ Quick Tips for Beginners</div>
+        <div class="card-title">Principles for Beginners</div>
         <ul class="tip-list">
-          <li>Start with steel Rolex sports references — deepest liquidity, easiest exits</li>
+          <li>Start with steel Rolex sports references — deepest liquidity, fastest exits</li>
           <li>Always buy with full box & papers (BP) — adds 15–30% resale value</li>
-          <li>Build relationships with ADs before hunting grey market</li>
-          <li>Never buy a flip you can't afford to hold for 6+ months</li>
-          <li>Verify serial numbers against production dates before purchase</li>
-          <li>Condition is king — even a small scratch on a bezel kills margin</li>
-          <li>Chrono24 is your best friend for checking real comp data</li>
+          <li>Build AD relationships before hunting the grey market</li>
+          <li>Never buy a flip you cannot hold for 6+ months if needed</li>
+          <li>Verify serial numbers against known production date databases</li>
+          <li>Condition is paramount — a single bezel scratch kills margin</li>
+          <li>Chrono24 sold listings are your ground truth for comps</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">🗓️ Upcoming Events</div>
+        <div class="card-title">Upcoming Events</div>
         <div class="event-list">
           <div class="event-item">
             <div class="event-date">JUN 26</div>
             <div class="event-info">
-              <b>Watches of Knightsbridge Auction</b>
-              <span>London — Key comps for vintage Rolex & PP</span>
+              <b>Watches of Knightsbridge</b>
+              <span>London — key comps for vintage Rolex &amp; Patek</span>
             </div>
           </div>
           <div class="event-item">
@@ -198,8 +208,8 @@
           <div class="event-item">
             <div class="event-date">SEP 10</div>
             <div class="event-info">
-              <b>Watches & Wonders Geneva 2026</b>
-              <span>Major new releases — watch for unexpected refs</span>
+              <b>Watches &amp; Wonders Geneva 2026</b>
+              <span>Major new releases — watch for unexpected references</span>
             </div>
           </div>
         </div>
@@ -207,11 +217,12 @@
     </div>
   </section>
 
-  <!-- MARKET TRENDS -->
+  <!-- ══ MARKET TRENDS ══ -->
   <section class="section" id="section-market">
     <div class="section-header">
+      <div class="section-eyebrow">Price Intelligence</div>
       <h1>Market Trends</h1>
-      <p class="section-sub">Price tracking for the most-flipped references</p>
+      <p class="section-sub">Real-time secondary market tracking for the most-traded references</p>
     </div>
 
     <div class="tabs" id="marketTabs">
@@ -242,7 +253,7 @@
         <div class="watch-retail">Retail: $9,100</div>
         <div class="watch-premium up">+59% premium</div>
         <canvas class="sparkline" id="spark1"></canvas>
-        <div class="watch-verdict hot">🔥 BUY</div>
+        <div class="watch-verdict hot">BUY</div>
       </div>
       <div class="watch-card">
         <div class="watch-ref">126710BLNR</div>
@@ -251,7 +262,7 @@
         <div class="watch-retail">Retail: $10,700</div>
         <div class="watch-premium up">+70% premium</div>
         <canvas class="sparkline" id="spark2"></canvas>
-        <div class="watch-verdict hot">🔥 BUY</div>
+        <div class="watch-verdict hot">BUY</div>
       </div>
       <div class="watch-card">
         <div class="watch-ref">116500LN</div>
@@ -260,7 +271,7 @@
         <div class="watch-retail">Retail: $14,550</div>
         <div class="watch-premium up">+120% premium</div>
         <canvas class="sparkline" id="spark3"></canvas>
-        <div class="watch-verdict hot">👑 STRONG BUY</div>
+        <div class="watch-verdict hot">STRONG BUY</div>
       </div>
       <div class="watch-card">
         <div class="watch-ref">124060</div>
@@ -269,7 +280,7 @@
         <div class="watch-retail">Retail: $8,100</div>
         <div class="watch-premium up">+46% premium</div>
         <canvas class="sparkline" id="spark4"></canvas>
-        <div class="watch-verdict neutral">→ HOLD</div>
+        <div class="watch-verdict neutral">HOLD</div>
       </div>
       <div class="watch-card">
         <div class="watch-ref">126334</div>
@@ -278,7 +289,7 @@
         <div class="watch-retail">Retail: $8,950</div>
         <div class="watch-premium neutral">+9% premium</div>
         <canvas class="sparkline" id="spark5"></canvas>
-        <div class="watch-verdict cold">❄️ AVOID</div>
+        <div class="watch-verdict cold">AVOID</div>
       </div>
       <div class="watch-card">
         <div class="watch-ref">126655</div>
@@ -287,16 +298,17 @@
         <div class="watch-retail">Retail: $38,350</div>
         <div class="watch-premium up">+10% premium</div>
         <canvas class="sparkline" id="spark6"></canvas>
-        <div class="watch-verdict neutral">→ WATCH</div>
+        <div class="watch-verdict neutral">WATCH</div>
       </div>
     </div>
   </section>
 
-  <!-- NEW DROPS -->
+  <!-- ══ NEW DROPS ══ -->
   <section class="section" id="section-drops">
     <div class="section-header">
+      <div class="section-eyebrow">Release Intelligence</div>
       <h1>New Drops</h1>
-      <p class="section-sub">Latest releases — flip potential ratings included</p>
+      <p class="section-sub">Latest releases with flip potential ratings</p>
     </div>
 
     <div class="drops-grid">
@@ -304,10 +316,10 @@
         <div class="drop-badge">JUST DROPPED</div>
         <div class="drop-brand">ROLEX</div>
         <div class="drop-name">Air-King 2026 — Ref. 126900</div>
-        <div class="drop-desc">Updated case, new dial options. Limited initial AD allocation expected. Early grey market premiums already forming at ~20% above retail.</div>
+        <div class="drop-desc">Updated case and new dial options. Limited initial AD allocation. Grey market premiums already forming at ~20% above retail.</div>
         <div class="drop-meta">
-          <span>Retail: ~$7,500</span>
-          <span>Est. Market: $9,000–$10,500</span>
+          <span>Retail ~$7,500</span>
+          <span>Est. Market $9,000–$10,500</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
@@ -320,10 +332,10 @@
       <div class="drop-card">
         <div class="drop-brand">TUDOR</div>
         <div class="drop-name">Black Bay 58 — Navy Blue Refresh</div>
-        <div class="drop-desc">Subtle updates to dial text and case finishing. Tudor has excellent secondary market for sub-$5K buyers but limited flip margins.</div>
+        <div class="drop-desc">Subtle dial and finishing updates. Tudor has solid sub-$5K demand but limited flip margins compared to its parent brand.</div>
         <div class="drop-meta">
-          <span>Retail: ~$4,075</span>
-          <span>Est. Market: $4,200–$4,500</span>
+          <span>Retail ~$4,075</span>
+          <span>Est. Market $4,200–$4,500</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
@@ -335,11 +347,11 @@
 
       <div class="drop-card">
         <div class="drop-brand">AUDEMARS PIGUET</div>
-        <div class="drop-name">Royal Oak 37mm — New Color Dial</div>
-        <div class="drop-desc">New seasonal color. AP's steel RO retains strong premiums. 37mm size targets growing demand segment. Watch for AD waitlist intelligence.</div>
+        <div class="drop-name">Royal Oak 37mm — New Seasonal Dial</div>
+        <div class="drop-desc">New colour. AP's steel Royal Oak holds strong premiums. 37mm size targets a growing demand segment. Watch for AD waitlist intelligence before buying blind.</div>
         <div class="drop-meta">
-          <span>Retail: ~$23,000</span>
-          <span>Est. Market: $38,000–$45,000</span>
+          <span>Retail ~$23,000</span>
+          <span>Est. Market $38,000–$45,000</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
@@ -352,26 +364,26 @@
       <div class="drop-card">
         <div class="drop-brand">GRAND SEIKO</div>
         <div class="drop-name">SLGH021 — Birch Forest Limited</div>
-        <div class="drop-desc">500-piece limited edition with stunning enamel dial. Grand Seiko limited editions have shown 40–80% secondary market gains. Act fast on AD allocations.</div>
+        <div class="drop-desc">500-piece limited with hand-painted enamel dial. GS limited editions have shown 40–80% secondary gains. Act fast on AD allocations.</div>
         <div class="drop-meta">
-          <span>Retail: ~$18,500</span>
-          <span>Est. Market: $24,000–$28,000</span>
+          <span>Retail ~$18,500</span>
+          <span>Est. Market $24,000–$28,000</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
           <div class="flip-bar"><div class="flip-fill" style="width:78%"></div></div>
           <div class="flip-score">7.8 / 10</div>
         </div>
-        <div class="drop-tags"><span>Limited</span><span>Enamel</span><span>GS</span></div>
+        <div class="drop-tags"><span>Limited</span><span>Enamel</span><span>Grand Seiko</span></div>
       </div>
 
       <div class="drop-card">
         <div class="drop-brand">OMEGA</div>
         <div class="drop-name">Seamaster 300M — Bond Edition 2026</div>
-        <div class="drop-desc">Tied to new Bond film release. Previous Bond editions showed strong short-term premiums then normalized. Plan a quick exit strategy.</div>
+        <div class="drop-desc">Tied to the new Bond film. Previous Bond editions showed strong short-term premiums then normalised. Plan a fast exit strategy — this is not a hold.</div>
         <div class="drop-meta">
-          <span>Retail: ~$7,200</span>
-          <span>Est. Market: $8,500–$10,000</span>
+          <span>Retail ~$7,200</span>
+          <span>Est. Market $8,500–$10,000</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
@@ -383,11 +395,11 @@
 
       <div class="drop-card">
         <div class="drop-brand">F.P. JOURNE</div>
-        <div class="drop-name">Chronographe Monopoussoir Rattrapante</div>
-        <div class="drop-desc">Ultra-rare independent complication. FPJ has become one of the hottest flip targets at auction. If you can get access, do it — no questions asked.</div>
+        <div class="drop-name">Chronomètre Monopoussoir Rattrapante</div>
+        <div class="drop-desc">Ultra-rare independent complication. FPJ has become one of the most compelling auction flips. If you can access allocation — do not hesitate.</div>
         <div class="drop-meta">
-          <span>Retail: ~$110,000</span>
-          <span>Est. Market: $200,000+</span>
+          <span>Retail ~$110,000</span>
+          <span>Est. Market $200,000+</span>
         </div>
         <div class="flip-meter">
           <div class="flip-label">Flip Potential</div>
@@ -399,11 +411,12 @@
     </div>
   </section>
 
-  <!-- NEWS -->
+  <!-- ══ NEWS ══ -->
   <section class="section" id="section-news">
     <div class="section-header">
+      <div class="section-eyebrow">Industry Intelligence</div>
       <h1>Watch News</h1>
-      <p class="section-sub">Stay ahead of the market with curated industry news</p>
+      <p class="section-sub">Curated market-moving stories and industry developments</p>
     </div>
 
     <div class="news-layout">
@@ -411,190 +424,180 @@
         <div class="news-card featured-news">
           <div class="news-tag">MARKET MOVE</div>
           <h2>Rolex Steel Sports Premiums Surge to 18-Month High</h2>
-          <p>Secondary market premiums on Rolex steel sports references — particularly the Submariner, GMT-Master II, and Daytona — have climbed to levels not seen since early 2025. Analysts attribute the spike to tightening AD allocations ahead of Q3 and renewed demand from Asian buyers. The Batman GMT-II (126710BLNR) is commanding the largest premium at approximately 70% above retail.</p>
-          <div class="news-meta">WristFlip Intelligence · June 24, 2026</div>
+          <p>Secondary market premiums on Rolex steel sports references — particularly the Submariner, GMT-Master II, and Daytona — have climbed to levels not seen since early 2025. Analysts attribute the spike to tightening AD allocations ahead of Q3 and renewed demand from Asian buyers. The Batman GMT-II (126710BLNR) is commanding approximately 70% above retail.</p>
+          <div class="news-meta">Watch Batcave Intelligence · June 24, 2026</div>
         </div>
-
         <div class="news-card">
           <div class="news-tag">AUCTION</div>
           <h2>Phillips Geneva Doubles Estimate on Rare Paul Newman Daytona</h2>
           <p>A pristine 6239 Paul Newman Daytona fetched $2.4M at Phillips Geneva — more than double its pre-sale estimate of $1.1M. The result signals continued collector appetite for vintage Rolex and sets a new comp benchmark for tropical dial examples.</p>
           <div class="news-meta">Hodinkee · June 22, 2026</div>
         </div>
-
         <div class="news-card">
           <div class="news-tag">BRAND NEWS</div>
           <h2>Patek Philippe Confirms Nautilus 5726A Production Ending</h2>
-          <p>Patek has confirmed discontinuation of the Nautilus Annual Calendar ref. 5726A. Historically, Patek discontinuations immediately spike secondary market prices 20–40%. The 5726A has already climbed from $55K to $72K in the past 30 days since the rumor broke.</p>
+          <p>Patek has confirmed discontinuation of the Nautilus Annual Calendar ref. 5726A. Historically, Patek discontinuations immediately spike secondary market prices 20–40%. The 5726A has already climbed from $55K to $72K in the past 30 days since the rumour broke.</p>
           <div class="news-meta">The Hour Glass · June 20, 2026</div>
         </div>
-
         <div class="news-card">
           <div class="news-tag">GREY MARKET</div>
           <h2>Grey Market Spreads Tighten as Dealer Inventory Grows</h2>
           <p>Several high-volume grey market dealers report increased Rolex inventory, possibly from nervous flippers liquidating positions. This could signal short-term softening before summer picks back up. Experts recommend waiting before buying steel Rolex at current premiums unless you have a confirmed buyer.</p>
           <div class="news-meta">Bob's Watches Report · June 18, 2026</div>
         </div>
-
         <div class="news-card">
           <div class="news-tag">INVESTMENT</div>
-          <h2>Watch Index vs. S&P 500: Steel Sports Still Outperforming</h2>
-          <p>The WatchCharts Overall Market Index shows a 14.2% annual return for the top-20 most-traded references vs. 11.8% for the S&P 500 over the same period. However, experts caution: unlike stocks, watches require physical storage, insurance, authentication, and have variable liquidity depending on condition.</p>
+          <h2>Watch Index vs S&amp;P 500: Steel Sports Still Outperforming</h2>
+          <p>The WatchCharts Overall Market Index shows a 14.2% annual return for the top-20 most-traded references vs. 11.8% for the S&amp;P 500 over the same period. However, experts caution: unlike stocks, watches require physical storage, insurance, authentication, and carry variable liquidity depending on condition.</p>
           <div class="news-meta">Bloomberg Wealth · June 15, 2026</div>
         </div>
       </div>
 
       <div class="news-sidebar">
         <div class="card">
-          <div class="card-title">📰 Top News Sources</div>
+          <div class="card-title">Essential Reading</div>
           <ul class="source-list">
-            <li><a href="#" onclick="return false">Hodinkee</a> — Editorial & market commentary</li>
-            <li><a href="#" onclick="return false">WatchCharts</a> — Price data & indices</li>
-            <li><a href="#" onclick="return false">Bob's Watches Blog</a> — Grey market analysis</li>
-            <li><a href="#" onclick="return false">Watches of Switzerland</a> — Retail news</li>
-            <li><a href="#" onclick="return false">Revolution Watch</a> — Asia market focus</li>
-            <li><a href="#" onclick="return false">Oracle Time</a> — Auction coverage</li>
-            <li><a href="#" onclick="return false">aBlogtoWatch</a> — New releases first look</li>
-            <li><a href="#" onclick="return false">WristReview</a> — Independent commentary</li>
-            <li><a href="#" onclick="return false">Time+Tide</a> — Accessible deep dives</li>
+            <li><a href="https://www.hodinkee.com" target="_blank" rel="noopener">Hodinkee</a> — Editorial &amp; market commentary</li>
+            <li><a href="https://watchcharts.com" target="_blank" rel="noopener">WatchCharts</a> — Price data &amp; indices</li>
+            <li><a href="https://www.bobswatches.com/rolex-magazine" target="_blank" rel="noopener">Bob's Watches Blog</a> — Grey market analysis</li>
+            <li><a href="https://revolutionwatch.com" target="_blank" rel="noopener">Revolution Watch</a> — Asia market focus</li>
+            <li><a href="https://www.ablogtowatch.com" target="_blank" rel="noopener">aBlogtoWatch</a> — New releases, first look</li>
+            <li><a href="https://www.phillips.com/watches" target="_blank" rel="noopener">Phillips Watches</a> — Auction results &amp; catalogues</li>
+            <li><a href="https://www.watchtime.com" target="_blank" rel="noopener">WatchTime</a> — Technical &amp; industry news</li>
+            <li><a href="https://monochrome-watches.com" target="_blank" rel="noopener">Monochrome Watches</a> — Independent &amp; in-depth</li>
           </ul>
         </div>
-
         <div class="card">
-          <div class="card-title">🎙️ Top Podcasts</div>
+          <div class="card-title">Podcasts Worth Your Time</div>
           <ul class="source-list">
             <li>The Grey NATO</li>
             <li>WatchBox Studios</li>
             <li>The Wrist Check Podcast</li>
-            <li>The Grail Watch</li>
+            <li>The Grail Watch Podcast</li>
             <li>The Watch Clicker</li>
           </ul>
         </div>
-
         <div class="card">
-          <div class="card-title">📣 Market Alert</div>
-          <div class="alert-box warning">
-            ⚠️ Grey market dealers report 15% more inventory than last month. Prices may soften slightly mid-summer. Consider holding current positions.
-          </div>
-          <div class="alert-box success">
-            ✅ Vintage Rolex (pre-2000) showing strong auction results. Comp data from Phillips and Christie's suggests rising collector interest.
-          </div>
+          <div class="card-title">Market Alerts</div>
+          <div class="alert-box warning">Grey market dealers report 15% more inventory than last month. Prices may soften slightly mid-summer. Consider holding current positions.</div>
+          <div class="alert-box success">Vintage Rolex (pre-2000) showing strong auction results. Phillips and Christie's data suggest rising collector interest.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- COMP SITES -->
+  <!-- ══ COMP SITES ══ -->
   <section class="section" id="section-comps">
     <div class="section-header">
-      <h1>Comp Sites & Resources</h1>
-      <p class="section-sub">Every platform a serious watch flipper needs to know</p>
+      <div class="section-eyebrow">Platform Directory</div>
+      <h1>Comp Sites &amp; Resources</h1>
+      <p class="section-sub">Every platform a serious watch trader needs to know, ranked by utility</p>
     </div>
 
     <div class="comp-categories">
       <div class="comp-category">
-        <h3>🔍 Price Research & Comps</h3>
+        <h3>Price Research &amp; Comps</h3>
         <div class="comp-grid">
           <div class="comp-card tier1">
             <div class="comp-rank">TIER 1 — ESSENTIAL</div>
             <div class="comp-name">Chrono24</div>
-            <div class="comp-desc">The gold standard. Largest database of live and sold listings globally. Filter by condition, box/papers, year, and seller type. Check "sold" listings for real transaction comps.</div>
+            <div class="comp-desc">The gold standard. Largest database of live and sold listings globally. Filter by condition, box/papers, year, and seller type. Always check "sold" listings for real transaction comps — not asking prices.</div>
             <div class="comp-tags"><span>Comps</span><span>Buy</span><span>Sell</span><span>Global</span></div>
           </div>
           <div class="comp-card tier1">
             <div class="comp-rank">TIER 1 — ESSENTIAL</div>
             <div class="comp-name">WatchCharts</div>
-            <div class="comp-desc">Best-in-class price history charts. See 1M, 3M, 1Y, and all-time price trends per reference. Market index, portfolio tracker, and alert system included.</div>
+            <div class="comp-desc">Best-in-class historical price charts. See 1M, 3M, 1Y, and all-time price trends per reference. Market index, portfolio tracker, and price alert system all included.</div>
             <div class="comp-tags"><span>Charts</span><span>Index</span><span>Alerts</span></div>
           </div>
           <div class="comp-card tier1">
             <div class="comp-rank">TIER 1 — ESSENTIAL</div>
             <div class="comp-name">eBay Completed Listings</div>
-            <div class="comp-desc">Filter by "Sold Items" for real transaction prices. eBay is one of the most liquid retail resale platforms — prices here reflect true market clearing rates.</div>
+            <div class="comp-desc">Filter by "Sold Items" for real transaction prices. eBay is one of the most liquid retail resale platforms — prices here reflect true market clearing rates, not dealer aspirations.</div>
             <div class="comp-tags"><span>Sold Data</span><span>Retail</span></div>
           </div>
         </div>
       </div>
 
       <div class="comp-category">
-        <h3>💰 Buy / Sell Platforms</h3>
+        <h3>Buy / Sell Platforms</h3>
         <div class="comp-grid">
           <div class="comp-card tier2">
             <div class="comp-rank">TIER 2 — HIGH VALUE</div>
             <div class="comp-name">Bob's Watches</div>
-            <div class="comp-desc">US-focused dealer with transparent pricing. Good for quick exits on Rolex — they buy at fair prices. Use their site as a market floor for Rolex comps.</div>
-            <div class="comp-tags"><span>Buy</span><span>Sell</span><span>Rolex specialist</span></div>
+            <div class="comp-desc">US-focused dealer with transparent pricing. Good for quick exits on Rolex — they buy at fair prices. Use their listing prices as a market floor reference for Rolex comps.</div>
+            <div class="comp-tags"><span>Buy</span><span>Sell</span><span>Rolex</span></div>
           </div>
           <div class="comp-card tier2">
             <div class="comp-rank">TIER 2 — HIGH VALUE</div>
             <div class="comp-name">WatchBox</div>
-            <div class="comp-desc">Premium pre-owned dealer with certified authentication. Good liquidity on high-end refs. Buying prices are lower than market but sell prices match or beat Chrono24.</div>
-            <div class="comp-tags"><span>Certified</span><span>Luxury</span><span>Fast exit</span></div>
+            <div class="comp-desc">Premium pre-owned dealer with certified authentication. Good liquidity on high-end references. Buying prices are lower than market but sell prices match or beat Chrono24.</div>
+            <div class="comp-tags"><span>Certified</span><span>Luxury</span><span>Fast Exit</span></div>
           </div>
           <div class="comp-card tier2">
             <div class="comp-rank">TIER 2 — HIGH VALUE</div>
-            <div class="comp-name">Crown & Caliber</div>
-            <div class="comp-desc">Sell on consignment with competitive terms. Great for mid-range refs ($5K–$30K). Inspection + authentication included. Slightly longer sale timeline.</div>
-            <div class="comp-tags"><span>Consignment</span><span>Authentication</span></div>
+            <div class="comp-name">Crown &amp; Caliber</div>
+            <div class="comp-desc">Sell on consignment with competitive terms. Best for mid-range references ($5K–$30K). Inspection and authentication included. Slightly longer sale timeline than direct platforms.</div>
+            <div class="comp-tags"><span>Consignment</span><span>Auth</span></div>
           </div>
           <div class="comp-card tier2">
             <div class="comp-rank">TIER 2 — HIGH VALUE</div>
-            <div class="comp-name">Watchfinder & Co.</div>
-            <div class="comp-desc">Major UK pre-owned dealer (owned by Richemont). Excellent for European market comps. Strong premiums on UK/European buyers for select references.</div>
+            <div class="comp-name">Watchfinder &amp; Co.</div>
+            <div class="comp-desc">Major UK pre-owned dealer (owned by Richemont). Excellent for European market comps. Strong premiums from UK buyers on select references. Good credibility signals for buyers.</div>
             <div class="comp-tags"><span>UK/EU</span><span>Buy</span><span>Sell</span></div>
           </div>
         </div>
       </div>
 
       <div class="comp-category">
-        <h3>🏛️ Auctions</h3>
+        <h3>Auction Houses</h3>
         <div class="comp-grid">
           <div class="comp-card tier2">
-            <div class="comp-rank">PRESTIGE AUCTION</div>
+            <div class="comp-rank">PRESTIGE</div>
             <div class="comp-name">Phillips Watches</div>
-            <div class="comp-desc">World's top watch auction house. Phillips results set price records and define market ceilings. Essential for vintage and independent watchmaker comps.</div>
+            <div class="comp-desc">The world's top watch auction house. Phillips results set price records and define market ceilings. Essential reading for vintage and independent watchmaker comps. Study every catalogue.</div>
             <div class="comp-tags"><span>Vintage</span><span>Records</span><span>Independents</span></div>
           </div>
           <div class="comp-card tier2">
-            <div class="comp-rank">PRESTIGE AUCTION</div>
+            <div class="comp-rank">PRESTIGE</div>
             <div class="comp-name">Sotheby's Watches</div>
-            <div class="comp-desc">Major auction results for high-value refs. Strong Asian buyer base drives competitive bidding on PP, AP, and rare Rolex. Study their catalogs for trend signals.</div>
-            <div class="comp-tags"><span>High-end</span><span>PP</span><span>AP</span></div>
+            <div class="comp-desc">Major auction results for high-value references. Strong Asian buyer base drives competitive bidding on PP, AP, and rare Rolex. Study their pre-sale estimates for trend signals.</div>
+            <div class="comp-tags"><span>High-End</span><span>PP</span><span>AP</span></div>
           </div>
           <div class="comp-card">
-            <div class="comp-rank">MID-TIER AUCTION</div>
+            <div class="comp-rank">MID-TIER</div>
             <div class="comp-name">Watches of Knightsbridge</div>
-            <div class="comp-desc">London-based. Great for mid-range vintage comps. Lower buyer's premium than Phillips/Sotheby's. Good for identifying undervalued pieces.</div>
+            <div class="comp-desc">London-based with lower buyer's premium than Phillips. Great for identifying undervalued pieces and establishing comps on mid-range vintage. Worth attending in person if in London.</div>
             <div class="comp-tags"><span>Vintage</span><span>Value</span><span>London</span></div>
           </div>
           <div class="comp-card">
-            <div class="comp-rank">MID-TIER AUCTION</div>
+            <div class="comp-rank">MID-TIER</div>
             <div class="comp-name">Antiquorum</div>
-            <div class="comp-desc">Geneva-based with long history. Strong on complicated movements and vintage Swiss pieces. Use their archives to research historical transaction prices.</div>
-            <div class="comp-tags"><span>Geneva</span><span>Vintage</span><span>Complicated</span></div>
+            <div class="comp-desc">Geneva-based with long history. Strong on complicated movements and vintage Swiss pieces. Use their deep archives to research historical transaction prices and identify long-run trends.</div>
+            <div class="comp-tags"><span>Geneva</span><span>Vintage</span><span>Archives</span></div>
           </div>
         </div>
       </div>
 
       <div class="comp-category">
-        <h3>👥 Community & Intelligence</h3>
+        <h3>Community &amp; Intelligence</h3>
         <div class="comp-grid">
           <div class="comp-card">
             <div class="comp-rank">COMMUNITY</div>
             <div class="comp-name">r/Watchexchange</div>
-            <div class="comp-desc">Reddit's peer-to-peer marketplace. Lower fees, but buyer/seller protections require more due diligence. Great for mid-range refs and building buyer network.</div>
-            <div class="comp-tags"><span>P2P</span><span>No fees</span><span>Community</span></div>
+            <div class="comp-desc">Reddit's peer-to-peer marketplace. Lower fees, but buyer and seller protections require more due diligence. Great for mid-range references and building a trusted buyer network over time.</div>
+            <div class="comp-tags"><span>P2P</span><span>No Fees</span><span>Community</span></div>
           </div>
           <div class="comp-card">
             <div class="comp-rank">COMMUNITY</div>
             <div class="comp-name">WatchUSeek Forums</div>
-            <div class="comp-desc">One of the oldest watch communities. Sub-forums for every brand. "For Sale" threads often undercut Chrono24 pricing — great for buy-side opportunities.</div>
-            <div class="comp-tags"><span>Forum</span><span>Buy low</span><span>Discussion</span></div>
+            <div class="comp-desc">One of the oldest watch communities. Sub-forums for every brand. BST threads often undercut Chrono24 pricing — excellent for buy-side opportunities from motivated sellers.</div>
+            <div class="comp-tags"><span>Forum</span><span>Buy Low</span><span>Discussion</span></div>
           </div>
           <div class="comp-card">
             <div class="comp-rank">SOCIAL</div>
             <div class="comp-name">Instagram Watch Community</div>
-            <div class="comp-desc">Follow @watchtrader accounts and hashtags like #watchflip #preownedrolex #watchmarket. DM deals often happen here before listings go public.</div>
+            <div class="comp-desc">Follow watch trader accounts and hashtags like #watchflip #preownedrolex #watchmarket. DM deals often occur here before listings go public — build a visible, active presence.</div>
             <div class="comp-tags"><span>Social</span><span>Deals</span><span>Network</span></div>
           </div>
         </div>
@@ -602,37 +605,38 @@
     </div>
   </section>
 
-  <!-- FLIP CALCULATOR -->
+  <!-- ══ CALCULATOR ══ -->
   <section class="section" id="section-calculator">
     <div class="section-header">
+      <div class="section-eyebrow">Deal Analysis</div>
       <h1>Flip Calculator</h1>
-      <p class="section-sub">Calculate your profit, fees, and risk before every deal</p>
+      <p class="section-sub">Model your profit, fees, and risk before committing to any deal</p>
     </div>
 
     <div class="calc-layout">
       <div class="card calc-card">
-        <div class="card-title">💵 Deal Calculator</div>
+        <div class="card-title">Deal Parameters</div>
         <div class="calc-form">
           <div class="form-group">
             <label>Purchase Price ($)</label>
-            <input type="number" id="buyPrice" placeholder="e.g. 9100" value="9100" />
+            <input type="number" id="buyPrice" value="9100" />
           </div>
           <div class="form-group">
             <label>Expected Sale Price ($)</label>
-            <input type="number" id="sellPrice" placeholder="e.g. 14500" value="14500" />
+            <input type="number" id="sellPrice" value="14500" />
           </div>
           <div class="form-group">
             <label>Platform Fee (%)</label>
             <select id="platformFee">
-              <option value="0">No Platform (private sale) — 0%</option>
+              <option value="0">Private Sale — 0%</option>
               <option value="3" selected>Chrono24 — 3%</option>
-              <option value="7">eBay — 7%</option>
-              <option value="10">Consignment (Crown & Caliber) — 10–15%</option>
-              <option value="15">Auction (Buyer's + Seller's) — ~15%</option>
+              <option value="7">eBay — ~7%</option>
+              <option value="10">Consignment — 10–15%</option>
+              <option value="15">Auction (total) — ~15%</option>
             </select>
           </div>
           <div class="form-group">
-            <label>PayPal / Wire Fee (%)</label>
+            <label>Payment Processing Fee (%)</label>
             <input type="number" id="paymentFee" value="2.9" step="0.1" />
           </div>
           <div class="form-group">
@@ -640,95 +644,74 @@
             <input type="number" id="shippingCost" value="150" />
           </div>
           <div class="form-group">
-            <label>Any Service / Polish ($)</label>
+            <label>Service / Polish ($)</label>
             <input type="number" id="serviceCost" value="0" />
           </div>
           <div class="form-group">
-            <label>Sales Tax (if applicable, %)</label>
+            <label>Sales Tax if applicable (%)</label>
             <input type="number" id="taxRate" value="0" step="0.1" />
           </div>
-          <button class="calc-btn" onclick="calculateFlip()">Calculate Profit</button>
+          <button class="calc-btn" onclick="calculateFlip()">Calculate</button>
         </div>
       </div>
 
       <div class="card calc-results" id="calcResults">
-        <div class="card-title">📊 Deal Breakdown</div>
+        <div class="card-title">Deal Breakdown</div>
         <div class="result-grid" id="resultGrid">
-          <div class="result-row">
-            <span>Buy Price</span><span id="r-buy">$9,100</span>
-          </div>
-          <div class="result-row">
-            <span>Sale Price</span><span id="r-sell">$14,500</span>
-          </div>
-          <div class="result-row">
-            <span>Gross Margin</span><span id="r-gross" class="up">$5,400</span>
-          </div>
+          <div class="result-row"><span>Buy Price</span><span id="r-buy">$9,100</span></div>
+          <div class="result-row"><span>Sale Price</span><span id="r-sell">$14,500</span></div>
+          <div class="result-row"><span>Gross Margin</span><span id="r-gross" class="up">$5,400</span></div>
           <div class="result-row divider"></div>
-          <div class="result-row">
-            <span>Platform Fee</span><span id="r-platform" class="down">-$435</span>
-          </div>
-          <div class="result-row">
-            <span>Payment Fee</span><span id="r-payment" class="down">-$421</span>
-          </div>
-          <div class="result-row">
-            <span>Shipping + Ins.</span><span id="r-shipping" class="down">-$150</span>
-          </div>
-          <div class="result-row">
-            <span>Service / Polish</span><span id="r-service" class="down">-$0</span>
-          </div>
-          <div class="result-row">
-            <span>Tax</span><span id="r-tax" class="down">-$0</span>
-          </div>
+          <div class="result-row"><span>Platform Fee</span><span id="r-platform" class="down">−$435</span></div>
+          <div class="result-row"><span>Payment Fee</span><span id="r-payment" class="down">−$421</span></div>
+          <div class="result-row"><span>Shipping + Ins.</span><span id="r-shipping" class="down">−$150</span></div>
+          <div class="result-row"><span>Service / Polish</span><span id="r-service" class="down">−$0</span></div>
+          <div class="result-row"><span>Tax</span><span id="r-tax" class="down">−$0</span></div>
           <div class="result-row divider"></div>
-          <div class="result-row big">
-            <span>NET PROFIT</span><span id="r-net" class="up big">$4,394</span>
-          </div>
-          <div class="result-row">
-            <span>ROI</span><span id="r-roi" class="up">48.3%</span>
-          </div>
-          <div class="result-row">
-            <span>Effective Margin</span><span id="r-margin" class="up">30.3%</span>
-          </div>
+          <div class="result-row big"><span>Net Profit</span><span id="r-net" class="up">$4,394</span></div>
+          <div class="result-row"><span>ROI</span><span id="r-roi" class="up">48.3%</span></div>
+          <div class="result-row"><span>Net Margin</span><span id="r-margin" class="up">30.3%</span></div>
         </div>
         <canvas id="calcChart" height="120" style="margin-top:20px"></canvas>
-        <div id="dealVerdict" class="deal-verdict good">✅ STRONG DEAL — Proceed with confidence</div>
+        <div id="dealVerdict" class="deal-verdict good">STRONG DEAL — Proceed with confidence</div>
       </div>
 
       <div class="card">
-        <div class="card-title">⚠️ Risk Checklist</div>
+        <div class="card-title">Pre-Purchase Checklist</div>
         <div class="checklist">
-          <label class="check-item"><input type="checkbox" checked /> Box & papers (BP) confirmed</label>
+          <label class="check-item"><input type="checkbox" checked /> Box &amp; papers confirmed</label>
           <label class="check-item"><input type="checkbox" /> Serial number verified against production date</label>
-          <label class="check-item"><input type="checkbox" /> Dial condition inspected (no scratches, original lume)</label>
-          <label class="check-item"><input type="checkbox" /> Case not polished (unpolished commands higher premium)</label>
-          <label class="check-item"><input type="checkbox" /> Crown & pusher condition checked</label>
-          <label class="check-item"><input type="checkbox" /> Seller reputation vetted (feedback score, history)</label>
-          <label class="check-item"><input type="checkbox" /> Comp prices pulled from last 90 days</label>
-          <label class="check-item"><input type="checkbox" /> Exit strategy identified before buying</label>
-          <label class="check-item"><input type="checkbox" /> Can I hold 6+ months if needed?</label>
-          <label class="check-item"><input type="checkbox" /> Authentication by a trusted watchmaker if vintage</label>
+          <label class="check-item"><input type="checkbox" /> Dial condition inspected — no refinishing or replaced indices</label>
+          <label class="check-item"><input type="checkbox" /> Case unpolished — original brushed/polished surfaces intact</label>
+          <label class="check-item"><input type="checkbox" /> Crown and pusher condition confirmed</label>
+          <label class="check-item"><input type="checkbox" /> Seller reputation vetted — feedback score and history reviewed</label>
+          <label class="check-item"><input type="checkbox" /> Comp prices pulled from last 90 days of sold listings</label>
+          <label class="check-item"><input type="checkbox" /> Exit strategy identified before purchasing</label>
+          <label class="check-item"><input type="checkbox" /> Comfortable holding 6+ months if market softens</label>
+          <label class="check-item"><input type="checkbox" /> Authentication by trusted watchmaker if vintage</label>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- STUDY MATERIALS -->
+  <!-- ══ STUDY MATERIALS ══ -->
   <section class="section" id="section-study">
     <div class="section-header">
+      <div class="section-eyebrow">Knowledge Base</div>
       <h1>Study Materials</h1>
-      <p class="section-sub">Master the craft — from beginner to pro flipper</p>
+      <p class="section-sub">Vetted resources and structured curriculum — beginner to advanced</p>
     </div>
 
     <div class="study-path">
       <div class="path-header">
         <h2>Learning Path</h2>
-        <p>Complete these modules in order to build a solid foundation</p>
+        <p>Work through these modules in sequence to build a genuine foundation</p>
       </div>
       <div class="path-steps">
         <div class="path-step completed">
           <div class="step-num">1</div>
           <div class="step-content">
-            <div class="step-title">The Watch Market Fundamentals</div>
+            <div class="step-title">Market Fundamentals</div>
             <div class="step-sub">How the primary and secondary markets work</div>
           </div>
         </div>
@@ -736,14 +719,14 @@
           <div class="step-num">2</div>
           <div class="step-content">
             <div class="step-title">Reference Identification</div>
-            <div class="step-sub">Reading references, serials, and dials</div>
+            <div class="step-sub">Reading references, serials, and dial variants</div>
           </div>
         </div>
         <div class="path-step">
           <div class="step-num">3</div>
           <div class="step-content">
-            <div class="step-title">Condition & Authentication</div>
-            <div class="step-sub">Spotting fakes, assessing condition grades</div>
+            <div class="step-title">Condition &amp; Authentication</div>
+            <div class="step-sub">Spotting fakes and grading condition accurately</div>
           </div>
         </div>
         <div class="path-step">
@@ -763,178 +746,212 @@
         <div class="path-step">
           <div class="step-num">6</div>
           <div class="step-content">
-            <div class="step-title">Advanced: Vintage & Independents</div>
-            <div class="step-sub">High-margin plays for experienced flippers</div>
+            <div class="step-title">Advanced — Vintage &amp; Independents</div>
+            <div class="step-sub">High-margin plays for experienced traders</div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- VETTED RESOURCES -->
+    <div class="resource-section">
+      <div class="resource-section-title">Vetted External Resources</div>
+      <div class="resource-grid">
+
+        <div class="resource-card">
+          <div class="resource-cat">PRICE DATA</div>
+          <div class="resource-name"><a href="https://watchcharts.com" target="_blank" rel="noopener">WatchCharts.com</a></div>
+          <div class="resource-desc">The most comprehensive secondary market price tracking platform available. Tracks sold listings across Chrono24, eBay, and dealer databases. Provides per-reference charts going back years, an overall market index, and a portfolio tracker. Essential for anyone doing serious comp work — free tier covers most of what beginners need.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">MARKETPLACE</div>
+          <div class="resource-name"><a href="https://www.chrono24.com" target="_blank" rel="noopener">Chrono24.com</a></div>
+          <div class="resource-desc">The world's largest pre-owned watch marketplace with over 500,000 listings from dealers and private sellers in 125 countries. Use the "Price History" tab on any listing to see how a specific reference has traded over time. Buyer protection programme adds credibility for higher-value transactions.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">EDITORIAL</div>
+          <div class="resource-name"><a href="https://www.hodinkee.com" target="_blank" rel="noopener">Hodinkee.com</a></div>
+          <div class="resource-desc">The most-read English-language watch publication. Strong editorial standards and deep dives on reference history, brand strategy, and market trends. Their "In-Depth" and "Long Read" categories are particularly useful for building historical context on desirable references before buying.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">AUTHENTICATION</div>
+          <div class="resource-name"><a href="https://www.watchobsession.co.uk/rolex-serial-numbers" target="_blank" rel="noopener">WatchObsession Serial Database</a></div>
+          <div class="resource-desc">Free Rolex serial number lookup tool. Cross-reference any serial number against production year to confirm authenticity of the seller's claimed date. Essential for pre-purchase verification — a mismatched serial year is a major red flag on any transaction.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">AUCTION ARCHIVE</div>
+          <div class="resource-name"><a href="https://www.phillips.com/watches/results" target="_blank" rel="noopener">Phillips Auction Results</a></div>
+          <div class="resource-desc">Complete archive of every Phillips watch auction going back over a decade. The most authoritative database for vintage and independent watchmaker comps. Filter by brand, estimate, or sold price. Pre-sale estimates from Phillips are useful market sentiment indicators even for pieces you're not bidding on.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">COMMUNITY</div>
+          <div class="resource-name"><a href="https://www.watchuseek.com" target="_blank" rel="noopener">WatchUSeek Forums</a></div>
+          <div class="resource-desc">One of the most established watch communities online, active since 2001. Brand-specific sub-forums contain decades of reference identification threads, authentication guides, and service history discussions. The BST (Buy/Sell/Trade) section regularly surfaces below-market deals from motivated private sellers.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">GREY MARKET</div>
+          <div class="resource-name"><a href="https://www.bobswatches.com/rolex-magazine" target="_blank" rel="noopener">Bob's Watches Blog</a></div>
+          <div class="resource-desc">Bob's Watches publishes frequent market analysis pieces on Rolex specifically. Their "Rolex Price Guide" is updated regularly and provides a transparent floor for what major grey market dealers will pay. Use it alongside WatchCharts to triangulate buy and sell targets on Rolex references.</div>
+        </div>
+
+        <div class="resource-card">
+          <div class="resource-cat">INDEPENDENTS</div>
+          <div class="resource-name"><a href="https://monochrome-watches.com" target="_blank" rel="noopener">Monochrome Watches</a></div>
+          <div class="resource-desc">Best independent watch publication for coverage of haute horlogerie, independents, and technical movements. Particularly strong on F.P. Journe, A. Lange &amp; Söhne, and Greubel Forsey — the categories that have generated the most outsized secondary market returns in recent years.</div>
+        </div>
+
+      </div>
+    </div>
+
     <div class="modules-grid">
       <div class="module-card open">
-        <div class="module-icon">📚</div>
-        <div class="module-title">Module 1: Market Fundamentals</div>
+        <div class="module-title"><span class="module-num">01</span> Market Fundamentals</div>
         <div class="module-content">
           <h4>How the Watch Market Works</h4>
-          <p>The watch market operates on two levels. The <b>primary market</b> is ADs (authorized dealers) selling at retail MSRP. The <b>secondary market</b> is everything after — grey market dealers, platforms like Chrono24, auction houses, and private sales.</p>
-          <p>For most Rolex steel sports references, demand far exceeds supply at retail — creating a permanent "premium" on the secondary market. Your job as a flipper is to access retail pricing (or close to it) and sell at secondary market rates.</p>
-
-          <h4>Why Supply Is Constrained</h4>
-          <ul>
-            <li>Rolex produces roughly 1.2M watches per year — far less than demand for desirable refs</li>
-            <li>ADs receive limited allocations and often require purchase history before offering sport refs</li>
-            <li>Steel sports watches (Sub, GMT, Daytona) account for ~30% of production but ~80% of demand</li>
-            <li>This structural imbalance drives premiums and creates consistent flip opportunities</li>
-          </ul>
+          <p>The watch market operates on two levels. The <b>primary market</b> is ADs (authorised dealers) selling at retail MSRP. The <b>secondary market</b> is everything after — grey market dealers, platforms like Chrono24, auction houses, and private sales.</p>
+          <p>For most Rolex steel sports references, demand far exceeds supply at retail — creating a permanent premium on the secondary market. Your job as a flipper is to access retail pricing (or close to it) and sell at secondary market rates.</p>
+          <p><b>Further reading:</b> <a href="https://watchcharts.com/watches/market" target="_blank" rel="noopener">WatchCharts Market Index</a> — live overview of how the secondary market is performing across all major references.</p>
 
           <h4>Key Market Drivers</h4>
           <ul>
-            <li><b>Discontinuations</b> — When a ref is discontinued, premiums spike immediately</li>
-            <li><b>New references</b> — Hype drops can spike and normalize. Time your exit</li>
-            <li><b>Currency fluctuations</b> — Watches are global assets. USD strength affects prices</li>
-            <li><b>Macro conditions</b> — Recessions hurt premiums; bull markets boost them</li>
-            <li><b>Auction records</b> — A single high-profile auction result can move a whole category</li>
+            <li><b>Discontinuations</b> — When a reference is discontinued, premiums spike immediately and often sustainably</li>
+            <li><b>New references</b> — Hype can spike and then normalise rapidly. Time your exit carefully</li>
+            <li><b>Currency fluctuations</b> — Watches are global assets. USD strength directly affects import pricing and buyer demand</li>
+            <li><b>Macro conditions</b> — Recessions hurt premiums; bull markets amplify them</li>
+            <li><b>Auction records</b> — A single high-profile result can move a whole category upward within days</li>
           </ul>
         </div>
       </div>
 
       <div class="module-card">
-        <div class="module-icon">🔎</div>
-        <div class="module-title">Module 2: Reference Identification</div>
+        <div class="module-title"><span class="module-num">02</span> Reference Identification</div>
         <div class="module-content">
           <h4>Reading a Rolex Reference</h4>
-          <p>Every Rolex has a reference number that encodes key information. Example: <b>126710BLNR</b></p>
+          <p>Every Rolex carries a reference number that encodes key information. Example: <b>126710BLNR</b></p>
           <ul>
             <li><b>126710</b> — Model number (GMT-Master II, steel, date)</li>
             <li><b>BLNR</b> — Dial/bezel suffix: Black + Blue = "Batman"</li>
           </ul>
+          <p><b>Tool:</b> <a href="https://www.watchobsession.co.uk/rolex-serial-numbers" target="_blank" rel="noopener">Rolex Serial Number Database</a> — cross-reference any serial against production year.</p>
 
-          <h4>Common Suffixes</h4>
+          <h4>Common Dial/Bezel Suffixes</h4>
           <table class="study-table">
             <tr><th>Suffix</th><th>Meaning</th></tr>
-            <tr><td>LN</td><td>Lunette Noire (black bezel)</td></tr>
-            <tr><td>LV</td><td>Lunette Verte (green bezel)</td></tr>
-            <tr><td>BLNR</td><td>Black/Blue (Batman)</td></tr>
-            <tr><td>BLRO</td><td>Black/Red (Pepsi)</td></tr>
+            <tr><td>LN</td><td>Lunette Noire — black bezel</td></tr>
+            <tr><td>LV</td><td>Lunette Verte — green bezel</td></tr>
+            <tr><td>BLNR</td><td>Black/Blue bezel (Batman)</td></tr>
+            <tr><td>BLRO</td><td>Black/Red bezel (Pepsi)</td></tr>
             <tr><td>ST</td><td>Steel</td></tr>
-            <tr><td>OR</td><td>Or (gold)</td></tr>
+            <tr><td>OR</td><td>Or — gold</td></tr>
           </table>
-
-          <h4>Serial Numbers & Date</h4>
-          <p>Rolex serials encode production year (pre-2010). Post-2010 uses randomized serials. Use <b>watchobsession.co.uk</b> or Rolex serial databases to cross-reference date of manufacture against claimed production year.</p>
+          <p><b>Reference guide:</b> <a href="https://www.chrono24.com/rolex/index.htm" target="_blank" rel="noopener">Chrono24 Rolex Index</a> — browse all current and discontinued references with full specification sheets.</p>
         </div>
       </div>
 
       <div class="module-card">
-        <div class="module-icon">🛡️</div>
-        <div class="module-title">Module 3: Authentication & Condition</div>
+        <div class="module-title"><span class="module-num">03</span> Condition &amp; Authentication</div>
         <div class="module-content">
-          <h4>Spotting Fakes — The Basics</h4>
+          <h4>Spotting Counterfeits — The Fundamentals</h4>
           <ul>
-            <li><b>Cyclops lens</b> — Should magnify date 2.5x, perfectly centered over the date window</li>
-            <li><b>Sweeping seconds hand</b> — Real Rolex moves in ~8 micro-steps per second, not a single tick</li>
-            <li><b>Crown etching</b> — Since 2002, a tiny Rolex crown is etched at 6 o'clock on the crystal</li>
-            <li><b>Case finishing</b> — Alternating brushed and polished surfaces, crisp edges</li>
-            <li><b>Rehaut engraving</b> — Inner bezel engraved with "ROLEX ROLEX ROLEX" and serial number since ~2007</li>
-            <li><b>Weight</b> — Genuine steel Rolex has substantial heft; fakes often feel light</li>
+            <li><b>Cyclops lens</b> — Must magnify date 2.5x, perfectly centred</li>
+            <li><b>Seconds hand sweep</b> — Genuine Rolex moves in ~8 micro-steps per second</li>
+            <li><b>Crown crystal etching</b> — Tiny Rolex crown etched at 6 o'clock on crystal (since 2002)</li>
+            <li><b>Case finishing</b> — Crisp alternating brushed and polished surfaces</li>
+            <li><b>Rehaut engraving</b> — Inner bezel engraved with serial number and "ROLEX" text (since ~2007)</li>
           </ul>
+          <p><b>Reference:</b> <a href="https://www.hodinkee.com/articles/how-to-spot-fake-rolex" target="_blank" rel="noopener">Hodinkee — How to Spot a Fake Rolex</a> — highly detailed visual guide with photography.</p>
 
-          <h4>Condition Grades (Watch Industry Standard)</h4>
+          <h4>Condition Grades</h4>
           <table class="study-table">
             <tr><th>Grade</th><th>Description</th><th>Price Impact</th></tr>
-            <tr><td>Mint / NOS</td><td>Unworn, original surfaces</td><td>+20–40% premium</td></tr>
-            <tr><td>Excellent</td><td>Minimal wear, no polish</td><td>Market rate</td></tr>
-            <tr><td>Very Good</td><td>Light scratches, honest wear</td><td>-5 to -15%</td></tr>
-            <tr><td>Good</td><td>Visible wear, may be polished</td><td>-20 to -35%</td></tr>
-            <tr><td>Fair</td><td>Heavy wear, damage visible</td><td>-40%+</td></tr>
+            <tr><td>Mint / NOS</td><td>Unworn, original surfaces throughout</td><td>+20–40% above market</td></tr>
+            <tr><td>Excellent</td><td>Minimal wear, no polishing, honest patina</td><td>Market rate</td></tr>
+            <tr><td>Very Good</td><td>Light scratches, honest wear marks</td><td>−5 to −15%</td></tr>
+            <tr><td>Good</td><td>Visible wear, may be polished</td><td>−20 to −35%</td></tr>
+            <tr><td>Fair</td><td>Heavy wear, damage visible</td><td>−40%+</td></tr>
           </table>
-
-          <h4>Professional Authentication</h4>
-          <p>For watches above $5,000, always use a professional watchmaker or authentication service. <b>WatchCSA</b>, <b>TrueFacet</b>, and <b>WatchBox</b> all offer authentication services. Factor the cost (~$50–$200) into your buy-side calculation.</p>
         </div>
       </div>
 
       <div class="module-card">
-        <div class="module-icon">🤝</div>
-        <div class="module-title">Module 4: The Buy Side</div>
+        <div class="module-title"><span class="module-num">04</span> The Buy Side</div>
         <div class="module-content">
-          <h4>Getting Rolex at Retail (AD Strategy)</h4>
-          <p>The holy grail: buying at retail from an AD. This is the hardest part. ADs allocate hot refs to their best customers. How to build a relationship:</p>
+          <h4>AD Strategy</h4>
+          <p>The highest-margin path: buying at retail from an AD. ADs allocate hot references to their best customers. Building that relationship takes time:</p>
           <ul>
-            <li>Buy jewelry, entry-level watches, and straps first to establish spending history</li>
-            <li>Visit regularly and build personal rapport with a specific salesperson</li>
-            <li>Express specific interest in a reference — don't just say "I want anything"</li>
-            <li>Be patient — it can take 1–3 years at a top AD to get a Submariner offer</li>
-            <li>Consider smaller ADs in less competitive markets — lower foot traffic = better odds</li>
+            <li>Purchase jewellery, entry-level watches, and straps first to establish spending history</li>
+            <li>Visit regularly and build personal rapport with a specific salesperson by name</li>
+            <li>Express specific interest in one reference — vague requests signal you are a flipper</li>
+            <li>Be patient — it can take 1–3 years at a top AD to receive a Submariner offer</li>
+            <li>Smaller ADs in less competitive markets have lower foot traffic and better allocation odds</li>
           </ul>
+          <p><b>Useful read:</b> <a href="https://www.hodinkee.com/articles/how-to-buy-a-rolex-from-an-authorized-dealer" target="_blank" rel="noopener">Hodinkee — How to Buy a Rolex from an AD</a> — practical walkthrough of the AD relationship process.</p>
 
-          <h4>Grey Market</h4>
-          <p>Grey market dealers (Bob's Watches, Tourneau pre-owned, etc.) sell genuine watches above retail but below street premiums. Use this to move faster if you have a confirmed buyer at a higher price. Margin is tighter but risk is lower.</p>
-
-          <h4>Private Sales</h4>
-          <p>WatchUSeek BST, r/Watchexchange, Instagram — private sales offer the best buy-side prices but carry authentication risk. Always get photos of the serial number, box, and papers. For high-value pieces, insist on an in-person inspection or escrow.</p>
+          <h4>Grey Market &amp; Private Sales</h4>
+          <p>Grey market dealers sell genuine watches above retail but below street premiums. Use when you have a confirmed buyer at a higher price. Private sales (WatchUSeek, r/Watchexchange, Instagram) offer the best buy-side prices but carry authentication risk — always verify in person or use escrow.</p>
         </div>
       </div>
 
       <div class="module-card">
-        <div class="module-icon">💸</div>
-        <div class="module-title">Module 5: The Sell Side</div>
+        <div class="module-title"><span class="module-num">05</span> The Sell Side</div>
         <div class="module-content">
           <h4>Platform Comparison</h4>
           <table class="study-table">
             <tr><th>Platform</th><th>Fee</th><th>Speed</th><th>Best For</th></tr>
-            <tr><td>Private sale</td><td>0%</td><td>Variable</td><td>High-margin, trusted buyers</td></tr>
-            <tr><td>Chrono24</td><td>3%</td><td>1–4 weeks</td><td>Most refs $3K+</td></tr>
-            <tr><td>eBay</td><td>~7%</td><td>Days–1 week</td><td>Popular Rolex refs</td></tr>
-            <tr><td>Bob's (sell to)</td><td>0% — instant</td><td>Immediate</td><td>Quick exit, slightly below market</td></tr>
-            <tr><td>Consignment</td><td>10–15%</td><td>2–8 weeks</td><td>Hands-off, higher net sale</td></tr>
-            <tr><td>Auction</td><td>15–25% total</td><td>Next sale date</td><td>Rare/vintage pieces</td></tr>
+            <tr><td>Private sale</td><td>0%</td><td>Variable</td><td>Max margin, trusted network</td></tr>
+            <tr><td><a href="https://www.chrono24.com" target="_blank" rel="noopener">Chrono24</a></td><td>3%</td><td>1–4 weeks</td><td>Most references $3K+</td></tr>
+            <tr><td>eBay Sold</td><td>~7%</td><td>Days–1 week</td><td>Popular Rolex references</td></tr>
+            <tr><td><a href="https://www.bobswatches.com/sell-a-rolex" target="_blank" rel="noopener">Bob's (sell to)</a></td><td>0% — instant</td><td>Immediate</td><td>Fast exit, slightly below market</td></tr>
+            <tr><td>Consignment</td><td>10–15%</td><td>2–8 weeks</td><td>Hands-off, higher net</td></tr>
+            <tr><td>Auction</td><td>15–25% total</td><td>Next sale date</td><td>Rare or vintage pieces only</td></tr>
           </table>
 
-          <h4>Listing Strategy</h4>
+          <h4>Listing Best Practices</h4>
           <ul>
-            <li>High quality photos — natural light, all angles, serial engraving, box & papers</li>
-            <li>Price 3–5% above your target to allow for negotiation</li>
-            <li>Respond to inquiries within hours — serious buyers move fast</li>
-            <li>Offer to meet at an AD for buyer peace of mind on high-value transactions</li>
-            <li>Use escrow (Payoneer, WireDepot) for private sales above $10K</li>
+            <li>High-quality photographs in natural light — all angles, serial rehaut, box and papers</li>
+            <li>Price 3–5% above your target to allow negotiation room</li>
+            <li>Respond to enquiries within hours — serious buyers move quickly and test responsiveness</li>
+            <li>Offer to meet at an AD for in-person buyer verification on high-value transactions</li>
+            <li>Use escrow for private sales above $10,000</li>
           </ul>
         </div>
       </div>
 
       <div class="module-card">
-        <div class="module-icon">👑</div>
-        <div class="module-title">Module 6: Advanced — Vintage & Independents</div>
+        <div class="module-title"><span class="module-num">06</span> Advanced — Vintage &amp; Independents</div>
         <div class="module-content">
-          <h4>Vintage Rolex Opportunities</h4>
-          <p>Vintage watches (pre-1990) can yield outsized returns but require deep expertise. Key segments:</p>
+          <h4>Vintage Rolex — High-Margin Targets</h4>
           <ul>
-            <li><b>Paul Newman Daytona</b> (6239, 6241, 6263, 6265) — Most sought-after vintage ref. Pristine examples sell for $200K–$2M+</li>
-            <li><b>Tropical dials</b> — Original black dials that turned brown/chocolate over time. Massive premium for authentic examples</li>
-            <li><b>Early Submariners</b> (5508, 5512, 5513) — Pre-crown guard examples with original dials are highly collectible</li>
-            <li><b>Milgauss 6541</b> — Honeycomb dial. Extremely rare, $30K–$80K when pristine</li>
+            <li><b>Paul Newman Daytona</b> (6239, 6241, 6263, 6265) — Most sought-after vintage reference. Pristine examples sell for $200K–$2M+</li>
+            <li><b>Tropical dials</b> — Original black dials that turned brown or chocolate with UV exposure. Major premium for authenticated examples</li>
+            <li><b>Early Submariners</b> (5508, 5512, 5513) — Pre-crown guard examples with original dials and lume are highly collectible</li>
+            <li><b>Milgauss 6541</b> — Honeycomb dial, extremely rare. $30K–$80K when pristine and original</li>
           </ul>
+          <p><b>Archive resource:</b> <a href="https://www.phillips.com/watches/results" target="_blank" rel="noopener">Phillips Auction Archive</a> — the definitive database for vintage Rolex comp prices going back over a decade.</p>
 
-          <h4>Independent Watchmakers</h4>
-          <p>The hottest category in the last 3 years. F.P. Journe, Richard Mille, A. Lange & Söhne, Philippe Dufour, and MB&F routinely appreciate 50–300% post-purchase.</p>
-          <ul>
-            <li>F.P. Journe: Chronomètre Bleu, Octa Automatique — any reference</li>
-            <li>A. Lange & Söhne: Datograph Perpetual, Double Split</li>
-            <li>MB&F: HM series — deep collector base, strong auction results</li>
-          </ul>
+          <h4>Independent Watchmakers — The Hottest Category</h4>
+          <p>F.P. Journe, A. Lange &amp; Söhne, MB&amp;F, and Philippe Dufour have generated some of the most outsized post-purchase returns in the past five years. Acquire any allocation you can access.</p>
+          <p><b>Essential reading:</b> <a href="https://monochrome-watches.com/category/f-p-journe/" target="_blank" rel="noopener">Monochrome — F.P. Journe Coverage</a> — deep dives on every Journe reference with historical context.</p>
 
-          <h4>Key Rule for Vintage</h4>
-          <p><b>Originality is everything.</b> A replaced dial, refinished hands, or polished case can reduce value by 40–60%. Never buy vintage without documentation of service history and dial originality confirmation from an expert.</p>
+          <h4>The Golden Rule for Vintage</h4>
+          <p><b>Originality is everything.</b> A replaced dial, refinished hands, or polished case can reduce value by 40–60%. Never purchase a vintage piece without documentation of service history and explicit confirmation of dial originality from a specialist.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- GLOSSARY -->
+  <!-- ══ GLOSSARY ══ -->
   <section class="section" id="section-glossary">
     <div class="section-header">
+      <div class="section-eyebrow">Reference</div>
       <h1>Glossary</h1>
-      <p class="section-sub">Every term you need to know — from AD to ZULU strap</p>
+      <p class="section-sub">Every term you need — from AD allocation to tropical dial</p>
     </div>
 
     <div class="glossary-search-bar">
@@ -942,41 +959,35 @@
     </div>
 
     <div class="glossary-grid" id="glossaryGrid">
-      <div class="gloss-item"><div class="gloss-term">AD</div><div class="gloss-def">Authorized Dealer — an official retail partner of a watch brand, selling at MSRP</div></div>
-      <div class="gloss-item"><div class="gloss-term">BP / B+P</div><div class="gloss-def">Box and Papers — original packaging and documentation. Adds 15–30% to resale value</div></div>
-      <div class="gloss-item"><div class="gloss-term">Bezel</div><div class="gloss-def">The ring surrounding the watch crystal. Can be fixed or rotating; material significantly affects value</div></div>
-      <div class="gloss-item"><div class="gloss-term">Caliber</div><div class="gloss-def">The movement (engine) inside the watch. In-house calibers command premium pricing</div></div>
-      <div class="gloss-item"><div class="gloss-term">Caseback</div><div class="gloss-def">The back of the watch case. Rolex uses solid caseback (no display); some brands feature exhibition casebacks</div></div>
-      <div class="gloss-item"><div class="gloss-term">Ceramic Bezel</div><div class="gloss-def">Modern Rolex bezel material, scratch-resistant and colorfast — vs older aluminum bezels that scratch and fade</div></div>
-      <div class="gloss-item"><div class="gloss-term">Chrono24</div><div class="gloss-def">The world's largest pre-owned watch marketplace. Essential for price research</div></div>
-      <div class="gloss-item"><div class="gloss-term">Comp</div><div class="gloss-def">Comparable sale — a recent transaction for the same or similar watch used to establish market value</div></div>
-      <div class="gloss-item"><div class="gloss-term">Crown</div><div class="gloss-def">The crown-shaped winding knob on the side of the case. Rolex's iconic Triplock crown is waterproof</div></div>
-      <div class="gloss-item"><div class="gloss-term">Cyclops</div><div class="gloss-def">Rolex's magnification lens over the date window. Must magnify 2.5x on a genuine piece</div></div>
-      <div class="gloss-item"><div class="gloss-term">Daytona</div><div class="gloss-def">Rolex's chronograph reference — one of the hottest flip targets. Ref. 116500LN commands $30K+ over $14K retail</div></div>
-      <div class="gloss-item"><div class="gloss-term">Dial</div><div class="gloss-def">The face of the watch. Originality, color, and patina condition heavily influence value — especially in vintage</div></div>
-      <div class="gloss-item"><div class="gloss-term">Double Red</div><div class="gloss-def">Vintage Submariner with two lines of red text on the dial — highly collectible, strong premiums</div></div>
-      <div class="gloss-item"><div class="gloss-term">Flip</div><div class="gloss-def">Buying a watch below current market value and reselling it for a profit — the core activity of watch trading</div></div>
-      <div class="gloss-item"><div class="gloss-term">GMT</div><div class="gloss-def">Greenwich Mean Time — function that shows a second timezone. The Rolex GMT-Master is named for this complication</div></div>
-      <div class="gloss-item"><div class="gloss-term">Grey Market</div><div class="gloss-def">Dealers who sell genuine watches outside official AD channels, typically above retail but with full authenticity</div></div>
-      <div class="gloss-item"><div class="gloss-term">Grail</div><div class="gloss-def">A dream watch — typically a piece that's extremely rare, expensive, or emotionally significant</div></div>
-      <div class="gloss-item"><div class="gloss-term">Hands</div><div class="gloss-def">The pointers on the dial that indicate time. Original, unpolished hands are essential for full value in vintage</div></div>
-      <div class="gloss-item"><div class="gloss-term">Lume</div><div class="gloss-def">Luminescent material on hands and indices for low-light visibility. Vintage lume (radium/tritium) is patina-prized</div></div>
-      <div class="gloss-item"><div class="gloss-term">Maxi Dial</div><div class="gloss-def">Submariner dials from ~2003–2009 with wider hour markers. Specific sub-variant that collectors seek</div></div>
-      <div class="gloss-item"><div class="gloss-term">Movement</div><div class="gloss-def">The internal mechanism of the watch. Automatic (self-winding), manual wind, or quartz</div></div>
-      <div class="gloss-item"><div class="gloss-term">MSRP</div><div class="gloss-def">Manufacturer's Suggested Retail Price — what ADs charge. The baseline for calculating flip premiums</div></div>
-      <div class="gloss-item"><div class="gloss-term">NOS</div><div class="gloss-def">New Old Stock — unworn vintage watches with original tags/packaging. Commands serious premium</div></div>
-      <div class="gloss-item"><div class="gloss-term">OEM</div><div class="gloss-def">Original Equipment Manufacturer — e.g., original Rolex bracelet vs aftermarket. OEM always preferred</div></div>
-      <div class="gloss-item"><div class="gloss-term">Pepsi</div><div class="gloss-def">Rolex GMT-Master II ref. 126710BLRO — named for its red/blue bezel matching Pepsi colors</div></div>
-      <div class="gloss-item"><div class="gloss-term">Polish</div><div class="gloss-def">Having a case polished removes metal and erases the original finishing — kills value in collector market</div></div>
-      <div class="gloss-item"><div class="gloss-term">Premium</div><div class="gloss-def">The amount above retail a watch sells for on the secondary market. "40% premium" = 40% above MSRP</div></div>
-      <div class="gloss-item"><div class="gloss-term">Reference</div><div class="gloss-def">A watch model identifier — e.g., 126610LN identifies the specific Submariner variant</div></div>
-      <div class="gloss-item"><div class="gloss-term">Rehaut</div><div class="gloss-def">The inner bezel ring between crystal and dial. Modern Rolex engrave serial number here — key authentication point</div></div>
-      <div class="gloss-item"><div class="gloss-term">ROI</div><div class="gloss-def">Return on Investment — net profit divided by total investment. Good watch flip = 20–50% ROI</div></div>
-      <div class="gloss-item"><div class="gloss-term">Service</div><div class="gloss-def">Complete movement overhaul. Typically $500–$1,500 for Rolex. Factory service can sometimes alter originality</div></div>
-      <div class="gloss-item"><div class="gloss-term">Spread</div><div class="gloss-def">Difference between buy and sell price in dealer markets — your profit opportunity</div></div>
-      <div class="gloss-item"><div class="gloss-term">Steel Sports</div><div class="gloss-def">Stainless steel Rolex sports references (Sub, GMT, Daytona, Explorer) — most liquid and consistently premium</div></div>
-      <div class="gloss-item"><div class="gloss-term">Tropical Dial</div><div class="gloss-def">A vintage dial that has changed color over decades due to UV exposure — highly collectible, major premium</div></div>
-      <div class="gloss-item"><div class="gloss-term">WatchCharts</div><div class="gloss-def">Platform providing historical price data, market indices, and portfolio tracking for watch investors</div></div>
+      <div class="gloss-item"><div class="gloss-term">AD</div><div class="gloss-def">Authorised Dealer — an official brand retail partner selling at MSRP. The primary route to retail-priced stock. <a href="https://www.rolex.com/en-us/find-a-dealer" target="_blank" rel="noopener">Find a Rolex AD →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">BP / B+P</div><div class="gloss-def">Box and Papers — original packaging and documentation. Adds 15–30% to resale value depending on reference. Never buy a high-value flip without BP.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Bezel</div><div class="gloss-def">The ring surrounding the watch crystal. Can be fixed or rotating; ceramic bezels (post-2005 Rolex) are scratch-resistant vs older aluminium inserts that fade and scratch.</div></div>
+      <div class="gloss-item"><div class="gloss-term">BST</div><div class="gloss-def">Buy/Sell/Trade — the classified sections of watch forums like WatchUSeek. Often the best place to find below-market deals from motivated private sellers. <a href="https://forums.watchuseek.com/f/buy-sell-trade-bst.3/" target="_blank" rel="noopener">WatchUSeek BST →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">Caliber</div><div class="gloss-def">The movement (engine) inside the watch. In-house calibers (manufactured by the brand) command a significant premium over sourced movements in collector markets.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Chrono24</div><div class="gloss-def">The world's largest pre-owned watch marketplace. Essential for price research — always filter by "Sold" listings for actual transaction comps. <a href="https://www.chrono24.com" target="_blank" rel="noopener">chrono24.com →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">Comp</div><div class="gloss-def">Comparable sale — a recent transaction for the same or similar watch, used to establish current market value. Always pull comps from the last 90 days on sold listings only.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Cyclops</div><div class="gloss-def">Rolex's magnification lens over the date window. Must magnify 2.5x on an authentic piece and be perfectly centred. A poorly aligned or under-magnifying cyclops is a counterfeit indicator.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Daytona</div><div class="gloss-def">Rolex's chronograph reference — one of the most consistently profitable flip targets. The 116500LN currently commands $30K+ over its $14,550 retail price. <a href="https://watchcharts.com/watches/compare/rolex-daytona" target="_blank" rel="noopener">WatchCharts Daytona data →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">Discontinuation</div><div class="gloss-def">When a brand stops producing a reference. Historically triggers an immediate 20–40% secondary market price spike as scarcity becomes permanent. One of the most reliable flip signals.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Double Red</div><div class="gloss-def">Vintage Submariner with two lines of red text on the dial (pre-1969). Highly collectible, commanding significant premiums over single-red or black text equivalents.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Flip</div><div class="gloss-def">Buying a watch at or below current market value and reselling it for a profit. Success depends on access (often via AD relationships), timing, condition assessment, and platform selection.</div></div>
+      <div class="gloss-item"><div class="gloss-term">GMT</div><div class="gloss-def">Greenwich Mean Time complication — a fourth hand and rotating bezel allows reading a second time zone simultaneously. The Rolex GMT-Master series is named for this function.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Grey Market</div><div class="gloss-def">Dealers who sell genuine watches outside official AD channels, typically above retail but with full authenticity. Not counterfeit — simply outside official brand distribution networks.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Grail</div><div class="gloss-def">A watch that represents an aspirational or near-unattainable acquisition. Can be driven by price (Nautilus 5711), rarity (FPJ), or personal significance. Grail watches often make the best long-term holds.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Lume</div><div class="gloss-def">Luminescent material on hands and hour markers for low-light legibility. Modern Rolex uses Chromalight; older pieces used tritium or radium. Vintage lume patina (even yellowing) is prized by collectors.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Maxi Dial</div><div class="gloss-def">Submariner dials from approximately 2003–2009 with wider, bolder hour markers. A specific sought-after sub-variant within the 16610 and early 116610 range.</div></div>
+      <div class="gloss-item"><div class="gloss-term">MSRP</div><div class="gloss-def">Manufacturer's Suggested Retail Price — what ADs charge. The baseline against which all secondary market premiums are calculated. Your profit starts with buying at or near MSRP.</div></div>
+      <div class="gloss-item"><div class="gloss-term">NOS</div><div class="gloss-def">New Old Stock — unworn vintage pieces retaining original tags, packaging, and sometimes stickers. Commands the strongest possible premium, often 2–4x a worn equivalent.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Paul Newman Dial</div><div class="gloss-def">Exotic art-deco dial variant on early Daytona references (6239, 6241, 6263, 6265). Named after the actor. Authentic examples are among the most valuable vintage Rolex in existence — $200K to $2M+.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Pepsi</div><div class="gloss-def">Rolex GMT-Master II ref. 126710BLRO — named for its red and blue bezel matching Pepsi branding. One of the most liquid and premium Rolex references on the secondary market.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Polish</div><div class="gloss-def">Having a case professionally polished removes metal and erases original manufacturer finishing. Even a light polish kills value in the collector market — always buy unpolished when possible.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Premium</div><div class="gloss-def">The amount above retail a watch sells for on the secondary market. "70% premium" means the watch sells for 70% more than MSRP. Steel Rolex sports currently trade at 46–120% premiums.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Rehaut</div><div class="gloss-def">The inner bezel ring between crystal and dial. Modern Rolex engrave the serial number and "ROLEX ROLEX ROLEX" text here — a key authentication checkpoint since approximately 2007.</div></div>
+      <div class="gloss-item"><div class="gloss-term">ROI</div><div class="gloss-def">Return on Investment — net profit divided by total capital deployed. A strong watch flip typically yields 20–50% ROI after all fees. Use the Flip Calculator to model this before every deal.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Steel Sports</div><div class="gloss-def">Stainless steel Rolex sports references — Submariner, GMT-Master, Daytona, Explorer. The deepest liquidity, most consistent premiums, and easiest exits in the entire watch market.</div></div>
+      <div class="gloss-item"><div class="gloss-term">Tropical Dial</div><div class="gloss-def">A vintage dial that has changed colour over decades due to UV exposure — typically from black to rich brown or chocolate. Highly collectible when authentic; significantly raises value over standard examples. <a href="https://www.hodinkee.com/articles/what-is-a-tropical-dial" target="_blank" rel="noopener">Hodinkee explainer →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">WatchCharts</div><div class="gloss-def">Price tracking and market intelligence platform. Provides historical charts, a market index, and portfolio tools for the secondary watch market. <a href="https://watchcharts.com" target="_blank" rel="noopener">watchcharts.com →</a></div></div>
+      <div class="gloss-item"><div class="gloss-term">WatchUSeek</div><div class="gloss-def">One of the oldest and largest watch forums online. Brand-specific sub-forums contain invaluable authentication threads and reference information alongside buy/sell opportunities. <a href="https://www.watchuseek.com" target="_blank" rel="noopener">watchuseek.com →</a></div></div>
     </div>
   </section>
 
