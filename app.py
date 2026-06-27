@@ -94,22 +94,48 @@ def parse_card_text(text: str) -> dict:
             result['set'] = brand
             break
 
-    # Player name heuristic: first non-empty line that looks like a name
-    lines = [l.strip() for l in text.split('\n') if l.strip()]
-    for line in lines:
-        # Skip lines that are just numbers, grades, years, or brands
-        if re.match(r'^[\d\s#]+$', line):
-            continue
+    SKIP_WORDS = {
+        'rookie', 'rated rookie', 'press proof', 'rated', 'photo',
+        'checklist', 'insert', 'base', 'card', 'football', 'basketball',
+        'baseball', 'hockey', 'trading', 'collectible', 'official',
+        'licensed', 'nfl', 'nba', 'mlb', 'nhl', 'rc',
+    }
+
+    def _is_skip_line(line):
+        if re.match(r'^[\d\s#\-\/]+$', line):
+            return True
         if GRADE_PATTERN.search(line):
-            continue
-        if any(brand.lower() in line.lower() for brand in CARD_BRANDS):
-            continue
+            return True
         if YEAR_PATTERN.match(line.strip()):
+            return True
+        low = line.lower()
+        if any(brand.lower() in low for brand in CARD_BRANDS):
+            return True
+        if any(w in low for w in SKIP_WORDS):
+            return True
+        return False
+
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+
+    # Prefer ALL-CAPS lines that look like a player name (e.g. "CALEB WILLIAMS")
+    for line in lines:
+        if _is_skip_line(line):
             continue
-        # Looks like a name if it has letters and reasonable length
-        if re.search(r'[A-Za-z]', line) and len(line) < 50:
-            result['player'] = line
+        words = line.split()
+        if (2 <= len(words) <= 4
+                and all(re.match(r'^[A-Z][A-Z\'\-\.]+$', w) for w in words)
+                and len(line) < 40):
+            result['player'] = line.title()
             break
+
+    # Fallback: first plausible mixed-case name line
+    if not result['player']:
+        for line in lines:
+            if _is_skip_line(line):
+                continue
+            if re.search(r'[A-Za-z]', line) and len(line) < 40:
+                result['player'] = line
+                break
 
     return result
 
