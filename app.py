@@ -562,23 +562,31 @@ def ocr_endpoint():
         image = Image.open(BytesIO(img_bytes))
         image = image.convert('RGB')
 
-        # Scale up small images — Tesseract works best at 300+ DPI equivalent
+        # Scale up small images — Tesseract works best at 300+ DPI
         w, h = image.size
         if w < 1000:
             scale = 1000 / w
             image = image.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+            w, h = image.size
 
-        # Try with default config first, then fall back to psm 6 (block of text)
-        custom_config = r'--oem 3 --psm 11'
-        raw_text = pytesseract.image_to_string(image, config=custom_config)
-        logger.info('OCR raw text: %r', raw_text)
+        # Full-image OCR first (works well for graded slabs with label text)
+        raw_text = pytesseract.image_to_string(image, config=r'--oem 3 --psm 11')
+        logger.info('OCR full text: %r', raw_text)
 
-        if not raw_text.strip():
-            # Second attempt with different page seg mode
-            raw_text = pytesseract.image_to_string(image, config=r'--oem 3 --psm 6')
-            logger.info('OCR retry text: %r', raw_text)
+        # For raw cards the player name is in the bottom name strip (~bottom 20%)
+        # Run a second OCR pass on just that region and merge results
+        bottom_strip = image.crop((0, int(h * 0.75), w, h))
+        strip_text = pytesseract.image_to_string(bottom_strip, config=r'--oem 3 --psm 6')
+        logger.info('OCR bottom strip: %r', strip_text)
 
-        card_info = parse_card_text(raw_text)
+        # Also try the top 15% for brand/year (often printed there on raw cards)
+        top_strip = image.crop((0, 0, w, int(h * 0.15)))
+        top_text = pytesseract.image_to_string(top_strip, config=r'--oem 3 --psm 6')
+        logger.info('OCR top strip: %r', top_text)
+
+        combined_text = f"{strip_text}\n{top_text}\n{raw_text}"
+
+        card_info = parse_card_text(combined_text)
         return jsonify(card_info)
     except Exception as exc:
         logger.error('OCR error: %s', exc)
