@@ -174,46 +174,56 @@ def build_query(card: dict) -> str:
 def scrape_ebay(query: str) -> list:
     results = []
     try:
+        encoded = requests.utils.quote(query)
         url = (
-            'https://www.ebay.com/sch/i.html'
-            f'?_nkw={requests.utils.quote(query)}'
-            '&LH_Sold=1&LH_Complete=1&_sop=13&LH_ItemCondition=4'
+            f'https://www.ebay.com/sch/i.html'
+            f'?_nkw={encoded}&LH_Sold=1&LH_Complete=1&_sop=13'
         )
-        html = fetch_url(url)
-        if not html:
-            return results
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        html = resp.text
+        logger.info('eBay status: %s, length: %d', resp.status_code, len(html))
+
         soup = BeautifulSoup(html, 'lxml')
-        items = soup.select('.s-item')
-        for item in items[:20]:
+        items = soup.select('.s-item__wrapper, .s-item')
+        logger.info('eBay items found: %d', len(items))
+
+        for item in items[:25]:
             title_el = item.select_one('.s-item__title')
             price_el = item.select_one('.s-item__price')
-            date_el = item.select_one('.s-item__ended-date, .POSITIVE')
-            link_el = item.select_one('a.s-item__link')
+            date_el = item.select_one('.s-item__ended-date, .s-item__listingDate, .POSITIVE, [class*="sold"]')
+            link_el = item.select_one('a.s-item__link, a[href*="ebay.com/itm"]')
 
             if not title_el or not price_el:
                 continue
             title = title_el.get_text(strip=True)
-            if 'Shop on eBay' in title:
+            if 'Shop on eBay' in title or not title:
                 continue
 
-            price_text = price_el.get_text(strip=True)
-            # Handle price ranges — take first value
-            price_text = price_text.split(' to ')[0]
+            price_text = price_el.get_text(strip=True).split(' to ')[0]
             price_num = re.sub(r'[^\d.]', '', price_text)
             if not price_num:
                 continue
 
             date_text = date_el.get_text(strip=True) if date_el else ''
-            link = link_el['href'] if link_el else ''
+            link = link_el.get('href', '') if link_el else ''
 
             results.append({
                 'source': 'eBay',
                 'title': title,
                 'price': float(price_num),
-                'price_display': price_text,
+                'price_display': f'${price_num}',
                 'date': date_text,
                 'condition': '',
-                'link': link.split('?')[0] if link else '',
+                'link': link.split('?')[0] if link else url,
             })
     except Exception as exc:
         logger.error('scrape_ebay error: %s', exc)
