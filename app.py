@@ -14,6 +14,9 @@ from bs4 import BeautifulSoup
 try:
     import pytesseract
     from PIL import Image
+    # On Windows, Tesseract is typically installed here
+    if os.name == 'nt':
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
