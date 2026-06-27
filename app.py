@@ -171,8 +171,102 @@ def build_query(card: dict) -> str:
     return ' '.join(parts) if parts else 'sports card'
 
 
+def scrape_sportscardspro(query: str) -> list:
+    """SportscardsPro aggregates eBay sold data — generally scraper-friendly."""
+    results = []
+    try:
+        encoded = requests.utils.quote(query)
+        url = f'https://www.sportscardspro.com/search-products?q={encoded}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.sportscardspro.com/',
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        logger.info('SportscardsPro status: %s len: %d', resp.status_code, len(resp.text))
+        soup = BeautifulSoup(resp.text, 'lxml')
+
+        # Each product row
+        rows = soup.select('.console-row, .product-row, tr[data-id], .search-result')
+        logger.info('SportscardsPro rows: %d', len(rows))
+        for row in rows[:20]:
+            price_el = row.select_one('.price, [class*="price"], td:nth-child(3)')
+            title_el = row.select_one('.title, [class*="title"], td:first-child, a')
+            link_el  = row.select_one('a[href]')
+            if not price_el:
+                continue
+            price_text = price_el.get_text(strip=True)
+            price_num  = re.sub(r'[^\d.]', '', price_text)
+            if not price_num or float(price_num) < 0.5:
+                continue
+            results.append({
+                'source': 'SportscardsPro',
+                'title': title_el.get_text(strip=True) if title_el else query,
+                'price': float(price_num),
+                'price_display': f'${float(price_num):,.2f}',
+                'date': '',
+                'condition': '',
+                'link': link_el['href'] if link_el else url,
+            })
+    except Exception as exc:
+        logger.error('scrape_sportscardspro error: %s', exc)
+    return results
+
+
+def scrape_psacard(query: str) -> list:
+    """PSA auction price results."""
+    results = []
+    try:
+        encoded = requests.utils.quote(query)
+        url = f'https://www.psacard.com/auctionprices/results?q={encoded}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        logger.info('PSA status: %s len: %d', resp.status_code, len(resp.text))
+        soup = BeautifulSoup(resp.text, 'lxml')
+
+        rows = soup.select('tr.auction-row, tbody tr, .result-row')
+        logger.info('PSA rows: %d', len(rows))
+        for row in rows[:20]:
+            cells = row.find_all('td')
+            if len(cells) < 3:
+                continue
+            # Typical columns: card, grade, price, date, auction
+            price_text = ''
+            date_text  = ''
+            title_text = ''
+            for i, cell in enumerate(cells):
+                txt = cell.get_text(strip=True)
+                if re.match(r'^\$[\d,]+', txt):
+                    price_text = txt
+                    date_text  = cells[i+1].get_text(strip=True) if i+1 < len(cells) else ''
+                    break
+                if i == 0:
+                    title_text = txt
+            price_num = re.sub(r'[^\d.]', '', price_text)
+            if not price_num or float(price_num) < 0.5:
+                continue
+            link_el = row.select_one('a[href]')
+            results.append({
+                'source': 'PSA',
+                'title': title_text or query,
+                'price': float(price_num),
+                'price_display': price_text or f'${float(price_num):,.2f}',
+                'date': date_text,
+                'condition': '',
+                'link': link_el['href'] if link_el else url,
+            })
+    except Exception as exc:
+        logger.error('scrape_psacard error: %s', exc)
+    return results
+
+
 def scrape_mavin(query: str) -> list:
-    """Mavin.io aggregates eBay sold card data and is scraper-friendly."""
+    """Mavin.io — eBay sold aggregator."""
     results = []
     try:
         encoded = requests.utils.quote(query)
@@ -186,22 +280,22 @@ def scrape_mavin(query: str) -> list:
         logger.info('Mavin status: %s len: %d', resp.status_code, len(resp.text))
         soup = BeautifulSoup(resp.text, 'lxml')
 
-        items = soup.select('.sold-item, .item, [class*="sold"], article')
-        logger.info('Mavin items: %d', len(items))
-
-        for item in items[:25]:
-            price_el = item.select_one('[class*="price"], .price, strong')
-            title_el = item.select_one('[class*="title"], .title, h3, h4, a')
-            date_el  = item.select_one('[class*="date"], .date, time')
-            link_el  = item.select_one('a[href]')
-
-            if not price_el:
+        # Mavin uses a data table with class "table"
+        rows = soup.select('table.table tbody tr, .item-row, [class*="result"] tr')
+        logger.info('Mavin rows: %d', len(rows))
+        for row in rows[:25]:
+            cells = row.find_all('td')
+            if not cells:
                 continue
-            price_text = price_el.get_text(strip=True)
+            price_el = row.select_one('[class*="price"], .price')
+            title_el = row.select_one('[class*="title"], .title, td:first-child a, td:first-child')
+            date_el  = row.select_one('[class*="date"], .date, td:nth-child(2)')
+            link_el  = row.select_one('a[href]')
+
+            price_text = price_el.get_text(strip=True) if price_el else (cells[-1].get_text(strip=True) if cells else '')
             price_num  = re.sub(r'[^\d.]', '', price_text)
-            if not price_num or float(price_num) < 1:
+            if not price_num or float(price_num) < 0.5:
                 continue
-
             results.append({
                 'source': 'eBay (Mavin)',
                 'title': title_el.get_text(strip=True) if title_el else query,
@@ -446,11 +540,13 @@ def comps_endpoint():
 
     # Run scrapers — each failure is handled internally
     all_results.extend(scrape_mavin(query))
+    all_results.extend(scrape_sportscardspro(query))
+    all_results.extend(scrape_psacard(query))
     all_results.extend(scrape_ebay(query))
     all_results.extend(scrape_130point(query))
     all_results.extend(scrape_goldin(query))
 
-    # Sort by price desc (proxy for recency when dates aren't parseable)
+    # Sort by date desc then price desc
     all_results.sort(key=lambda x: x.get('price', 0), reverse=True)
 
     # Summary stats
@@ -464,10 +560,21 @@ def comps_endpoint():
             'low': min(prices),
         }
 
+    encoded = requests.utils.quote(query)
+    quick_links = [
+        {'label': 'eBay Sold', 'url': f'https://www.ebay.com/sch/i.html?_nkw={encoded}&LH_Sold=1&LH_Complete=1&_sop=13'},
+        {'label': '130point',  'url': f'https://www.130point.com/sales/search/?query={encoded}'},
+        {'label': 'Mavin',     'url': f'https://mavin.io/search?q={encoded}&sold=1'},
+        {'label': 'Goldin',    'url': f'https://goldin.co/auctions?q={encoded}&status=past'},
+        {'label': 'PSA Prices','url': f'https://www.psacard.com/auctionprices/results?q={encoded}'},
+        {'label': 'PWCC',      'url': f'https://www.pwccmarketplace.com/search?q={encoded}'},
+    ]
+
     return jsonify({
         'query': query,
         'results': all_results,
         'summary': summary,
+        'quick_links': quick_links,
     })
 
 

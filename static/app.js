@@ -312,6 +312,9 @@ async function searchComps() {
 
     loadingState.style.display = 'none';
 
+    // Always show quick links
+    renderQuickLinks(data.quick_links || []);
+
     if (allResults.length === 0) {
       noResultsState.style.display = 'flex';
     } else {
@@ -332,6 +335,32 @@ async function searchComps() {
 // ============================================================
 // Summary
 // ============================================================
+function renderQuickLinks(links) {
+  let wrap = document.getElementById('quick-links-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'quick-links-wrap';
+    wrap.style.cssText = 'margin:12px 0 8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;';
+    const label = document.createElement('span');
+    label.textContent = 'Search on:';
+    label.style.cssText = 'color:var(--text-muted,#aaa);font-size:0.8rem;';
+    wrap.appendChild(label);
+    resultsWrap.insertBefore(wrap, resultsWrap.firstChild);
+  }
+  // Remove old link buttons
+  wrap.querySelectorAll('a.ql-btn').forEach(el => el.remove());
+  links.forEach(({ label, url }) => {
+    const a = document.createElement('a');
+    a.className = 'ql-btn';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = label;
+    a.style.cssText = 'background:var(--surface2,#1e2a3a);color:var(--gold,#f0b429);border:1px solid var(--gold,#f0b429);border-radius:6px;padding:4px 10px;font-size:0.78rem;text-decoration:none;white-space:nowrap;';
+    wrap.appendChild(a);
+  });
+}
+
 function renderSummary(summary) {
   if (!summary || !summary.count) {
     summaryStrip.style.display = 'none';
