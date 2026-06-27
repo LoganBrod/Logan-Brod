@@ -583,5 +583,53 @@ def health():
     return jsonify({'status': 'ok', 'ocr_available': OCR_AVAILABLE})
 
 
+@app.route('/api/debug-html')
+def debug_html():
+    """Fetch a comp site and return CSS classes near $ prices — for selector debugging."""
+    site = request.args.get('site', 'sportscardspro')
+    query = request.args.get('q', '2025 Cooper Flagg Topps 201')
+    encoded = requests.utils.quote(query)
+    urls = {
+        'sportscardspro': f'https://www.sportscardspro.com/search-products?q={encoded}',
+        'mavin':          f'https://mavin.io/search?q={encoded}&sold=1',
+        'psa':            f'https://www.psacard.com/auctionprices/results?q={encoded}',
+    }
+    url = urls.get(site, urls['sportscardspro'])
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(resp.text, 'lxml')
+        price_els = soup.find_all(string=lambda t: t and '$' in t)
+        findings = []
+        seen = set()
+        for el in price_els[:15]:
+            parent = el.parent
+            for _ in range(5):
+                if not parent or parent.name in ('html', 'body', '[document]'):
+                    break
+                key = (parent.name, tuple(sorted(parent.get('class', []))))
+                if key not in seen:
+                    seen.add(key)
+                    findings.append({
+                        'tag': parent.name,
+                        'class': ' '.join(parent.get('class', [])),
+                        'text': parent.get_text(strip=True)[:120],
+                    })
+                parent = parent.parent
+        return jsonify({
+            'url': url,
+            'status': resp.status_code,
+            'length': len(resp.text),
+            'price_findings': findings,
+            'body_preview': soup.get_text()[:800] if not findings else '',
+        })
+    except Exception as exc:
+        return jsonify({'error': str(exc)})
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
