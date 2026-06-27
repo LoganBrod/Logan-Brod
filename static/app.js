@@ -163,6 +163,7 @@ async function runOcr(file) {
     form.append('image', file);
     const resp = await fetch(`${API_BASE}/api/ocr`, { method: 'POST', body: form });
     const data = await resp.json();
+    console.log('OCR response:', data);
 
     if (data.error && !data.player) {
       setOcrStatus('error', `OCR: ${data.error}`);
