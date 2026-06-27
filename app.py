@@ -359,9 +359,24 @@ def ocr_endpoint():
 
     try:
         image = Image.open(BytesIO(img_bytes))
-        # Enhance for OCR
         image = image.convert('RGB')
-        raw_text = pytesseract.image_to_string(image)
+
+        # Scale up small images — Tesseract works best at 300+ DPI equivalent
+        w, h = image.size
+        if w < 1000:
+            scale = 1000 / w
+            image = image.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+
+        # Try with default config first, then fall back to psm 6 (block of text)
+        custom_config = r'--oem 3 --psm 11'
+        raw_text = pytesseract.image_to_string(image, config=custom_config)
+        logger.info('OCR raw text: %r', raw_text)
+
+        if not raw_text.strip():
+            # Second attempt with different page seg mode
+            raw_text = pytesseract.image_to_string(image, config=r'--oem 3 --psm 6')
+            logger.info('OCR retry text: %r', raw_text)
+
         card_info = parse_card_text(raw_text)
         return jsonify(card_info)
     except Exception as exc:
