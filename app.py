@@ -188,11 +188,11 @@ def scrape_sportscardspro(query: str) -> list:
         soup = BeautifulSoup(resp.text, 'lxml')
 
         # Each product row
-        rows = soup.select('.console-row, .product-row, tr[data-id], .search-result')
+        rows = soup.select('tr.offer')
         logger.info('SportscardsPro rows: %d', len(rows))
         for row in rows[:20]:
-            price_el = row.select_one('.price, [class*="price"], td:nth-child(3)')
-            title_el = row.select_one('.title, [class*="title"], td:first-child, a')
+            price_el = row.select_one('p.price, .price.js-price')
+            title_el = row.select_one('td:first-child a, td:first-child')
             link_el  = row.select_one('a[href]')
             if not price_el:
                 continue
@@ -207,7 +207,7 @@ def scrape_sportscardspro(query: str) -> list:
                 'price_display': f'${float(price_num):,.2f}',
                 'date': '',
                 'condition': '',
-                'link': link_el['href'] if link_el else url,
+                'link': ('https://www.sportscardspro.com' + link_el['href'] if link_el and link_el.get('href','').startswith('/') else link_el['href'] if link_el else url),
             })
     except Exception as exc:
         logger.error('scrape_sportscardspro error: %s', exc)
