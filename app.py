@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
+# Set your eBay Production App ID here, or in the EBAY_APP_ID environment variable
+EBAY_APP_ID = os.environ.get('EBAY_APP_ID', '')
+
 HEADERS = {
     'User-Agent': (
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -169,6 +172,70 @@ def build_query(card: dict) -> str:
     if card.get('grade') and card.get('grade_value'):
         parts.append(f"{card['grade']} {card['grade_value']}")
     return ' '.join(parts) if parts else 'sports card'
+
+
+def scrape_ebay_api(query: str) -> list:
+    """Use eBay Finding API to get real sold listings. Requires EBAY_APP_ID."""
+    results = []
+    if not EBAY_APP_ID:
+        logger.info('eBay API: no App ID configured, skipping')
+        return results
+    try:
+        params = {
+            'OPERATION-NAME':        'findCompletedItems',
+            'SERVICE-VERSION':       '1.0.0',
+            'SECURITY-APPNAME':      EBAY_APP_ID,
+            'RESPONSE-DATA-FORMAT':  'JSON',
+            'keywords':              query,
+            'itemFilter(0).name':    'SoldItemsOnly',
+            'itemFilter(0).value':   'true',
+            'sortOrder':             'EndTimeSoonest',
+            'paginationInput.entriesPerPage': '25',
+            'categoryId':            '212',  # Sports Trading Cards
+        }
+        url = 'https://svcs.ebay.com/services/search/FindingService/v1'
+        resp = requests.get(url, params=params, timeout=15)
+        logger.info('eBay API status: %s', resp.status_code)
+        data = resp.json()
+
+        search_result = (
+            data
+            .get('findCompletedItemsResponse', [{}])[0]
+            .get('searchResult', [{}])[0]
+        )
+        items = search_result.get('item', [])
+        logger.info('eBay API items: %d', len(items))
+
+        for item in items:
+            title = item.get('title', [''])[0]
+            price_data = item.get('sellingStatus', [{}])[0].get('currentPrice', [{}])[0]
+            price_num  = price_data.get('__value__', '')
+            end_time   = item.get('listingInfo', [{}])[0].get('endTime', [''])[0]
+            link       = item.get('viewItemURL', [''])[0]
+            condition  = item.get('condition', [{}])[0].get('conditionDisplayName', [''])[0]
+
+            if not price_num:
+                continue
+            try:
+                price_float = float(price_num)
+            except ValueError:
+                continue
+
+            # Format date
+            date_str = end_time[:10] if end_time else ''
+
+            results.append({
+                'source': 'eBay',
+                'title': title,
+                'price': price_float,
+                'price_display': f'${price_float:,.2f}',
+                'date': date_str,
+                'condition': condition,
+                'link': link,
+            })
+    except Exception as exc:
+        logger.error('eBay API error: %s', exc)
+    return results
 
 
 def scrape_sportscardspro(query: str) -> list:
@@ -539,6 +606,7 @@ def comps_endpoint():
     all_results = []
 
     # Run scrapers — each failure is handled internally
+    all_results.extend(scrape_ebay_api(query))
     all_results.extend(scrape_sportscardspro(query))
 
     # Sort by date desc then price desc
@@ -571,6 +639,21 @@ def comps_endpoint():
         'summary': summary,
         'quick_links': quick_links,
     })
+
+
+@app.route('/api/config', methods=['POST'])
+def set_config():
+    global EBAY_APP_ID
+    data = request.get_json(force=True)
+    if 'ebay_app_id' in data:
+        EBAY_APP_ID = data['ebay_app_id'].strip()
+        logger.info('eBay App ID updated')
+    return jsonify({'ok': True, 'ebay_app_id_set': bool(EBAY_APP_ID)})
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    return jsonify({'ebay_app_id_set': bool(EBAY_APP_ID)})
 
 
 @app.route('/api/health')

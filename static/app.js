@@ -83,6 +83,44 @@ async function checkHealth() {
 checkHealth();
 
 // ============================================================
+// Settings modal (eBay API key)
+// ============================================================
+const settingsModal  = document.getElementById('settings-modal');
+const btnSettings    = document.getElementById('btn-settings');
+const btnSettingsSave   = document.getElementById('btn-settings-save');
+const btnSettingsCancel = document.getElementById('btn-settings-cancel');
+const ebayAppIdInput = document.getElementById('ebay-app-id-input');
+const settingsStatus = document.getElementById('settings-status');
+
+btnSettings.addEventListener('click', async () => {
+  settingsModal.style.display = 'flex';
+  const r = await fetch(`${API_BASE}/api/config`).then(r => r.json()).catch(() => ({}));
+  if (r.ebay_app_id_set) {
+    ebayAppIdInput.placeholder = '(App ID already saved — paste new one to replace)';
+    btnSettings.style.background = '#f0b429';
+    btnSettings.style.color = '#000';
+  }
+});
+btnSettingsCancel.addEventListener('click', () => { settingsModal.style.display = 'none'; });
+settingsModal.addEventListener('click', e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
+
+btnSettingsSave.addEventListener('click', async () => {
+  const id = ebayAppIdInput.value.trim();
+  if (!id) return;
+  const r = await fetch(`${API_BASE}/api/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ebay_app_id: id }),
+  }).then(r => r.json());
+  settingsStatus.style.display = 'block';
+  settingsStatus.textContent = r.ok ? '✓ eBay API key saved! Searches will now include real eBay sold data.' : 'Error saving key.';
+  btnSettings.style.background = '#f0b429';
+  btnSettings.style.color = '#000';
+  setTimeout(() => { settingsModal.style.display = 'none'; settingsStatus.style.display = 'none'; }, 2500);
+});
+
+
+// ============================================================
 // Toast
 // ============================================================
 let toastTimer;
