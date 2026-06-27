@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Card Comp Scanner — Whatnot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header class="app-header">
+  <a class="logo" href="#">
+    <div class="logo-icon">🃏</div>
+    <span class="logo-text">Card<span>Comp</span></span>
+  </a>
+  <div class="header-badge">
+    <span class="ocr-status-dot" id="ocr-dot"></span>
+    <span id="ocr-label">checking OCR…</span>
+  </div>
+</header>
+
+<!-- ===== Camera modal ===== -->
+<div id="camera-modal" role="dialog" aria-modal="true" aria-label="Camera capture">
+  <div class="camera-inner">
+    <h3>📷 Capture Card</h3>
+    <video id="camera-video" autoplay playsinline muted></video>
+    <div class="camera-controls">
+      <button class="btn btn-gold" id="btn-snap">Snap Photo</button>
+      <button class="btn btn-ghost" id="btn-camera-close">Cancel</button>
+    </div>
+    <canvas id="camera-canvas" style="display:none"></canvas>
+  </div>
+</div>
+
+<!-- ===== Main ===== -->
+<main>
+
+  <!-- Left column: input -->
+  <aside>
+
+    <!-- Upload panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-icon">📤</span>
+        <h2>Scan Card</h2>
+      </div>
+      <div class="panel-body">
+
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept="image/*" />
+          <span class="upload-icon">🖼️</span>
+          <p><strong>Drop image here</strong> or click to browse</p>
+          <p class="upload-hint">JPEG · PNG · WEBP · HEIC</p>
+        </div>
+
+        <div id="preview-container">
+          <img id="preview-img" src="" alt="Card preview" />
+          <button id="preview-clear" title="Remove image">✕</button>
+        </div>
+
+        <div id="ocr-status">
+          <div class="spinner"></div>
+          <span id="ocr-status-text">Running OCR…</span>
+        </div>
+
+        <div class="divider">OR</div>
+
+        <div class="btn-row">
+          <button class="btn btn-outline btn-full" id="btn-camera">
+            📷 Use Camera
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Card details panel -->
+    <div class="panel mt-2">
+      <div class="panel-header">
+        <span class="panel-icon">✏️</span>
+        <h2>Card Details</h2>
+      </div>
+      <div class="panel-body">
+        <div class="field-grid">
+
+          <div class="field span-2">
+            <label for="field-player">Player / Subject</label>
+            <input type="text" id="field-player" placeholder="e.g. Patrick Mahomes" />
+          </div>
+
+          <div class="field">
+            <label for="field-year">Year</label>
+            <input type="text" id="field-year" placeholder="e.g. 2018" maxlength="4" />
+          </div>
+
+          <div class="field">
+            <label for="field-number">Card #</label>
+            <input type="text" id="field-number" placeholder="e.g. 201" />
+          </div>
+
+          <div class="field span-2">
+            <label for="field-set">Set / Brand</label>
+            <input type="text" id="field-set" placeholder="e.g. Topps Chrome" list="set-suggestions" />
+            <datalist id="set-suggestions">
+              <option value="Topps Chrome">
+              <option value="Topps Heritage">
+              <option value="Topps Update">
+              <option value="Bowman Chrome">
+              <option value="Panini Prizm">
+              <option value="Panini Mosaic">
+              <option value="Panini Select">
+              <option value="Panini Optic">
+              <option value="Panini National Treasures">
+              <option value="Panini Immaculate">
+              <option value="Upper Deck Series 1">
+              <option value="Donruss">
+              <option value="Fleer Ultra">
+              <option value="Stadium Club">
+            </datalist>
+          </div>
+
+          <div class="field span-2">
+            <label for="field-variation">Variation / Parallel</label>
+            <input type="text" id="field-variation" placeholder="e.g. Refractor, Auto, RPA" />
+          </div>
+
+          <div class="field">
+            <label for="field-grade">Grade Co.</label>
+            <select id="field-grade">
+              <option value="">None (raw)</option>
+              <option value="PSA">PSA</option>
+              <option value="BGS">BGS</option>
+              <option value="SGC">SGC</option>
+              <option value="CGC">CGC</option>
+              <option value="HGA">HGA</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="field-grade-value">Grade</label>
+            <input type="text" id="field-grade-value" placeholder="e.g. 10, 9.5" />
+          </div>
+
+        </div>
+
+        <div class="btn-row mt-2">
+          <button class="btn btn-gold btn-full" id="btn-search">
+            🔍 Search Comps
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btn-clear-form" title="Clear form">✕</button>
+        </div>
+
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Right column: results -->
+  <section id="results-panel">
+
+    <!-- Initial empty state -->
+    <div class="panel" id="empty-state">
+      <div class="state-container">
+        <span class="state-icon">🏷️</span>
+        <p>Scan a card or fill in the details,<br>then tap <strong>Search Comps</strong> to see recent sales.</p>
+      </div>
+    </div>
+
+    <!-- Summary strip (hidden until results) -->
+    <div id="summary-strip" style="display:none">
+      <div class="summary-grid">
+        <div class="summary-card avg">
+          <div class="summary-label">Avg Price</div>
+          <div class="copy-avg">
+            <span class="copy-avg-value" id="stat-avg">—</span>
+            <button class="btn btn-ghost btn-sm" id="btn-copy-avg" title="Copy avg to clipboard">📋</button>
+          </div>
+        </div>
+        <div class="summary-card high">
+          <div class="summary-label">High</div>
+          <div class="summary-value" id="stat-high">—</div>
+        </div>
+        <div class="summary-card low">
+          <div class="summary-label">Low</div>
+          <div class="summary-value" id="stat-low">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Sales Found</div>
+          <div class="summary-value" id="stat-count">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results table (hidden until results) -->
+    <div class="results-wrap" id="results-wrap" style="display:none">
+      <div class="results-toolbar">
+        <h3>Recent Sales</h3>
+        <div id="query-display">
+          Search: <strong id="query-text"></strong>
+        </div>
+        <div class="source-filter">
+          <button class="filter-pill active" data-source="all">All</button>
+          <button class="filter-pill" data-source="eBay">eBay</button>
+          <button class="filter-pill" data-source="130point">130pt</button>
+          <button class="filter-pill" data-source="Goldin">Goldin</button>
+        </div>
+      </div>
+      <div class="results-table-wrap">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th data-col="title">Title <span class="sort-icon">↕</span></th>
+              <th data-col="price" class="sorted">Price <span class="sort-icon">↓</span></th>
+              <th data-col="date">Date <span class="sort-icon">↕</span></th>
+              <th data-col="source">Source <span class="sort-icon">↕</span></th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Loading state inside table area -->
+      <div id="loading-state" class="state-container" style="display:none">
+        <span class="state-icon">🔍</span>
+        <p>Searching eBay, 130point, and Goldin…</p>
+        <div class="loading-bar"></div>
+      </div>
+
+      <!-- No results -->
+      <div id="no-results-state" class="state-container" style="display:none">
+        <span class="state-icon">🤷</span>
+        <p>No comps found. Try broadening your search terms.</p>
+      </div>
+
+      <!-- Error state -->
+      <div id="error-state" class="state-container" style="display:none">
+        <span class="state-icon">⚠️</span>
+        <p id="error-message">Something went wrong. Check the backend is running.</p>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ===== Toast ===== -->
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
