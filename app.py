@@ -171,57 +171,87 @@ def build_query(card: dict) -> str:
     return ' '.join(parts) if parts else 'sports card'
 
 
-def scrape_ebay(query: str) -> list:
+def scrape_mavin(query: str) -> list:
+    """Mavin.io aggregates eBay sold card data and is scraper-friendly."""
     results = []
     try:
         encoded = requests.utils.quote(query)
-        url = (
-            f'https://www.ebay.com/sch/i.html'
-            f'?_nkw={encoded}&LH_Sold=1&LH_Complete=1&_sop=13'
-        )
+        url = f'https://mavin.io/search?q={encoded}&sold=1'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0',
         }
         resp = requests.get(url, headers=headers, timeout=15)
-        html = resp.text
-        logger.info('eBay status: %s, length: %d', resp.status_code, len(html))
+        logger.info('Mavin status: %s len: %d', resp.status_code, len(resp.text))
+        soup = BeautifulSoup(resp.text, 'lxml')
 
-        soup = BeautifulSoup(html, 'lxml')
-        items = soup.select('.s-item__wrapper, .s-item')
-        logger.info('eBay items found: %d', len(items))
+        items = soup.select('.sold-item, .item, [class*="sold"], article')
+        logger.info('Mavin items: %d', len(items))
 
+        for item in items[:25]:
+            price_el = item.select_one('[class*="price"], .price, strong')
+            title_el = item.select_one('[class*="title"], .title, h3, h4, a')
+            date_el  = item.select_one('[class*="date"], .date, time')
+            link_el  = item.select_one('a[href]')
+
+            if not price_el:
+                continue
+            price_text = price_el.get_text(strip=True)
+            price_num  = re.sub(r'[^\d.]', '', price_text)
+            if not price_num or float(price_num) < 1:
+                continue
+
+            results.append({
+                'source': 'eBay (Mavin)',
+                'title': title_el.get_text(strip=True) if title_el else query,
+                'price': float(price_num),
+                'price_display': f'${float(price_num):,.2f}',
+                'date': date_el.get_text(strip=True) if date_el else '',
+                'condition': '',
+                'link': link_el['href'] if link_el else url,
+            })
+    except Exception as exc:
+        logger.error('scrape_mavin error: %s', exc)
+    return results
+
+
+def scrape_ebay(query: str) -> list:
+    """Direct eBay sold listings — may be blocked, Mavin is the primary source."""
+    results = []
+    try:
+        encoded = requests.utils.quote(query)
+        url = f'https://www.ebay.com/sch/i.html?_nkw={encoded}&LH_Sold=1&LH_Complete=1&_sop=13'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        logger.info('eBay status: %s len: %d', resp.status_code, len(resp.text))
+        soup = BeautifulSoup(resp.text, 'lxml')
+        items = soup.select('.s-item')
+        logger.info('eBay items: %d', len(items))
         for item in items[:25]:
             title_el = item.select_one('.s-item__title')
             price_el = item.select_one('.s-item__price')
-            date_el = item.select_one('.s-item__ended-date, .s-item__listingDate, .POSITIVE, [class*="sold"]')
-            link_el = item.select_one('a.s-item__link, a[href*="ebay.com/itm"]')
-
+            date_el  = item.select_one('.s-item__ended-date, .POSITIVE')
+            link_el  = item.select_one('a.s-item__link')
             if not title_el or not price_el:
                 continue
             title = title_el.get_text(strip=True)
-            if 'Shop on eBay' in title or not title:
+            if 'Shop on eBay' in title:
                 continue
-
             price_text = price_el.get_text(strip=True).split(' to ')[0]
-            price_num = re.sub(r'[^\d.]', '', price_text)
+            price_num  = re.sub(r'[^\d.]', '', price_text)
             if not price_num:
                 continue
-
-            date_text = date_el.get_text(strip=True) if date_el else ''
             link = link_el.get('href', '') if link_el else ''
-
             results.append({
                 'source': 'eBay',
                 'title': title,
                 'price': float(price_num),
-                'price_display': f'${price_num}',
-                'date': date_text,
+                'price_display': f'${float(price_num):,.2f}',
+                'date': date_el.get_text(strip=True) if date_el else '',
                 'condition': '',
                 'link': link.split('?')[0] if link else url,
             })
@@ -415,6 +445,7 @@ def comps_endpoint():
     all_results = []
 
     # Run scrapers — each failure is handled internally
+    all_results.extend(scrape_mavin(query))
     all_results.extend(scrape_ebay(query))
     all_results.extend(scrape_130point(query))
     all_results.extend(scrape_goldin(query))
