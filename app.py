@@ -539,11 +539,7 @@ def comps_endpoint():
     all_results = []
 
     # Run scrapers — each failure is handled internally
-    all_results.extend(scrape_mavin(query))
     all_results.extend(scrape_sportscardspro(query))
-    all_results.extend(scrape_psacard(query))
-    all_results.extend(scrape_ebay(query))
-    all_results.extend(scrape_130point(query))
     all_results.extend(scrape_goldin(query))
 
     # Sort by date desc then price desc
@@ -593,6 +589,7 @@ def debug_html():
         'sportscardspro': f'https://www.sportscardspro.com/search-products?q={encoded}',
         'mavin':          f'https://mavin.io/search?q={encoded}&sold=1',
         'psa':            f'https://www.psacard.com/auctionprices/results?q={encoded}',
+        'goldin':         f'https://goldin.co/auctions?q={encoded}&status=past',
     }
     url = urls.get(site, urls['sportscardspro'])
     headers = {
