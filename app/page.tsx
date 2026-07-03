@@ -74,18 +74,26 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="text-right">
-            {lastRefresh && (
-              <p className="text-gray-500 text-xs">
-                Updated {lastRefresh.toLocaleTimeString()}
-              </p>
-            )}
-            <button
-              onClick={fetchLeaderboard}
-              className="text-roobet-gold text-xs hover:underline mt-0.5"
+          <div className="flex items-center gap-4">
+            <a
+              href="/tracker"
+              className="text-sm text-gray-300 border border-roobet-border rounded-lg px-3 py-1.5 hover:border-roobet-gold/60 hover:text-white transition-colors"
             >
-              Refresh
-            </button>
+              Deal Tracker
+            </a>
+            <div className="text-right">
+              {lastRefresh && (
+                <p className="text-gray-500 text-xs">
+                  Updated {lastRefresh.toLocaleTimeString()}
+                </p>
+              )}
+              <button
+                onClick={fetchLeaderboard}
+                className="text-roobet-gold text-xs hover:underline mt-0.5"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
       </header>
