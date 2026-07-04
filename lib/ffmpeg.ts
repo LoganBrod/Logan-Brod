@@ -116,6 +116,9 @@ export async function cutClip(
     "-i", input,
     "-vf", filter,
     "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+    // Stream-recorded VODs (MPEG-TS) interleave A/V loosely; deep seeks can
+    // overflow the default muxing queue ("Too many packets buffered")
+    "-max_muxing_queue_size", "9999",
     "-c:v", "libx264",
     "-preset", "veryfast",
     "-crf", "20",
@@ -149,6 +152,7 @@ export async function burnSubtitles(
   await ffmpeg([
     "-i", input,
     "-vf", `ass='${escaped}'`,
+    "-max_muxing_queue_size", "9999",
     "-c:v", "libx264",
     "-preset", "veryfast",
     "-crf", "20",
