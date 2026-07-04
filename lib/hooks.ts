@@ -32,7 +32,8 @@ Keep everything grounded in what actually happens in the transcript. If the tran
  */
 export async function generateHooks(
   transcript: string,
-  notes?: string
+  notes?: string,
+  promoCode?: string
 ): Promise<HookResult | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   const client = new Anthropic();
@@ -48,6 +49,9 @@ export async function generateHooks(
         content: [
           `Clip transcript:\n${transcript.trim() || "(no speech detected)"}`,
           notes?.trim() ? `Creator notes:\n${notes.trim()}` : "",
+          promoCode?.trim()
+            ? `Promo code (mention it naturally exactly once in the caption, before the disclosure line): ${promoCode.trim()}`
+            : "",
         ]
           .filter(Boolean)
           .join("\n\n"),

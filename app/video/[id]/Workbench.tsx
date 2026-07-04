@@ -37,6 +37,7 @@ const STATUS_LABEL: Record<string, string> = {
   cutting: "Cutting + reframing…",
   transcribing: "Transcribing audio…",
   captioning: "Burning captions…",
+  end_card: "Adding end card…",
   writing_hooks: "Writing hooks…",
   ready: "Ready",
   error: "Failed",
@@ -59,8 +60,16 @@ export default function Workbench({ id }: { id: string }) {
   const [end, setEnd] = useState(20);
   const [cropMode, setCropMode] = useState<"crop" | "blur">("crop");
   const [captions, setCaptions] = useState(true);
+  const [endCard, setEndCard] = useState(true);
   const [notes, setNotes] = useState("");
   const playerRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => setEndCard(Boolean(s.enabled)))
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/videos/${id}`);
@@ -115,7 +124,7 @@ export default function Workbench({ id }: { id: string }) {
       const res = await fetch(`/api/videos/${id}/clips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start, end, cropMode, captions, notes }),
+        body: JSON.stringify({ start, end, cropMode, captions, endCard, notes }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed to create clip");
       await load();
@@ -271,15 +280,26 @@ export default function Workbench({ id }: { id: string }) {
                 <option value="blur">Full frame + blurred background</option>
               </select>
             </label>
-            <label className="flex items-end gap-2 pb-1.5">
-              <input
-                type="checkbox"
-                checked={captions}
-                onChange={(e) => setCaptions(e.target.checked)}
-                className="h-4 w-4 accent-[#8b5cf6]"
-              />
-              <span>Burn captions (Whisper)</span>
-            </label>
+            <div className="flex flex-col justify-end gap-1.5 pb-1">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={captions}
+                  onChange={(e) => setCaptions(e.target.checked)}
+                  className="h-4 w-4 accent-[#8b5cf6]"
+                />
+                <span>Burn captions (Whisper)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={endCard}
+                  onChange={(e) => setEndCard(e.target.checked)}
+                  className="h-4 w-4 accent-[#8b5cf6]"
+                />
+                <span>Promo end card</span>
+              </label>
+            </div>
           </div>
           <label className="mt-3 block text-sm">
             <span className="text-neutral-400">

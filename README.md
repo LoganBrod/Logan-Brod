@@ -11,7 +11,8 @@ Turn raw gambling-stream footage into ready-to-post vertical clips. Upload a VOD
    - *Full frame* over a blurred background.
 4. **Captions** — Whisper transcribes the clip and big bold captions are burned in (word-timed chunks).
 5. **Hooks + caption** — Claude writes 5 on-screen hook options and a ready-to-post X caption (with an 18+ / gamble-responsibly line), grounded in the transcript plus your notes.
-6. **Review + download** — preview the final clip, copy the hook/caption, download the MP4, post it.
+6. **Promo end card** — a customizable screen appended to each clip: headline, promo code in your accent color, leaderboard/signup line, and a fixed 18+ footer. Configure it on the dashboard, toggle it per clip. When enabled, the code is also woven into the AI caption.
+7. **Review + download** — preview the final clip, copy the hook/caption, download the MP4, post it.
 
 ## Setup
 

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getVideo, addClip, listClips, type Clip } from "@/lib/store";
+import {
+  getVideo,
+  addClip,
+  getPromoSettings,
+  listClips,
+  type Clip,
+} from "@/lib/store";
 import { processClip } from "@/lib/pipeline";
 
 export const runtime = "nodejs";
@@ -43,6 +49,10 @@ export async function POST(
     end,
     cropMode: body.cropMode === "blur" ? "blur" : "crop",
     captions: body.captions !== false,
+    endCard:
+      typeof body.endCard === "boolean"
+        ? body.endCard
+        : getPromoSettings().enabled,
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : undefined,
     status: "queued",
     createdAt: new Date().toISOString(),

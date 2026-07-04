@@ -16,9 +16,29 @@ export type ClipStatus =
   | "cutting"
   | "transcribing"
   | "captioning"
+  | "end_card"
   | "writing_hooks"
   | "ready"
   | "error";
+
+export interface PromoSettings {
+  enabled: boolean;
+  headline: string;
+  code: string;
+  subline: string;
+  /** Accent hex color for the code line, e.g. "#8b5cf6" */
+  accent: string;
+  durationSec: number;
+}
+
+export const DEFAULT_PROMO: PromoSettings = {
+  enabled: true,
+  headline: "JOIN THE LEADERBOARD",
+  code: "CODE: lmb1",
+  subline: "Sign up with code lmb1 to enter",
+  accent: "#8b5cf6",
+  durationSec: 3.5,
+};
 
 export interface Clip {
   id: string;
@@ -27,6 +47,8 @@ export interface Clip {
   end: number;
   cropMode: "crop" | "blur";
   captions: boolean;
+  /** Append the promo end card to this clip */
+  endCard?: boolean;
   /** Optional user context passed to the hook generator (game name, bet size, outcome...) */
   notes?: string;
   status: ClipStatus;
@@ -52,6 +74,7 @@ export interface Video {
 interface Store {
   videos: Video[];
   clips: Clip[];
+  promo?: PromoSettings;
 }
 
 function read(): Store {
@@ -61,6 +84,20 @@ function read(): Store {
   } catch {
     return { videos: [], clips: [] };
   }
+}
+
+export function getPromoSettings(): PromoSettings {
+  return { ...DEFAULT_PROMO, ...read().promo };
+}
+
+export function updatePromoSettings(patch: Partial<PromoSettings>): PromoSettings {
+  const store = read();
+  const defined = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined)
+  );
+  store.promo = { ...DEFAULT_PROMO, ...store.promo, ...defined };
+  write(store);
+  return store.promo;
 }
 
 function write(store: Store) {

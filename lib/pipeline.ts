@@ -1,16 +1,24 @@
 import fs from "fs/promises";
 import path from "path";
 import { CLIPS_DIR, DATA_DIR, WORK_DIR, ensureDirs } from "./paths";
-import { getClip, getVideo, updateClip } from "./store";
-import { burnSubtitles, cutClip, extractAudio } from "./ffmpeg";
+import { getClip, getPromoSettings, getVideo, updateClip } from "./store";
+import {
+  appendEndCard,
+  burnSubtitles,
+  cutClip,
+  extractAudio,
+  renderEndCard,
+} from "./ffmpeg";
 import { transcribe } from "./transcribe";
 import { buildAss } from "./subtitles";
+import { buildEndCardAss } from "./endcard";
 import { generateHooks } from "./hooks";
 
 /**
- * Full clip pipeline: cut/reframe -> transcribe -> burn captions -> generate
- * hooks. Each stage persists status to the store so the UI can poll progress.
- * Runs fire-and-forget from the API route; errors land on the clip record.
+ * Full clip pipeline: cut/reframe -> transcribe -> burn captions -> append
+ * promo end card -> generate hooks. Each stage persists status to the store
+ * so the UI can poll progress. Runs fire-and-forget from the API route;
+ * errors land on the clip record.
  */
 export async function processClip(clipId: string): Promise<void> {
   ensureDirs();
@@ -24,22 +32,28 @@ export async function processClip(clipId: string): Promise<void> {
 
   const source = path.join(DATA_DIR, video.file);
   const finalPath = path.join(CLIPS_DIR, `${clipId}.mp4`);
-  const rawPath = path.join(WORK_DIR, `${clipId}-raw.mp4`);
-  const audioPath = path.join(WORK_DIR, `${clipId}.mp3`);
-  const assPath = path.join(WORK_DIR, `${clipId}.ass`);
+  const work = (suffix: string) => path.join(WORK_DIR, `${clipId}${suffix}`);
+  const tempFiles = [
+    work("-cut.mp4"),
+    work("-cap.mp4"),
+    work("-card.mp4"),
+    work(".mp3"),
+    work(".ass"),
+    work("-card.ass"),
+  ];
 
   try {
     // 1. Cut + reframe to 9:16
     updateClip(clipId, { status: "cutting" });
-    const cutTarget = clip.captions ? rawPath : finalPath;
-    await cutClip(source, cutTarget, clip.start, clip.end, clip.cropMode);
+    let current = work("-cut.mp4");
+    await cutClip(source, current, clip.start, clip.end, clip.cropMode);
 
     // 2. Transcribe (needed for both captions and hooks)
     let transcriptText = "";
     updateClip(clipId, { status: "transcribing" });
     try {
-      await extractAudio(cutTarget, audioPath);
-      const transcript = await transcribe(audioPath);
+      await extractAudio(current, work(".mp3"));
+      const transcript = await transcribe(work(".mp3"));
       if (transcript) {
         transcriptText = transcript.text;
         updateClip(clipId, { transcript: transcriptText });
@@ -47,8 +61,9 @@ export async function processClip(clipId: string): Promise<void> {
         // 3. Burn captions
         if (clip.captions && transcript.words.length > 0) {
           updateClip(clipId, { status: "captioning" });
-          await fs.writeFile(assPath, buildAss(transcript.words));
-          await burnSubtitles(rawPath, assPath, finalPath);
+          await fs.writeFile(work(".ass"), buildAss(transcript.words));
+          await burnSubtitles(current, work(".ass"), work("-cap.mp4"));
+          current = work("-cap.mp4");
         }
       }
     } catch (err) {
@@ -56,20 +71,32 @@ export async function processClip(clipId: string): Promise<void> {
       console.error(`Transcription/captioning failed for clip ${clipId}:`, err);
     }
 
-    // If captions were requested but never burned, ship the raw cut
-    if (clip.captions) {
+    // 4. Promo end card
+    const promo = getPromoSettings();
+    if (clip.endCard && promo.enabled) {
+      updateClip(clipId, { status: "end_card" });
       try {
-        await fs.access(finalPath);
-      } catch {
-        await fs.copyFile(rawPath, finalPath);
+        await fs.writeFile(work("-card.ass"), buildEndCardAss(promo, promo.durationSec));
+        await renderEndCard(work("-card.ass"), work("-card.mp4"), promo.durationSec);
+        await appendEndCard(current, work("-card.mp4"), finalPath);
+      } catch (err) {
+        // End card is best-effort too — ship the plain clip if it fails
+        console.error(`End card failed for clip ${clipId}:`, err);
+        await fs.copyFile(current, finalPath);
       }
+    } else {
+      await fs.copyFile(current, finalPath);
     }
     updateClip(clipId, { file: path.relative(DATA_DIR, finalPath) });
 
-    // 4. Hooks + caption via Claude
+    // 5. Hooks + caption via Claude
     updateClip(clipId, { status: "writing_hooks" });
     try {
-      const result = await generateHooks(transcriptText, clip.notes);
+      const result = await generateHooks(
+        transcriptText,
+        clip.notes,
+        promo.enabled ? promo.code : undefined
+      );
       if (result) {
         updateClip(clipId, { hooks: result.hooks, caption: result.caption });
       }
@@ -84,7 +111,7 @@ export async function processClip(clipId: string): Promise<void> {
       error: err instanceof Error ? err.message : String(err),
     });
   } finally {
-    for (const f of [rawPath, audioPath, assPath]) {
+    for (const f of tempFiles) {
       await fs.rm(f, { force: true }).catch(() => {});
     }
   }
@@ -94,9 +121,14 @@ export async function processClip(clipId: string): Promise<void> {
 export async function regenerateHooks(clipId: string): Promise<void> {
   const clip = getClip(clipId);
   if (!clip) return;
+  const promo = getPromoSettings();
   updateClip(clipId, { status: "writing_hooks" });
   try {
-    const result = await generateHooks(clip.transcript ?? "", clip.notes);
+    const result = await generateHooks(
+      clip.transcript ?? "",
+      clip.notes,
+      promo.enabled ? promo.code : undefined
+    );
     if (result) {
       updateClip(clipId, { hooks: result.hooks, caption: result.caption });
     }
