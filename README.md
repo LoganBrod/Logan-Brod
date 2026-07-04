@@ -1,34 +1,42 @@
-# Roobet Wager Leaderboard
+# Clip Factory
 
-A real-time wager leaderboard for the **lmb1** Roobet affiliate code. Pulls data from the Roobet affiliate API and displays ranked players by total wager amount, with a live countdown to the contest end date (July 16, 2026).
+Turn raw gambling-stream footage into ready-to-post vertical clips. Upload a VOD, auto-detect the big moments, cut to 9:16, burn word-by-word captions, and get AI-written hooks and an X caption for every clip.
 
-## Features
+## Pipeline
 
-- Live leaderboard ranked by total wagered amount
-- Podium-style top 3 with gold / silver / bronze styling
-- Countdown timer to contest end
-- Auto-refreshes every 5 minutes
-- Server-side API proxy keeps your API token secure
+1. **Upload** a VOD or session recording (any common video format).
+2. **Detect highlights** — scans the audio track for the loudest moments (big wins, reactions) and suggests clip windows.
+3. **Cut a clip** — pick start/end (or use a suggestion), choose framing:
+   - *Center crop* to 9:16, or
+   - *Full frame* over a blurred background.
+4. **Captions** — Whisper transcribes the clip and big bold captions are burned in (word-timed chunks).
+5. **Hooks + caption** — Claude writes 5 on-screen hook options and a ready-to-post X caption (with an 18+ / gamble-responsibly line), grounded in the transcript plus your notes.
+6. **Review + download** — preview the final clip, copy the hook/caption, download the MP4, post it.
 
-## Deploy to Vercel (recommended)
+## Setup
 
-1. Push this repo to GitHub (already done).
-2. Go to [vercel.com](https://vercel.com) → New Project → import this repo.
-3. Add the environment variable:
-   - `ROOBET_API_TOKEN` = your Roobet affiliate JWT token
-4. Deploy.
-
-## Local development
+Runs locally — video processing (ffmpeg) needs a real machine, not serverless.
 
 ```bash
-cp .env.local.example .env.local
-# Edit .env.local and add your token
+cp .env.local.example .env.local   # add your API keys
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Affiliate link
+### API keys
 
-Sign up at [roobet.com/?ref=lmb1](https://roobet.com/?ref=lmb1) to participate in the contest.
+| Key | Used for | Required? |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Hook + caption writing (Claude) | Recommended — clips still process without it, just no hooks |
+| `OPENAI_API_KEY` | Whisper transcription for captions | Optional — without it clips ship uncaptioned |
+
+ffmpeg/ffprobe are bundled via npm (`ffmpeg-static`) — no system install needed.
+
+## Notes
+
+- All videos, clips, and metadata live in `./data` (gitignored).
+- Uploads are buffered in memory — fine for VODs up to a couple of GB; split anything bigger.
+- Clips are capped at 3 minutes; the sweet spot for X is 15–45 seconds.
+- This tool only processes **your own footage**. Posting and (later) X trend analysis are intentionally manual/API-based to stay inside X's terms of service.
