@@ -4,6 +4,11 @@ A real-time wager leaderboard for the **lmb1** Roobet affiliate code. Pulls data
 
 ## Features
 
+- **Deal Tracker** at `/tracker` — track your streaming deal: daily
+  deposits/wagers/cashouts, deposit bonuses & weekly lossback (plus custom
+  reward types), leaderboard payout obligations, a daily task board, and a
+  net-profit dashboard. Supports multiple deal "sheets" with separate terms,
+  stored in your browser with JSON export/import.
 - Live leaderboard ranked by total wagered amount
 - Podium-style top 3 with gold / silver / bronze styling
 - Countdown timer to contest end
