@@ -1,6 +1,6 @@
 import type { PromoSettings } from "./store";
 
-/** "#8b5cf6" -> ASS BGR color "&H00F65C8B" */
+/** "#2dd4bf" -> ASS BGR color "&H00BFD42D" */
 function hexToAss(hex: string): string {
   const m = hex.trim().match(/^#?([0-9a-f]{6})$/i);
   if (!m) return "&H00FFFFFF";
@@ -22,32 +22,41 @@ function assTime(seconds: number): string {
 }
 
 /**
- * ASS document for the promo end card (1080x1920): headline, big accent promo
- * code, subline, and a fixed responsible-gambling footer.
+ * ASS document for the outro card (1080x1920): small headline, big accent
+ * main line (handle/code), subline, socials row, and an optional footer
+ * (e.g. an 18+ disclosure for casino content).
  */
 export function buildEndCardAss(promo: PromoSettings, durationSec: number): string {
   const end = assTime(durationSec);
   const accent = hexToAss(promo.accent);
+  const line = (y: number, tags: string, text: string) =>
+    `Dialogue: 0,${assTime(0)},${end},Card,,0,0,0,,{\\an5\\pos(540,${y})${tags}}${escapeAss(text)}`;
+
+  // Shrink long lines so they never overflow the 1080px frame
+  // (~0.54 * fontsize average glyph width for bold Arial, 960px usable width)
+  const fit = (text: string, maxFs: number, minFs = 26) =>
+    Math.round(
+      Math.max(minFs, Math.min(maxFs, 960 / (0.54 * Math.max(1, text.trim().length))))
+    );
 
   const lines: string[] = [];
   if (promo.headline.trim()) {
-    lines.push(
-      `Dialogue: 0,0:00:00.00,${end},Card,,0,0,0,,{\\an5\\pos(540,700)\\fs88}${escapeAss(promo.headline)}`
-    );
+    lines.push(line(660, `\\fs${fit(promo.headline, 64)}\\c&H00D3D2C9&`, promo.headline));
   }
-  if (promo.code.trim()) {
-    lines.push(
-      `Dialogue: 0,0:00:00.00,${end},Card,,0,0,0,,{\\an5\\pos(540,920)\\fs150\\c${accent}}${escapeAss(promo.code)}`
-    );
+  if (promo.main.trim()) {
+    lines.push(line(870, `\\fs${fit(promo.main, 150)}\\c${accent}`, promo.main));
   }
   if (promo.subline.trim()) {
-    lines.push(
-      `Dialogue: 0,0:00:00.00,${end},Card,,0,0,0,,{\\an5\\pos(540,1120)\\fs54\\c&H00BBBBBB&}${escapeAss(promo.subline)}`
-    );
+    lines.push(line(1060, `\\fs${fit(promo.subline, 56)}\\c&H00D3D2C9&`, promo.subline));
   }
-  lines.push(
-    `Dialogue: 0,0:00:00.00,${end},Card,,0,0,0,,{\\an5\\pos(540,1760)\\fs40\\c&H00999999&}18+ | Gamble responsibly`
-  );
+  if (promo.socials.trim()) {
+    // Accent underline echoing the LevoZ logo, then the socials row
+    lines.push(line(1180, `\\fs30\\c${accent}\\bord0`, "―――――"));
+    lines.push(line(1280, `\\fs${fit(promo.socials, 46)}\\c&H00A8B2B4&`, promo.socials));
+  }
+  if (promo.footer.trim()) {
+    lines.push(line(1760, `\\fs${fit(promo.footer, 40)}\\c&H00808A8C&`, promo.footer));
+  }
 
   return `[Script Info]
 ScriptType: v4.00+

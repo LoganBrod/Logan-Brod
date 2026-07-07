@@ -103,6 +103,7 @@ export async function detectHighlights(
       // Lead into the moment, then hold for the payoff/reaction
       suggestedStart: Math.max(0, s.time - 12),
       suggestedEnd: Math.min(duration, s.time + 10),
+      source: "audio",
     });
   }
   return peaks.sort((a, b) => a.time - b.time);

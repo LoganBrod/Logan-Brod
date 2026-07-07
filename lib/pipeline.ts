@@ -95,7 +95,7 @@ export async function processClip(clipId: string): Promise<void> {
       const result = await generateHooks(
         transcriptText,
         clip.notes,
-        promo.enabled ? promo.code : undefined
+        promo.enabled ? promo.main : undefined
       );
       if (result) {
         updateClip(clipId, { hooks: result.hooks, caption: result.caption });
@@ -127,7 +127,7 @@ export async function regenerateHooks(clipId: string): Promise<void> {
     const result = await generateHooks(
       clip.transcript ?? "",
       clip.notes,
-      promo.enabled ? promo.code : undefined
+      promo.enabled ? promo.main : undefined
     );
     if (result) {
       updateClip(clipId, { hooks: result.hooks, caption: result.caption });

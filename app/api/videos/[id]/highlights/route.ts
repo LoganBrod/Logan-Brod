@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { DATA_DIR } from "@/lib/paths";
-import { getVideo, updateVideo } from "@/lib/store";
+import { getVideo, mergeHighlights } from "@/lib/store";
 import { detectHighlights } from "@/lib/ffmpeg";
 
 export const runtime = "nodejs";
@@ -19,8 +19,8 @@ export async function POST(
       path.join(DATA_DIR, video.file),
       video.duration
     );
-    updateVideo(video.id, { highlights });
-    return NextResponse.json(highlights);
+    mergeHighlights(video.id, "audio", highlights);
+    return NextResponse.json(getVideo(video.id)?.highlights ?? []);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Highlight detection failed" },

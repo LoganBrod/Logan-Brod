@@ -1,14 +1,20 @@
 import fs from "fs";
 import { STORE_PATH, ensureDirs } from "./paths";
 
+export type HighlightSource = "audio" | "ai" | "youtube";
+
 export interface Highlight {
-  /** Timestamp (seconds) of the loudness peak */
+  /** Timestamp (seconds) of the moment */
   time: number;
-  /** 0-1 relative loudness score */
+  /** 0-1 relative intensity score */
   score: number;
   /** Suggested clip window */
   suggestedStart: number;
   suggestedEnd: number;
+  /** Where this suggestion came from */
+  source: HighlightSource;
+  /** Short description, e.g. "hilarious mis-play reaction" (AI scan) */
+  label?: string;
 }
 
 export type ClipStatus =
@@ -23,20 +29,29 @@ export type ClipStatus =
 
 export interface PromoSettings {
   enabled: boolean;
+  /** Small line above the main text, e.g. "ENJOYED THIS?" */
   headline: string;
-  code: string;
+  /** The big accent line, e.g. "@yourname" or "CODE: lmb1" */
+  main: string;
+  /** Supporting line, e.g. "Live every day at 7PM EST" */
   subline: string;
-  /** Accent hex color for the code line, e.g. "#8b5cf6" */
+  /** Where to find you: twitch.tv/x · kick.com/x · youtube.com/@x */
+  socials: string;
+  /** Optional small footer, e.g. "18+ | Gamble responsibly" for casino content */
+  footer: string;
+  /** Accent hex color for the main line, e.g. "#2dd4bf" */
   accent: string;
   durationSec: number;
 }
 
 export const DEFAULT_PROMO: PromoSettings = {
   enabled: true,
-  headline: "JOIN THE LEADERBOARD",
-  code: "CODE: lmb1",
-  subline: "Sign up with code lmb1 to enter",
-  accent: "#8b5cf6",
+  headline: "ENJOYED THIS?",
+  main: "@yourname",
+  subline: "Follow for daily clips",
+  socials: "twitch.tv/yourname · youtube.com/@yourname",
+  footer: "",
+  accent: "#2dd4bf",
   durationSec: 3.5,
 };
 
@@ -126,6 +141,22 @@ export function updateVideo(id: string, patch: Partial<Video>) {
   const video = store.videos.find((v) => v.id === id);
   if (!video) return;
   Object.assign(video, patch);
+  write(store);
+}
+
+/** Replace one source's highlight suggestions, keeping the others. */
+export function mergeHighlights(
+  videoId: string,
+  source: HighlightSource,
+  items: Highlight[]
+) {
+  const store = read();
+  const video = store.videos.find((v) => v.id === videoId);
+  if (!video) return;
+  video.highlights = [
+    ...(video.highlights ?? []).filter((h) => h.source !== source),
+    ...items,
+  ].sort((a, b) => a.time - b.time);
   write(store);
 }
 

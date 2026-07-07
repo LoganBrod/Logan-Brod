@@ -8,6 +8,8 @@ interface Highlight {
   score: number;
   suggestedStart: number;
   suggestedEnd: number;
+  source: "audio" | "ai" | "youtube";
+  label?: string;
 }
 
 interface Clip {
@@ -37,24 +39,32 @@ const STATUS_LABEL: Record<string, string> = {
   cutting: "Cutting + reframing…",
   transcribing: "Transcribing audio…",
   captioning: "Burning captions…",
-  end_card: "Adding end card…",
+  end_card: "Adding outro…",
   writing_hooks: "Writing hooks…",
   ready: "Ready",
   error: "Failed",
 };
 
+const SOURCE_BADGE: Record<Highlight["source"], { icon: string; name: string }> = {
+  audio: { icon: "🔊", name: "Loudest" },
+  ai: { icon: "✨", name: "AI" },
+  youtube: { icon: "▶", name: "Replayed" },
+};
+
 function fmt(t: number) {
-  const m = Math.floor(t / 60);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
   const s = (t % 60).toFixed(1).padStart(4, "0");
-  return `${m}:${s}`;
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
 export default function Workbench({ id }: { id: string }) {
   const [video, setVideo] = useState<VideoDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [detecting, setDetecting] = useState(false);
+  const [busySource, setBusySource] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ytUrl, setYtUrl] = useState("");
 
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(20);
@@ -63,13 +73,6 @@ export default function Workbench({ id }: { id: string }) {
   const [endCard, setEndCard] = useState(true);
   const [notes, setNotes] = useState("");
   const playerRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((s) => setEndCard(Boolean(s.enabled)))
-      .catch(() => {});
-  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/videos/${id}`);
@@ -82,6 +85,10 @@ export default function Workbench({ id }: { id: string }) {
 
   useEffect(() => {
     load();
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => setEndCard(Boolean(s.enabled)))
+      .catch(() => {});
   }, [load]);
 
   // Poll while any clip is processing
@@ -96,24 +103,37 @@ export default function Workbench({ id }: { id: string }) {
 
   if (notFound) {
     return (
-      <p className="text-neutral-400">
-        Video not found. <Link href="/" className="text-brand">Back to dashboard</Link>
+      <p className="text-fog/60">
+        Video not found.{" "}
+        <Link href="/" className="text-brand">
+          Back to dashboard
+        </Link>
       </p>
     );
   }
-  if (!video) return <p className="text-neutral-500">Loading…</p>;
+  if (!video) return <p className="text-fog/40">Loading…</p>;
 
-  async function detect() {
-    setDetecting(true);
+  async function findMoments(source: "audio" | "ai" | "youtube") {
+    setBusySource(source);
     setError(null);
     try {
-      const res = await fetch(`/api/videos/${id}/highlights`, { method: "POST" });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Detection failed");
+      const url =
+        source === "audio"
+          ? `/api/videos/${id}/highlights`
+          : source === "ai"
+            ? `/api/videos/${id}/aiscan`
+            : `/api/videos/${id}/youtube`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: source === "youtube" ? JSON.stringify({ url: ytUrl }) : undefined,
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Scan failed");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Detection failed");
+      setError(err instanceof Error ? err.message : "Scan failed");
     } finally {
-      setDetecting(false);
+      setBusySource(null);
     }
   }
 
@@ -164,58 +184,101 @@ export default function Workbench({ id }: { id: string }) {
 
   const currentTime = () => playerRef.current?.currentTime ?? 0;
 
+  const field =
+    "w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none";
+  const smallBtn =
+    "rounded-lg bg-ink-border px-2 py-1 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink";
+
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/" className="text-sm text-neutral-400 hover:text-brand">
+        <Link href="/" className="text-sm text-fog/50 hover:text-brand">
           ← All footage
         </Link>
-        <h1 className="mt-1 truncate text-xl font-bold">{video.filename}</h1>
+        <h1 className="mt-1 truncate text-xl font-extrabold text-fog">
+          {video.filename}
+        </h1>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Player + highlights */}
+        {/* Player + moment finding */}
         <section className="space-y-4">
           <video
             ref={playerRef}
             src={`/api/media/${video.file}`}
             controls
-            className="w-full rounded-xl border border-ink-border bg-black"
+            className="w-full rounded-2xl border border-ink-border bg-black shadow-card"
           />
-          <div className="rounded-xl border border-ink-border bg-ink-card p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold">Highlight moments</h2>
+          <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+              Find moments
+            </h2>
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
-                onClick={detect}
-                disabled={detecting}
-                className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+                onClick={() => findMoments("audio")}
+                disabled={busySource !== null}
+                className="rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
               >
-                {detecting ? "Scanning audio…" : "Detect highlights"}
+                {busySource === "audio" ? "Scanning…" : "🔊 Loudest moments"}
+              </button>
+              <button
+                onClick={() => findMoments("ai")}
+                disabled={busySource !== null}
+                title="Transcribes the whole video and asks AI for the funniest / most hype moments"
+                className="rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+              >
+                {busySource === "ai" ? "Scanning… (can take a few min)" : "✨ AI scan"}
               </button>
             </div>
-            <p className="mt-1 text-xs text-neutral-400">
-              Finds the loudest moments (wins, reactions) in the audio track.
+            <div className="mt-2 flex gap-2">
+              <input
+                value={ytUrl}
+                onChange={(e) => setYtUrl(e.target.value)}
+                placeholder="YouTube URL of this video (for Most Replayed data)"
+                className={field}
+              />
+              <button
+                onClick={() => findMoments("youtube")}
+                disabled={busySource !== null || !ytUrl.trim()}
+                className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+              >
+                {busySource === "youtube" ? "Fetching…" : "▶ Most replayed"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-fog/40">
+              Loudest = audio peaks (free, instant). AI scan = transcript-based
+              funny/hype moments. Most replayed = YouTube's own viewer heat map.
             </p>
+
             {video.highlights && video.highlights.length > 0 && (
               <ul className="mt-3 space-y-1.5">
                 {video.highlights.map((h, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span
+                      title={SOURCE_BADGE[h.source].name}
+                      className="w-5 text-center text-xs"
+                    >
+                      {SOURCE_BADGE[h.source].icon}
+                    </span>
                     <button
                       onClick={() => seekTo(h.time)}
-                      className="text-brand hover:underline"
+                      className="shrink-0 font-mono text-brand hover:underline"
                     >
                       {fmt(h.time)}
                     </button>
-                    <div className="mx-2 h-1.5 flex-1 overflow-hidden rounded bg-ink-border">
-                      <div
-                        className="h-full bg-brand"
-                        style={{ width: `${Math.round(h.score * 100)}%` }}
-                      />
-                    </div>
-                    <button
-                      onClick={() => useHighlight(h)}
-                      className="rounded bg-ink-border px-2 py-1 text-xs font-semibold hover:bg-brand/60"
-                    >
+                    {h.label ? (
+                      <span className="min-w-0 flex-1 truncate text-fog/70">
+                        {h.label}
+                      </span>
+                    ) : (
+                      <div className="h-1.5 flex-1 overflow-hidden rounded bg-ink-border">
+                        <div
+                          className="h-full bg-brand"
+                          style={{ width: `${Math.round(h.score * 100)}%` }}
+                        />
+                      </div>
+                    )}
+                    <button onClick={() => useHighlight(h)} className={smallBtn}>
                       Use
                     </button>
                   </li>
@@ -226,11 +289,13 @@ export default function Workbench({ id }: { id: string }) {
         </section>
 
         {/* Clip builder */}
-        <section className="rounded-xl border border-ink-border bg-ink-card p-4">
-          <h2 className="font-bold">Cut a clip</h2>
+        <section className="h-fit rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
+          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+            Cut a clip
+          </h2>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <label className="space-y-1">
-              <span className="text-neutral-400">Start (s)</span>
+              <span className="text-fog/50">Start (s)</span>
               <div className="flex gap-1">
                 <input
                   type="number"
@@ -238,19 +303,19 @@ export default function Workbench({ id }: { id: string }) {
                   step={0.1}
                   value={start}
                   onChange={(e) => setStart(Number(e.target.value))}
-                  className="w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5"
+                  className={field}
                 />
                 <button
                   onClick={() => setStart(Math.round(currentTime() * 10) / 10)}
                   title="Use player position"
-                  className="rounded-lg bg-ink-border px-2 text-xs"
+                  className={smallBtn}
                 >
                   now
                 </button>
               </div>
             </label>
             <label className="space-y-1">
-              <span className="text-neutral-400">End (s)</span>
+              <span className="text-fog/50">End (s)</span>
               <div className="flex gap-1">
                 <input
                   type="number"
@@ -258,65 +323,65 @@ export default function Workbench({ id }: { id: string }) {
                   step={0.1}
                   value={end}
                   onChange={(e) => setEnd(Number(e.target.value))}
-                  className="w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5"
+                  className={field}
                 />
                 <button
                   onClick={() => setEnd(Math.round(currentTime() * 10) / 10)}
                   title="Use player position"
-                  className="rounded-lg bg-ink-border px-2 text-xs"
+                  className={smallBtn}
                 >
                   now
                 </button>
               </div>
             </label>
             <label className="space-y-1">
-              <span className="text-neutral-400">Framing</span>
+              <span className="text-fog/50">Framing</span>
               <select
                 value={cropMode}
                 onChange={(e) => setCropMode(e.target.value as "crop" | "blur")}
-                className="w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5"
+                className={field}
               >
                 <option value="crop">Center crop to 9:16</option>
                 <option value="blur">Full frame + blurred background</option>
               </select>
             </label>
             <div className="flex flex-col justify-end gap-1.5 pb-1">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-fog/80">
                 <input
                   type="checkbox"
                   checked={captions}
                   onChange={(e) => setCaptions(e.target.checked)}
-                  className="h-4 w-4 accent-[#8b5cf6]"
+                  className="h-4 w-4 accent-[#2dd4bf]"
                 />
-                <span>Burn captions (Whisper)</span>
+                <span>Burn captions</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-fog/80">
                 <input
                   type="checkbox"
                   checked={endCard}
                   onChange={(e) => setEndCard(e.target.checked)}
-                  className="h-4 w-4 accent-[#8b5cf6]"
+                  className="h-4 w-4 accent-[#2dd4bf]"
                 />
-                <span>Promo end card</span>
+                <span>Outro card</span>
               </label>
             </div>
           </div>
           <label className="mt-3 block text-sm">
-            <span className="text-neutral-400">
-              Notes for the hook writer (game, bet size, outcome…)
+            <span className="text-fog/50">
+              Notes for the hook writer (what happens, who's in it…)
             </span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="e.g. $2 spin on Gates of Olympus, hit a 5000x max win"
-              className="mt-1 w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5"
+              placeholder="e.g. buzzer beater from half court to win the game"
+              className={`mt-1 ${field}`}
             />
           </label>
           <button
             onClick={createClip}
             disabled={creating}
-            className="mt-4 w-full rounded-lg bg-brand py-2 font-semibold disabled:opacity-50"
+            className="mt-4 w-full rounded-lg bg-brand py-2.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
           >
             {creating ? "Queuing…" : `Create clip (${fmt(start)} → ${fmt(end)})`}
           </button>
@@ -326,9 +391,11 @@ export default function Workbench({ id }: { id: string }) {
 
       {/* Clips */}
       <section>
-        <h2 className="mb-3 text-lg font-bold">Clips</h2>
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+          Clips
+        </h2>
         {video.clips.length === 0 ? (
-          <p className="text-sm text-neutral-500">No clips yet — cut one above.</p>
+          <p className="text-sm text-fog/40">No clips yet — cut one above.</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {video.clips.map((clip) => (
@@ -366,18 +433,18 @@ function ClipCard({
   }
 
   return (
-    <div className="rounded-xl border border-ink-border bg-ink-card p-4">
+    <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold">
+        <span className="font-mono font-semibold text-fog">
           {fmt(clip.start)} → {fmt(clip.end)}
         </span>
         <span
           className={
             clip.status === "ready"
-              ? "text-green-400"
+              ? "font-semibold text-brand"
               : clip.status === "error"
                 ? "text-red-400"
-                : "animate-pulse text-brand"
+                : "animate-pulse text-fog/60"
           }
         >
           {STATUS_LABEL[clip.status] ?? clip.status}
@@ -389,22 +456,22 @@ function ClipCard({
         <video
           src={`/api/media/${clip.file}`}
           controls
-          className="mt-3 max-h-96 w-full rounded-lg border border-ink-border bg-black"
+          className="mt-3 max-h-96 w-full rounded-xl border border-ink-border bg-black"
         />
       )}
 
       {clip.hooks && clip.hooks.length > 0 && (
         <div className="mt-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-400">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
             Hook options
           </h3>
           <ul className="mt-1 space-y-1">
             {clip.hooks.map((hook, i) => (
               <li key={i} className="flex items-center justify-between gap-2 text-sm">
-                <span>{hook}</span>
+                <span className="text-fog/90">{hook}</span>
                 <button
                   onClick={() => copy(hook, `hook-${i}`)}
-                  className="shrink-0 rounded bg-ink-border px-2 py-0.5 text-xs hover:bg-brand/60"
+                  className="shrink-0 rounded bg-ink-border px-2 py-0.5 text-xs text-fog transition hover:bg-brand hover:text-ink"
                 >
                   {copied === `hook-${i}` ? "Copied!" : "Copy"}
                 </button>
@@ -416,15 +483,15 @@ function ClipCard({
 
       {clip.caption && (
         <div className="mt-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-400">
-            X caption
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+            Caption
           </h3>
-          <p className="mt-1 whitespace-pre-wrap rounded-lg bg-ink p-2 text-sm">
+          <p className="mt-1 whitespace-pre-wrap rounded-lg bg-ink p-2 text-sm text-fog/90">
             {clip.caption}
           </p>
           <button
             onClick={() => copy(clip.caption!, "caption")}
-            className="mt-1 rounded bg-ink-border px-2 py-0.5 text-xs hover:bg-brand/60"
+            className="mt-1 rounded bg-ink-border px-2 py-0.5 text-xs text-fog transition hover:bg-brand hover:text-ink"
           >
             {copied === "caption" ? "Copied!" : "Copy caption"}
           </button>
@@ -436,7 +503,7 @@ function ClipCard({
           <a
             href={`/api/media/${clip.file}`}
             download={`clip-${clip.id}.mp4`}
-            className="rounded-lg bg-brand px-3 py-1.5 font-semibold"
+            className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim"
           >
             Download
           </a>
@@ -444,14 +511,14 @@ function ClipCard({
         {clip.status === "ready" && (
           <button
             onClick={onRegenerate}
-            className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold hover:bg-brand/60"
+            className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink"
           >
             Regenerate hooks
           </button>
         )}
         <button
           onClick={onDelete}
-          className="ml-auto rounded-lg px-2 py-1.5 text-neutral-500 hover:text-red-400"
+          className="ml-auto rounded-lg px-2 py-1.5 text-fog/40 hover:text-red-400"
         >
           Delete
         </button>

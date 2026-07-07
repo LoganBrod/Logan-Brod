@@ -1,5 +1,5 @@
 {
-  "name": "clip-factory",
+  "name": "levoz",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -25,5 +25,6 @@
     "postcss": "^8",
     "tailwindcss": "^3",
     "typescript": "^5"
-  }
+  },
+  "description": "Turn long footage into ready-to-post vertical clips"
 }

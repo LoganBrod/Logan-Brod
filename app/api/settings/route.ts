@@ -15,9 +15,11 @@ export async function PUT(req: NextRequest) {
 
   const updated = updatePromoSettings({
     enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
-    headline: clean(body.headline, 60),
-    code: clean(body.code, 40),
+    headline: clean(body.headline, 40),
+    main: clean(body.main, 40),
     subline: clean(body.subline, 80),
+    socials: clean(body.socials, 100),
+    footer: clean(body.footer, 80),
     accent: /^#?[0-9a-f]{6}$/i.test(body.accent ?? "")
       ? (body.accent.startsWith("#") ? body.accent : `#${body.accent}`)
       : undefined,
