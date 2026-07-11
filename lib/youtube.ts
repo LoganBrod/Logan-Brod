@@ -90,6 +90,12 @@ export async function fetchYouTubeChannel(
   }
   const ch = chRes.items[0];
   const uploadsPlaylist = ch.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploadsPlaylist) {
+    throw new DiagnosticsError(
+      `"${ch.snippet.title}" has no public uploads to analyze.`,
+      404
+    );
+  }
 
   const channel: ChannelInfo = {
     name: ch.snippet.title,

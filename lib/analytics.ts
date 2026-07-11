@@ -315,26 +315,30 @@ export function analyzeChannel(raw: VideoStat[]): Diagnostics {
     const recentCount = Math.max(3, Math.floor(videos.length / 3));
     const recent = byDate.slice(0, recentCount);
     const older = byDate.slice(recentCount);
-    // Compare by velocity (views/day) so old videos' accumulated views don't skew it
+    // Views front-load (a fresh video always has higher views/day, an old one
+    // always has more total views), so each direction is judged by the metric
+    // biased AGAINST it — findings here are conservative by construction:
+    // "gaining" requires recent TOTAL views to beat older despite having had
+    // less time to accumulate; "slowing" requires recent views/day to trail
+    // older despite the recency advantage.
+    const recentViews = median(recent.map((v) => v.views));
+    const olderViews = median(older.map((v) => v.views));
     const recentVpd = median(recent.map((v) => v.viewsPerDay));
     const olderVpd = median(older.map((v) => v.viewsPerDay));
-    if (olderVpd > 0) {
-      const ratio = recentVpd / olderVpd;
-      if (ratio >= 1.3) {
-        insights.push({
-          id: "momentum",
-          title: "Channel momentum",
-          finding: `Your channel is gaining momentum — recent videos earn views ${ratio.toFixed(1)}× faster`,
-          detail: `Your last ${recentCount} videos average ${formatViews(Math.round(recentVpd))} views/day vs ${formatViews(Math.round(olderVpd))} views/day for earlier uploads. Whatever changed recently is working — keep doing it.`,
-        });
-      } else if (ratio <= 0.7) {
-        insights.push({
-          id: "momentum",
-          title: "Channel momentum",
-          finding: `Recent videos are earning views ${(1 / ratio).toFixed(1)}× slower than your earlier uploads`,
-          detail: `Your last ${recentCount} videos average ${formatViews(Math.round(recentVpd))} views/day vs ${formatViews(Math.round(olderVpd))} views/day earlier. Compare recent titles, formats, and topics against your top performers below to see what changed.`,
-        });
-      }
+    if (olderViews > 0 && recentViews >= olderViews * 1.3) {
+      insights.push({
+        id: "momentum",
+        title: "Channel momentum",
+        finding: `Your channel is gaining momentum — recent videos already have ${(recentViews / olderViews).toFixed(1)}× the median views of earlier uploads`,
+        detail: `Your last ${recentCount} videos have a median of ${formatViews(Math.round(recentViews))} views vs ${formatViews(Math.round(olderViews))} for earlier uploads, despite having had less time to accumulate them. Whatever changed recently is working — keep doing it.`,
+      });
+    } else if (olderVpd > 0 && recentVpd <= olderVpd * 0.7) {
+      insights.push({
+        id: "momentum",
+        title: "Channel momentum",
+        finding: `Recent videos are earning views ${(olderVpd / recentVpd).toFixed(1)}× slower than your earlier uploads`,
+        detail: `Your last ${recentCount} videos average ${formatViews(Math.round(recentVpd))} views/day vs ${formatViews(Math.round(olderVpd))} views/day for earlier uploads — and fresh videos normally earn views faster, not slower. Compare recent titles, formats, and topics against your top performers below to see what changed.`,
+      });
     }
   }
 

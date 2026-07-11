@@ -62,7 +62,13 @@ export async function liveResearch(
         );
       })
     );
-    const findings = results.flat();
+    // The same article can rank for multiple queries — keep the first hit only
+    const seen = new Set<string>();
+    const findings = results.flat().filter((f) => {
+      if (seen.has(f.url)) return false;
+      seen.add(f.url);
+      return true;
+    });
     cache.set(platform, { findings, expiresAt: Date.now() + CACHE_TTL });
     return findings;
   } catch (err) {

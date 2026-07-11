@@ -179,7 +179,9 @@ export function crossReference(
 
   // --- Twitch: clips strategy ---
   if (platform === "twitch") {
-    const clips = videos.filter((v) => v.kind === "clip");
+    const clips = videos
+      .filter((v) => v.kind === "clip")
+      .sort((a, b) => b.views - a.views);
     const topClip = clips[0];
     recs.push({
       id: "clips",
