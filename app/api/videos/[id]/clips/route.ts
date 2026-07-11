@@ -53,6 +53,7 @@ export async function POST(
       typeof body.endCard === "boolean"
         ? body.endCard
         : getPromoSettings().enabled,
+    autoPost: body.autoPost === true,
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : undefined,
     status: "queued",
     createdAt: new Date().toISOString(),

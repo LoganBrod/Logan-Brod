@@ -100,6 +100,8 @@ export default function Dashboard() {
 
       <OutroSettingsPanel />
 
+      <BrainPanel />
+
       <section>
         <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
           Your footage
@@ -146,6 +148,134 @@ export default function Dashboard() {
         )}
       </section>
     </div>
+  );
+}
+
+interface Playbook {
+  updatedAt: string;
+  summary: string;
+  momentGuidelines: string;
+  hookGuidelines: string;
+  avoid: string;
+}
+
+function BrainPanel() {
+  const [playbook, setPlaybook] = useState<Playbook | null>(null);
+  const [autoPost, setAutoPostState] = useState(false);
+  const [canPost, setCanPost] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => {
+        setAutoPostState(Boolean(s.autoPost));
+        setCanPost(Boolean(s.canPost));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function toggleAutoPost(value: boolean) {
+    setAutoPostState(value);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autoPost: value }),
+    });
+  }
+
+  async function analyze() {
+    setAnalyzing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/evolve", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Analysis failed");
+      setPlaybook(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-extrabold text-fog">
+            Brain <span className="text-brand">· learns what performs</span>
+          </h2>
+          <p className="text-sm text-fog/60">
+            Add views/likes to posted clips, then analyze — the playbook steers
+            the AI scanner, the live clipper's picks, and the hook writer.
+          </p>
+        </div>
+        <button
+          onClick={analyze}
+          disabled={analyzing}
+          className="rounded-lg bg-brand px-5 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+        >
+          {analyzing ? "Analyzing…" : "Analyze performance"}
+        </button>
+      </div>
+
+      <label className="mt-4 flex items-center gap-2 text-sm text-fog/80">
+        <input
+          type="checkbox"
+          checked={autoPost}
+          onChange={(e) => toggleAutoPost(e.target.checked)}
+          className="h-4 w-4 accent-[#2dd4bf]"
+        />
+        Auto-post clips to X when ready
+        {!canPost && (
+          <span className="text-xs text-fog/40">
+            (add X API keys to .env.local to enable — until then clips wait for
+            approval)
+          </span>
+        )}
+      </label>
+
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+
+      {playbook && (
+        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <div className="rounded-xl bg-ink p-3 sm:col-span-2">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+              What's working
+            </h3>
+            <p className="mt-1 text-fog/80">{playbook.summary}</p>
+          </div>
+          <div className="rounded-xl bg-ink p-3">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+              Moment picks
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap text-fog/70">
+              {playbook.momentGuidelines}
+            </p>
+          </div>
+          <div className="rounded-xl bg-ink p-3">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+              Hooks & captions
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap text-fog/70">
+              {playbook.hookGuidelines}
+            </p>
+          </div>
+          <div className="rounded-xl bg-ink p-3 sm:col-span-2">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+              Avoiding
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap text-fog/70">{playbook.avoid}</p>
+          </div>
+          <p className="text-xs text-fog/40 sm:col-span-2">
+            Last analyzed {new Date(playbook.updatedAt).toLocaleString()}
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -13,6 +13,7 @@ import { transcribe } from "./transcribe";
 import { buildAss } from "./subtitles";
 import { buildEndCardAss } from "./endcard";
 import { generateHooks } from "./hooks";
+import { postClipToX, xConfigured } from "./postx";
 
 /**
  * Full clip pipeline: cut/reframe -> transcribe -> burn captions -> append
@@ -102,6 +103,18 @@ export async function processClip(clipId: string): Promise<void> {
       }
     } catch (err) {
       console.error(`Hook generation failed for clip ${clipId}:`, err);
+    }
+
+    // 6. Auto-post to X (approval mode when off — clip just waits in the queue)
+    if (clip.autoPost && xConfigured()) {
+      updateClip(clipId, { status: "posting" });
+      try {
+        await postClipToX(clipId);
+      } catch (err) {
+        updateClip(clipId, {
+          error: `Auto-post failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     }
 
     updateClip(clipId, { status: "ready" });

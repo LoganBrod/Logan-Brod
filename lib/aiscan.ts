@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { Highlight } from "./store";
 import type { Segment } from "./transcribe";
+import { playbookForScanner } from "./evolve";
 
 const MomentsSchema = z.object({
   moments: z
@@ -54,7 +55,7 @@ export async function findMoments(
     model: "claude-opus-4-8",
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT + playbookForScanner(),
     messages: [{ role: "user", content: transcript }],
     output_config: { format: zodOutputFormat(MomentsSchema) },
   });

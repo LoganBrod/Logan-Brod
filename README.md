@@ -2,7 +2,20 @@
 
 Turn long footage — streams, sports, podcasts, YouTube videos — into ready-to-post vertical clips. Upload a VOD, find the moments three ways, cut to 9:16, burn word-by-word captions, and get AI-written hooks and a caption for every clip.
 
-## Pipeline
+## Two modes
+
+- **Library** — upload files (VODs, match recordings, podcasts) and clip them, YouTube-style.
+- **Live** — point it at a Kick stream (channel name, or any HLS .m3u8 URL). It records, learns the stream's normal loudness, and auto-clips moments that spike above it — full pipeline included (captions, hooks, outro). Clips land in the queue as they happen; with auto-post on, they go straight to X.
+
+## The learning loop
+
+Post clips, record their numbers (typed in on each clip card, or fetched from the X API), then hit **Analyze performance** on the dashboard. Claude finds the patterns — which moment types, lengths, and hook styles perform — and writes a playbook that is fed back into the AI moment scanner, the live clipper's picks, and the hook writer. The more clips you rate, the sharper it gets.
+
+## Posting
+
+Clips wait in the queue for approval by default. Add X API keys (developer.x.com, free tier, Read+Write) to `.env.local` to post from the clip card — or flip on **Auto-post** to have finished clips posted automatically. Views/likes/reposts are stored per clip and feed the learning loop.
+
+## Library pipeline
 
 1. **Upload** a VOD, match recording, or podcast (any common video format).
 2. **Find moments** — three sources, mix and match:

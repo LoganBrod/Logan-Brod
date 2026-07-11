@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { playbookForHooks } from "./evolve";
 
 const HookResultSchema = z.object({
   hooks: z
@@ -42,7 +43,7 @@ export async function generateHooks(
     model: "claude-opus-4-8",
     max_tokens: 2048,
     thinking: { type: "adaptive" },
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT + playbookForHooks(),
     messages: [
       {
         role: "user",

@@ -23,6 +23,8 @@ interface Clip {
   hooks?: string[];
   caption?: string;
   notes?: string;
+  posted?: { platform: string; id: string; url: string; at: string };
+  metrics?: { views: number; likes: number; reposts: number; updatedAt: string };
 }
 
 interface VideoDetail {
@@ -41,6 +43,7 @@ const STATUS_LABEL: Record<string, string> = {
   captioning: "Burning captions…",
   end_card: "Adding outro…",
   writing_hooks: "Writing hooks…",
+  posting: "Posting to X…",
   ready: "Ready",
   error: "Failed",
 };
@@ -71,6 +74,7 @@ export default function Workbench({ id }: { id: string }) {
   const [cropMode, setCropMode] = useState<"crop" | "blur">("crop");
   const [captions, setCaptions] = useState(true);
   const [endCard, setEndCard] = useState(true);
+  const [canPost, setCanPost] = useState(false);
   const [notes, setNotes] = useState("");
   const playerRef = useRef<HTMLVideoElement>(null);
 
@@ -87,7 +91,10 @@ export default function Workbench({ id }: { id: string }) {
     load();
     fetch("/api/settings")
       .then((r) => r.json())
-      .then((s) => setEndCard(Boolean(s.enabled)))
+      .then((s) => {
+        setEndCard(Boolean(s.enabled));
+        setCanPost(Boolean(s.canPost));
+      })
       .catch(() => {});
   }, [load]);
 
@@ -402,6 +409,8 @@ export default function Workbench({ id }: { id: string }) {
               <ClipCard
                 key={clip.id}
                 clip={clip}
+                canPost={canPost}
+                onChanged={load}
                 onDelete={() => deleteClip(clip.id)}
                 onRegenerate={() => regenerate(clip.id)}
               />
@@ -415,14 +424,25 @@ export default function Workbench({ id }: { id: string }) {
 
 function ClipCard({
   clip,
+  canPost,
+  onChanged,
   onDelete,
   onRegenerate,
 }: {
   clip: Clip;
+  canPost: boolean;
+  onChanged: () => void;
   onDelete: () => void;
   onRegenerate: () => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [m, setM] = useState({
+    views: clip.metrics?.views ?? 0,
+    likes: clip.metrics?.likes ?? 0,
+    reposts: clip.metrics?.reposts ?? 0,
+  });
   const busy = clip.status !== "ready" && clip.status !== "error";
 
   function copy(text: string, key: string) {
@@ -430,6 +450,29 @@ function ClipCard({
       setCopied(key);
       setTimeout(() => setCopied(null), 1500);
     });
+  }
+
+  async function post() {
+    setPosting(true);
+    setPostError(null);
+    try {
+      const res = await fetch(`/api/clips/${clip.id}/post`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Post failed");
+      onChanged();
+    } catch (err) {
+      setPostError(err instanceof Error ? err.message : "Post failed");
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  async function saveMetrics() {
+    await fetch(`/api/clips/${clip.id}/metrics`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(m),
+    });
+    onChanged();
   }
 
   return (
@@ -495,6 +538,69 @@ function ClipCard({
           >
             {copied === "caption" ? "Copied!" : "Copy caption"}
           </button>
+        </div>
+      )}
+
+      {/* Posting + performance */}
+      {clip.status === "ready" && clip.file && (
+        <div className="mt-3 rounded-xl bg-ink p-3 text-sm">
+          {clip.posted ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <a
+                href={clip.posted.url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-brand hover:underline"
+              >
+                Posted to X ↗
+              </a>
+              <span className="text-xs text-fog/40">
+                {new Date(clip.posted.at).toLocaleString()}
+              </span>
+            </div>
+          ) : canPost ? (
+            <button
+              onClick={post}
+              disabled={posting}
+              className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+            >
+              {posting ? "Posting…" : "Post to X"}
+            </button>
+          ) : (
+            <span className="text-xs text-fog/40">
+              Add X API keys in .env.local to post from here — or download and
+              post manually, then record the numbers below.
+            </span>
+          )}
+          {postError && <p className="mt-1 text-xs text-red-400">{postError}</p>}
+
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            {(["views", "likes", "reposts"] as const).map((k) => (
+              <label key={k} className="space-y-0.5">
+                <span className="block text-[10px] uppercase tracking-wider text-fog/40">
+                  {k}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={m[k]}
+                  onChange={(e) => setM({ ...m, [k]: Number(e.target.value) })}
+                  className="w-20 rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+                />
+              </label>
+            ))}
+            <button
+              onClick={saveMetrics}
+              className="rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
+            >
+              Save numbers
+            </button>
+            {clip.metrics && (
+              <span className="text-[10px] text-fog/30">
+                saved {new Date(clip.metrics.updatedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

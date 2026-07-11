@@ -24,8 +24,51 @@ export type ClipStatus =
   | "captioning"
   | "end_card"
   | "writing_hooks"
+  | "posting"
   | "ready"
   | "error";
+
+export interface PostedInfo {
+  platform: "x";
+  id: string;
+  url: string;
+  at: string;
+}
+
+export interface ClipMetrics {
+  views: number;
+  likes: number;
+  reposts: number;
+  updatedAt: string;
+}
+
+export interface LiveEvent {
+  at: string;
+  type: "info" | "spike" | "clip" | "error";
+  text: string;
+  clipId?: string;
+}
+
+export interface LiveSession {
+  id: string;
+  /** Kick channel slug or a direct m3u8 URL */
+  channel: string;
+  status: "connecting" | "live" | "stopped" | "error";
+  error?: string;
+  /** The Video record the live recording grows into */
+  videoId: string;
+  startedAt: string;
+  stoppedAt?: string;
+  events: LiveEvent[];
+}
+
+export interface Playbook {
+  updatedAt: string;
+  summary: string;
+  momentGuidelines: string;
+  hookGuidelines: string;
+  avoid: string;
+}
 
 export interface PromoSettings {
   enabled: boolean;
@@ -66,6 +109,8 @@ export interface Clip {
   endCard?: boolean;
   /** Optional user context passed to the hook generator (game name, bet size, outcome...) */
   notes?: string;
+  /** Post to X automatically once processing finishes */
+  autoPost?: boolean;
   status: ClipStatus;
   error?: string;
   /** Path relative to DATA_DIR, servable via /api/media */
@@ -73,6 +118,8 @@ export interface Clip {
   transcript?: string;
   hooks?: string[];
   caption?: string;
+  posted?: PostedInfo;
+  metrics?: ClipMetrics;
   createdAt: string;
 }
 
@@ -90,6 +137,9 @@ interface Store {
   videos: Video[];
   clips: Clip[];
   promo?: PromoSettings;
+  autoPost?: boolean;
+  liveSessions?: LiveSession[];
+  playbook?: Playbook;
 }
 
 function read(): Store {
@@ -193,5 +243,61 @@ export function updateClip(id: string, patch: Partial<Clip>) {
 export function deleteClip(id: string) {
   const store = read();
   store.clips = store.clips.filter((c) => c.id !== id);
+  write(store);
+}
+
+export function getAutoPost(): boolean {
+  return read().autoPost === true;
+}
+
+export function setAutoPost(value: boolean) {
+  const store = read();
+  store.autoPost = value;
+  write(store);
+}
+
+export function listLiveSessions(): LiveSession[] {
+  return read().liveSessions ?? [];
+}
+
+export function getLiveSession(id: string): LiveSession | undefined {
+  return listLiveSessions().find((s) => s.id === id);
+}
+
+export function addLiveSession(session: LiveSession) {
+  const store = read();
+  store.liveSessions = [session, ...(store.liveSessions ?? [])];
+  write(store);
+}
+
+export function updateLiveSession(id: string, patch: Partial<LiveSession>) {
+  const store = read();
+  const session = (store.liveSessions ?? []).find((s) => s.id === id);
+  if (!session) return;
+  Object.assign(session, patch);
+  write(store);
+}
+
+export function pushLiveEvent(id: string, event: LiveEvent) {
+  const store = read();
+  const session = (store.liveSessions ?? []).find((s) => s.id === id);
+  if (!session) return;
+  session.events = [...session.events, event].slice(-100);
+  write(store);
+}
+
+export function deleteLiveSession(id: string) {
+  const store = read();
+  store.liveSessions = (store.liveSessions ?? []).filter((s) => s.id !== id);
+  write(store);
+}
+
+export function getPlaybook(): Playbook | undefined {
+  return read().playbook;
+}
+
+export function setPlaybook(playbook: Playbook) {
+  const store = read();
+  store.playbook = playbook;
   write(store);
 }

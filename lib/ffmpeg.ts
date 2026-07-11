@@ -47,6 +47,20 @@ export async function probeDuration(file: string): Promise<number> {
   return parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseFloat(m[3]);
 }
 
+/** Mean RMS loudness (dB) of a short media file — used per-segment by the live watcher. */
+export async function measureRms(file: string): Promise<number> {
+  // astats prints summary stats to stderr at default log level
+  const { stderr } = await execFileAsync(
+    ffmpegPath,
+    ["-hide_banner", "-y", "-i", file, "-map", "0:a:0", "-af", "astats", "-f", "null", "-"],
+    { maxBuffer: MAX_BUFFER }
+  );
+  const matches = Array.from(stderr.matchAll(/RMS level dB:\s*(-?[\d.]+|-inf|inf)/g));
+  if (matches.length === 0) throw new Error("No audio stats in segment");
+  const last = matches[matches.length - 1][1];
+  return last.includes("inf") ? -90 : parseFloat(last);
+}
+
 /**
  * Find the loudest moments in the video's audio track. Big wins on stream are
  * almost always the loudest — screaming, alerts, hype music. Computes RMS

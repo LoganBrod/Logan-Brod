@@ -1,17 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPromoSettings, updatePromoSettings } from "@/lib/store";
+import {
+  getAutoPost,
+  getPromoSettings,
+  setAutoPost,
+  updatePromoSettings,
+} from "@/lib/store";
+import { xConfigured } from "@/lib/postx";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(getPromoSettings());
+  return NextResponse.json({
+    ...getPromoSettings(),
+    autoPost: getAutoPost(),
+    canPost: xConfigured(),
+  });
 }
 
 export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const clean = (v: unknown, max: number) =>
     typeof v === "string" ? v.slice(0, max) : undefined;
+
+  if (typeof body.autoPost === "boolean") setAutoPost(body.autoPost);
 
   const updated = updatePromoSettings({
     enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
@@ -28,5 +40,5 @@ export async function PUT(req: NextRequest) {
         ? Math.min(10, Number(body.durationSec))
         : undefined,
   });
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, autoPost: getAutoPost(), canPost: xConfigured() });
 }

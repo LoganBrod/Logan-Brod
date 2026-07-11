@@ -24,9 +24,15 @@ export default function RootLayout({
               </span>
               <span className="mt-0.5 block h-[3px] w-2/3 rounded-full bg-brand transition-all group-hover:w-full" />
             </Link>
-            <span className="text-xs font-medium uppercase tracking-[0.2em] text-fog/40">
-              long footage → posted clip
-            </span>
+            <nav className="flex items-center gap-4 text-sm font-semibold">
+              <Link href="/" className="text-fog/70 transition hover:text-brand">
+                Library
+              </Link>
+              <Link href="/live" className="text-fog/70 transition hover:text-brand">
+                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500 align-middle" />
+                Live
+              </Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
