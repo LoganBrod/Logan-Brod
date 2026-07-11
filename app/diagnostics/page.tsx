@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Diagnostics } from "@/lib/analytics";
 import { formatViews } from "@/lib/analytics";
+import type { Recommendation } from "@/lib/crossref";
+import type { WebFinding } from "@/lib/research";
 import StatTiles from "../components/diagnostics/StatTiles";
 import InsightGrid from "../components/diagnostics/InsightGrid";
 import VideoTable from "../components/diagnostics/VideoTable";
+import Recommendations from "../components/diagnostics/Recommendations";
+import DeepDive from "../components/diagnostics/DeepDive";
 
 type Platform = "youtube" | "twitch";
 
@@ -17,6 +21,8 @@ interface ApiResponse extends Diagnostics {
     followers: number | null;
     platform: Platform;
   };
+  recommendations: Recommendation[];
+  webFindings: WebFinding[] | null;
 }
 
 const PLATFORMS: { id: Platform; label: string; dot: string; placeholder: string }[] = [
@@ -40,6 +46,24 @@ export default function DiagnosticsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Surface OAuth redirect errors (?auth_error=...) without useSearchParams
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("auth_error");
+    if (err) {
+      const messages: Record<string, string> = {
+        oauth_not_configured:
+          "Deep dive isn't configured on this deployment (missing Google OAuth credentials).",
+        consent_denied: "Google sign-in was cancelled.",
+        state_mismatch: "Sign-in session expired — please try connecting again.",
+        token_exchange_failed: "Google sign-in failed — please try again.",
+      };
+      setAuthError(messages[err] ?? "Google sign-in failed.");
+      window.history.replaceState(null, "", "/diagnostics");
+    }
+  }, []);
 
   async function runDiagnostics(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +136,15 @@ export default function DiagnosticsPage() {
         </div>
       </form>
 
+      {authError && (
+        <div
+          role="alert"
+          className="mt-6 rounded-xl border border-roobet-amber/40 bg-roobet-amber/10 p-4 text-sm text-roobet-amber"
+        >
+          {authError}
+        </div>
+      )}
+
       {error && (
         <div
           role="alert"
@@ -169,6 +202,23 @@ export default function DiagnosticsPage() {
             <InsightGrid insights={data.insights} />
           </section>
 
+          {data.recommendations.length > 0 && (
+            <section>
+              <h2 className="mb-1 text-xl font-bold">
+                Improvement <span className="rank-gold">plan</span>
+              </h2>
+              <p className="mb-3 text-xs text-gray-500">
+                Your measured patterns cross-referenced against published
+                industry research — where you already align, where to adjust,
+                and untapped opportunities. Sources linked on every card.
+              </p>
+              <Recommendations
+                recommendations={data.recommendations}
+                webFindings={data.webFindings}
+              />
+            </section>
+          )}
+
           <section>
             <h2 className="mb-3 text-xl font-bold">
               Videos ranked by <span className="rank-gold">performance</span>
@@ -182,6 +232,9 @@ export default function DiagnosticsPage() {
           </section>
         </div>
       )}
+
+      {/* Deep dive for the signed-in owner's own channel (YouTube only) */}
+      {platform === "youtube" && <DeepDive />}
 
       {!data && !loading && !error && (
         <div className="mt-12 grid gap-3 text-center text-sm text-gray-500 sm:grid-cols-3">

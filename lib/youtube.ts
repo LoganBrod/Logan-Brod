@@ -130,6 +130,12 @@ export async function fetchYouTubeChannel(
       key
     );
     for (const v of vRes.items ?? []) {
+      const text = `${v.snippet.title ?? ""}\n${v.snippet.description ?? ""}`;
+      const hashtags = Array.from(
+        new Set(
+          (text.match(/#[\p{L}\p{N}_]+/gu) ?? []).map((h: string) => h.toLowerCase())
+        )
+      ) as string[];
       videos.push({
         id: v.id,
         title: v.snippet.title,
@@ -141,6 +147,8 @@ export async function fetchYouTubeChannel(
         likes: v.statistics?.likeCount !== undefined ? +v.statistics.likeCount : null,
         comments: v.statistics?.commentCount !== undefined ? +v.statistics.commentCount : null,
         kind: "video",
+        hashtags,
+        tags: v.snippet.tags ?? [],
       });
     }
   }

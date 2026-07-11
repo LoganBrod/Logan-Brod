@@ -13,6 +13,8 @@ export interface VideoStat {
   likes: number | null;
   comments: number | null;
   kind: "video" | "vod" | "clip";
+  hashtags?: string[]; // extracted from title + description (YouTube only)
+  tags?: string[]; // creator-set tags (YouTube only)
 }
 
 export interface RankedVideo extends VideoStat {
