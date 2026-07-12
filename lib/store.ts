@@ -89,6 +89,18 @@ export interface BrainScore {
   at: string;
 }
 
+/** A viral clip (someone else's) fed to the Brain as reference material */
+export interface SeedClip {
+  id: string;
+  /** What happens in the clip — the moment, the hook, the style */
+  description: string;
+  /** Optional link (X/TikTok/YouTube/Kick) for your own reference */
+  source?: string;
+  /** Rough numbers, free text: "2.1M views, 80k likes" */
+  stats?: string;
+  addedAt: string;
+}
+
 export interface PromoSettings {
   enabled: boolean;
   /** Small line above the main text, e.g. "ENJOYED THIS?" */
@@ -165,6 +177,7 @@ interface Store {
   minScore?: number;
   liveSessions?: LiveSession[];
   playbook?: Playbook;
+  seedClips?: SeedClip[];
 }
 
 function read(): Store {
@@ -325,6 +338,22 @@ export function pushLiveEvent(id: string, event: LiveEvent) {
 export function deleteLiveSession(id: string) {
   const store = read();
   store.liveSessions = (store.liveSessions ?? []).filter((s) => s.id !== id);
+  write(store);
+}
+
+export function listSeedClips(): SeedClip[] {
+  return read().seedClips ?? [];
+}
+
+export function addSeedClip(seed: SeedClip) {
+  const store = read();
+  store.seedClips = [seed, ...(store.seedClips ?? [])].slice(0, 50);
+  write(store);
+}
+
+export function deleteSeedClip(id: string) {
+  const store = read();
+  store.seedClips = (store.seedClips ?? []).filter((s) => s.id !== id);
   write(store);
 }
 

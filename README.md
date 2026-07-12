@@ -15,6 +15,8 @@ Post clips, record their numbers (typed in on each clip card, or fetched from th
 
 **Experiments.** Each analysis also proposes up to 3 A/B experiments ("question hooks beat statement hooks?"). New clips rotate between variants and a control group automatically — variant clips get the experiment's instruction applied to their hooks/captions and a 🧪 tag. The next analysis compares the numbers, declares winners, folds them into the playbook, and proposes fresh experiments. That's the self-evolving part: it doesn't just learn from what you did, it decides what to try next.
 
+**Pre-feeding.** Cold start? Open "Pre-feed the Brain" on the dashboard and describe 3+ viral clips you want to emulate (what happens, the hook, rough view counts). Analyze builds a starter playbook from those references alone — scoring, hooks, and moment picking all work from day one. As your own posted clips accumulate real numbers, they automatically outweigh the references.
+
 ## Posting
 
 Clips wait in the queue for approval by default. Add X API keys (developer.x.com, free tier, Read+Write) to `.env.local` to post from the clip card — or flip on **Auto-post** to have finished clips posted automatically. Views/likes/reposts are stored per clip and feed the learning loop.

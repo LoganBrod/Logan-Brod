@@ -6,6 +6,7 @@ import {
   getClip,
   getPlaybook,
   listClips,
+  listSeedClips,
   setPlaybook,
   updateClip,
   type BrainScore,
@@ -48,12 +49,12 @@ const PlaybookSchema = z.object({
     ),
 });
 
-const SYSTEM_PROMPT = `You are the performance brain of a clipping tool. You get a list of the creator's posted clips with their attributes and engagement metrics. Some clips are tagged with the experiment variant they tested ("experiment=<id>") vs "experiment=control".
+const SYSTEM_PROMPT = `You are the performance brain of a clipping tool. You may get two kinds of input: the creator's own posted clips with their real engagement metrics, and reference clips — other creators' viral clips the user wants to emulate (descriptions + rough stats, no transcripts). Some of the creator's clips are tagged with the experiment variant they tested ("experiment=<id>") vs "experiment=control".
 
 Do three things:
-1. Find real patterns — moment types, durations, hook styles, caption styles that correlate with views/likes — and turn them into short, concrete, actionable guidelines the tool will feed to its moment scanner and hook writer.
+1. Find real patterns — moment types, durations, hook styles, caption styles that correlate with views/likes — and turn them into short, concrete, actionable guidelines the tool will feed to its moment scanner and hook writer. The creator's own numbers always outweigh the reference clips: references show what works in the niche generally, the creator's data shows what works for THEIR audience. With no own data yet, build the playbook from the references and say so in the summary.
 2. Judge the running experiments honestly: compare each variant's numbers against control. Declare winners and losers with the data, or say "not enough data yet".
-3. Propose up to 3 new experiments worth running next — concrete, testable, single-variable changes. Fold confirmed winners into the guidelines instead of re-testing them.
+3. Propose up to 3 new experiments worth running next — concrete, testable, single-variable changes. Reference clips are a good source of hypotheses to test on this creator's audience. Fold confirmed winners into the guidelines instead of re-testing them.
 
 Be honest about sample size: with few clips, keep guidelines soft and note the uncertainty in the summary. Never invent patterns the data doesn't show.`;
 
@@ -68,9 +69,10 @@ export async function analyzePerformance(): Promise<Playbook> {
   }
 
   const rated = listClips().filter((c) => c.metrics);
-  if (rated.length < 3) {
+  const seeds = listSeedClips();
+  if (rated.length < 3 && seeds.length < 3) {
     throw new Error(
-      `Need metrics on at least 3 clips to find patterns (have ${rated.length}). Post clips, then add their views/likes on the clip cards.`
+      `Need either metrics on 3+ of your clips (have ${rated.length}) or 3+ reference clips fed to the Brain (have ${seeds.length}).`
     );
   }
 
@@ -101,6 +103,19 @@ export async function analyzePerformance(): Promise<Playbook> {
           .join("\n")}`
       : "\n\nNo experiments were running yet — propose the first ones.";
 
+  const seedContext = seeds.length
+    ? `\n\nReference viral clips the creator wants to emulate (other creators' clips — niche patterns, not this audience's data):\n${seeds
+        .map(
+          (s, i) =>
+            `ref#${i + 1}: ${s.description.slice(0, 300).replace(/\n/g, " ")}${s.stats ? ` | stats: ${s.stats.slice(0, 80)}` : ""}`
+        )
+        .join("\n")}`
+    : "";
+
+  const ownContext = rated.length
+    ? `Posted clips, best-performing first:\n\n${rows}`
+    : "The creator has no rated clips of their own yet — build the starter playbook from the reference clips.";
+
   const client = new Anthropic();
   const response = await client.messages.parse({
     model: "claude-opus-4-8",
@@ -110,7 +125,7 @@ export async function analyzePerformance(): Promise<Playbook> {
     messages: [
       {
         role: "user",
-        content: `Posted clips, best-performing first:\n\n${rows}${experimentContext}`,
+        content: `${ownContext}${seedContext}${experimentContext}`,
       },
     ],
     output_config: { format: zodOutputFormat(PlaybookSchema) },

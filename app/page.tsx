@@ -161,6 +161,13 @@ interface Playbook {
   experimentResults?: string;
 }
 
+interface SeedClip {
+  id: string;
+  description: string;
+  source?: string;
+  stats?: string;
+}
+
 function BrainPanel() {
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [autoPost, setAutoPostState] = useState(false);
@@ -168,9 +175,16 @@ function BrainPanel() {
   const [canPost, setCanPost] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seeds, setSeeds] = useState<SeedClip[]>([]);
+  const [seedOpen, setSeedOpen] = useState(false);
+  const [seedDesc, setSeedDesc] = useState("");
+  const [seedSource, setSeedSource] = useState("");
+  const [seedStats, setSeedStats] = useState("");
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
+    fetch("/api/seeds").then((r) => r.json()).then(setSeeds).catch(() => {});
     fetch("/api/settings")
       .then((r) => r.json())
       .then((s) => {
@@ -213,6 +227,29 @@ function BrainPanel() {
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  async function addSeed() {
+    setSeedError(null);
+    const res = await fetch("/api/seeds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: seedDesc, source: seedSource, stats: seedStats }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setSeedError(data.error ?? "Couldn't add reference");
+      return;
+    }
+    setSeeds(data);
+    setSeedDesc("");
+    setSeedSource("");
+    setSeedStats("");
+  }
+
+  async function removeSeed(id: string) {
+    const res = await fetch(`/api/seeds?id=${id}`, { method: "DELETE" });
+    if (res.ok) setSeeds(await res.json());
   }
 
   return (
@@ -267,6 +304,91 @@ function BrainPanel() {
       </div>
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+
+      {/* Pre-feed with reference viral clips */}
+      <div className="mt-4 rounded-xl border border-ink-border bg-ink p-3 text-sm">
+        <button
+          onClick={() => setSeedOpen(!seedOpen)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <span className="font-semibold text-fog">
+            Pre-feed the Brain{" "}
+            <span className="text-xs font-normal text-fog/40">
+              — {seeds.length} reference clip{seeds.length === 1 ? "" : "s"}.
+              Describe viral clips you want to emulate; the Brain builds its
+              starter playbook from them before you have numbers of your own.
+            </span>
+          </span>
+          <span className="text-fog/40">{seedOpen ? "▲" : "▼"}</span>
+        </button>
+
+        {seedOpen && (
+          <div className="mt-3 space-y-3">
+            <textarea
+              value={seedDesc}
+              onChange={(e) => setSeedDesc(e.target.value)}
+              rows={2}
+              maxLength={600}
+              placeholder="What happens + why it works, e.g. 'Streamer bets last $50, wins 800x — screams, chair falls over. Hook text: HE HAD $50 LEFT. 14 seconds, caption asks would you have cashed out.'"
+              className="w-full rounded-lg border border-ink-border bg-ink-card px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none"
+            />
+            <div className="flex flex-wrap gap-2">
+              <input
+                value={seedSource}
+                onChange={(e) => setSeedSource(e.target.value)}
+                placeholder="Link (optional)"
+                className="min-w-0 flex-1 rounded-lg border border-ink-border bg-ink-card px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none"
+              />
+              <input
+                value={seedStats}
+                onChange={(e) => setSeedStats(e.target.value)}
+                placeholder="Stats (optional), e.g. 2.1M views"
+                className="w-48 rounded-lg border border-ink-border bg-ink-card px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none"
+              />
+              <button
+                onClick={addSeed}
+                disabled={seedDesc.trim().length < 10}
+                className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
+            {seedError && <p className="text-xs text-red-400">{seedError}</p>}
+            {seeds.length > 0 && (
+              <ul className="space-y-1.5">
+                {seeds.map((s) => (
+                  <li key={s.id} className="flex items-start gap-2 text-xs">
+                    <span className="min-w-0 flex-1 text-fog/70">
+                      {s.description}
+                      {s.stats && <span className="text-brand"> · {s.stats}</span>}
+                      {s.source && (
+                        <a
+                          href={s.source}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-1 text-fog/40 underline hover:text-brand"
+                        >
+                          link
+                        </a>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => removeSeed(s.id)}
+                      className="shrink-0 text-fog/40 hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-fog/40">
+              Add 3+ then hit Analyze — works before you've posted anything.
+              Once your own clips have numbers, your real data outweighs these.
+            </p>
+          </div>
+        )}
+      </div>
 
       {playbook && (
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
