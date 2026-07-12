@@ -34,7 +34,8 @@ Keep everything grounded in what actually happens in the transcript. If the tran
 export async function generateHooks(
   transcript: string,
   notes?: string,
-  promoCode?: string
+  promoCode?: string,
+  experimentInstruction?: string
 ): Promise<HookResult | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   const client = new Anthropic();
@@ -52,6 +53,9 @@ export async function generateHooks(
           notes?.trim() ? `Creator notes:\n${notes.trim()}` : "",
           promoCode?.trim()
             ? `Promo line (mention it naturally exactly once in the caption): ${promoCode.trim()}`
+            : "",
+          experimentInstruction?.trim()
+            ? `Experiment variant — this clip deliberately tests a style change. Apply this instruction even where it conflicts with the playbook: ${experimentInstruction.trim()}`
             : "",
         ]
           .filter(Boolean)

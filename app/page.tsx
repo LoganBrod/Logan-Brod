@@ -157,11 +157,14 @@ interface Playbook {
   momentGuidelines: string;
   hookGuidelines: string;
   avoid: string;
+  experiments?: { id: string; hypothesis: string; instruction: string }[];
+  experimentResults?: string;
 }
 
 function BrainPanel() {
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [autoPost, setAutoPostState] = useState(false);
+  const [minScore, setMinScoreState] = useState(0);
   const [canPost, setCanPost] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +175,7 @@ function BrainPanel() {
       .then((r) => r.json())
       .then((s) => {
         setAutoPostState(Boolean(s.autoPost));
+        setMinScoreState(Number(s.minScore) || 0);
         setCanPost(Boolean(s.canPost));
       })
       .catch(() => {});
@@ -183,6 +187,16 @@ function BrainPanel() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ autoPost: value }),
+    });
+  }
+
+  async function saveMinScore(value: number) {
+    const clamped = Math.max(0, Math.min(100, Math.round(value) || 0));
+    setMinScoreState(clamped);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minScore: clamped }),
     });
   }
 
@@ -222,21 +236,35 @@ function BrainPanel() {
         </button>
       </div>
 
-      <label className="mt-4 flex items-center gap-2 text-sm text-fog/80">
-        <input
-          type="checkbox"
-          checked={autoPost}
-          onChange={(e) => toggleAutoPost(e.target.checked)}
-          className="h-4 w-4 accent-[#2dd4bf]"
-        />
-        Auto-post clips to X when ready
-        {!canPost && (
-          <span className="text-xs text-fog/40">
-            (add X API keys to .env.local to enable — until then clips wait for
-            approval)
-          </span>
-        )}
-      </label>
+      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-fog/80">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={autoPost}
+            onChange={(e) => toggleAutoPost(e.target.checked)}
+            className="h-4 w-4 accent-[#2dd4bf]"
+          />
+          Auto-post clips to X when ready
+          {!canPost && (
+            <span className="text-xs text-fog/40">
+              (add X API keys to .env.local to enable — until then clips wait
+              for approval)
+            </span>
+          )}
+        </label>
+        <label className="flex items-center gap-2">
+          Only auto-post clips the Brain scores ≥
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={minScore}
+            onChange={(e) => saveMinScore(Number(e.target.value))}
+            className="w-16 rounded-lg border border-ink-border bg-ink px-2 py-1 text-fog focus:border-brand focus:outline-none"
+          />
+          <span className="text-xs text-fog/40">(0 = post everything)</span>
+        </label>
+      </div>
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
@@ -270,6 +298,37 @@ function BrainPanel() {
             </h3>
             <p className="mt-1 whitespace-pre-wrap text-fog/70">{playbook.avoid}</p>
           </div>
+          {playbook.experiments && playbook.experiments.length > 0 && (
+            <div className="rounded-xl border border-brand/30 bg-ink p-3 sm:col-span-2">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+                🧪 Running experiments
+              </h3>
+              <ul className="mt-1 space-y-1.5">
+                {playbook.experiments.map((e) => (
+                  <li key={e.id} className="text-fog/80">
+                    {e.hypothesis}
+                    <span className="block text-xs text-fog/40">
+                      Variant clips: “{e.instruction}”
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-fog/40">
+                New clips rotate between these variants and a control group —
+                the next analysis declares winners.
+              </p>
+            </div>
+          )}
+          {playbook.experimentResults && (
+            <div className="rounded-xl bg-ink p-3 sm:col-span-2">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                Last experiment results
+              </h3>
+              <p className="mt-1 whitespace-pre-wrap text-fog/70">
+                {playbook.experimentResults}
+              </p>
+            </div>
+          )}
           <p className="text-xs text-fog/40 sm:col-span-2">
             Last analyzed {new Date(playbook.updatedAt).toLocaleString()}
           </p>

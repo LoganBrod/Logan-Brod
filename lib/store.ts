@@ -62,12 +62,31 @@ export interface LiveSession {
   events: LiveEvent[];
 }
 
+export interface Experiment {
+  id: string;
+  /** What we're testing and why, e.g. "Question hooks outperform stakes hooks" */
+  hypothesis: string;
+  /** Concrete instruction the pipeline applies verbatim to variant clips */
+  instruction: string;
+}
+
 export interface Playbook {
   updatedAt: string;
   summary: string;
   momentGuidelines: string;
   hookGuidelines: string;
   avoid: string;
+  /** Active A/B experiments (≤3) proposed by the last analysis */
+  experiments?: Experiment[];
+  /** Verdicts on the previous round's experiments */
+  experimentResults?: string;
+}
+
+export interface BrainScore {
+  /** 0-100 predicted performance */
+  score: number;
+  reason: string;
+  at: string;
 }
 
 export interface PromoSettings {
@@ -120,6 +139,10 @@ export interface Clip {
   caption?: string;
   posted?: PostedInfo;
   metrics?: ClipMetrics;
+  /** Brain's pre-post performance prediction */
+  brainScore?: BrainScore;
+  /** "control" or the id of the active experiment this clip tests */
+  experimentId?: string;
   createdAt: string;
 }
 
@@ -138,6 +161,8 @@ interface Store {
   clips: Clip[];
   promo?: PromoSettings;
   autoPost?: boolean;
+  /** Auto-post only clips the Brain scores at least this high (0 = gate off) */
+  minScore?: number;
   liveSessions?: LiveSession[];
   playbook?: Playbook;
 }
@@ -253,6 +278,17 @@ export function getAutoPost(): boolean {
 export function setAutoPost(value: boolean) {
   const store = read();
   store.autoPost = value;
+  write(store);
+}
+
+export function getMinScore(): number {
+  const v = read().minScore;
+  return typeof v === "number" && v > 0 ? Math.min(100, v) : 0;
+}
+
+export function setMinScore(value: number) {
+  const store = read();
+  store.minScore = Math.max(0, Math.min(100, Math.round(value)));
   write(store);
 }
 

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAutoPost,
+  getMinScore,
   getPromoSettings,
   setAutoPost,
+  setMinScore,
   updatePromoSettings,
 } from "@/lib/store";
 import { xConfigured } from "@/lib/postx";
@@ -14,6 +16,7 @@ export async function GET() {
   return NextResponse.json({
     ...getPromoSettings(),
     autoPost: getAutoPost(),
+    minScore: getMinScore(),
     canPost: xConfigured(),
   });
 }
@@ -24,6 +27,7 @@ export async function PUT(req: NextRequest) {
     typeof v === "string" ? v.slice(0, max) : undefined;
 
   if (typeof body.autoPost === "boolean") setAutoPost(body.autoPost);
+  if (isFinite(Number(body.minScore))) setMinScore(Number(body.minScore));
 
   const updated = updatePromoSettings({
     enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
@@ -40,5 +44,10 @@ export async function PUT(req: NextRequest) {
         ? Math.min(10, Number(body.durationSec))
         : undefined,
   });
-  return NextResponse.json({ ...updated, autoPost: getAutoPost(), canPost: xConfigured() });
+  return NextResponse.json({
+    ...updated,
+    autoPost: getAutoPost(),
+    minScore: getMinScore(),
+    canPost: xConfigured(),
+  });
 }

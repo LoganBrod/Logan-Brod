@@ -25,6 +25,15 @@ interface Clip {
   notes?: string;
   posted?: { platform: string; id: string; url: string; at: string };
   metrics?: { views: number; likes: number; reposts: number; updatedAt: string };
+  brainScore?: { score: number; reason: string; at: string };
+  experimentId?: string;
+  autoPost?: boolean;
+}
+
+interface Experiment {
+  id: string;
+  hypothesis: string;
+  instruction: string;
 }
 
 interface VideoDetail {
@@ -75,6 +84,8 @@ export default function Workbench({ id }: { id: string }) {
   const [captions, setCaptions] = useState(true);
   const [endCard, setEndCard] = useState(true);
   const [canPost, setCanPost] = useState(false);
+  const [minScore, setMinScore] = useState(0);
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [notes, setNotes] = useState("");
   const playerRef = useRef<HTMLVideoElement>(null);
 
@@ -94,7 +105,12 @@ export default function Workbench({ id }: { id: string }) {
       .then((s) => {
         setEndCard(Boolean(s.enabled));
         setCanPost(Boolean(s.canPost));
+        setMinScore(Number(s.minScore) || 0);
       })
+      .catch(() => {});
+    fetch("/api/evolve")
+      .then((r) => r.json())
+      .then((p) => setExperiments(p?.experiments ?? []))
       .catch(() => {});
   }, [load]);
 
@@ -405,16 +421,22 @@ export default function Workbench({ id }: { id: string }) {
           <p className="text-sm text-fog/40">No clips yet — cut one above.</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {video.clips.map((clip) => (
-              <ClipCard
-                key={clip.id}
-                clip={clip}
-                canPost={canPost}
-                onChanged={load}
-                onDelete={() => deleteClip(clip.id)}
-                onRegenerate={() => regenerate(clip.id)}
-              />
-            ))}
+            {[...video.clips]
+              .sort(
+                (a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1)
+              )
+              .map((clip) => (
+                <ClipCard
+                  key={clip.id}
+                  clip={clip}
+                  canPost={canPost}
+                  minScore={minScore}
+                  experiments={experiments}
+                  onChanged={load}
+                  onDelete={() => deleteClip(clip.id)}
+                  onRegenerate={() => regenerate(clip.id)}
+                />
+              ))}
           </div>
         )}
       </section>
@@ -425,12 +447,16 @@ export default function Workbench({ id }: { id: string }) {
 function ClipCard({
   clip,
   canPost,
+  minScore,
+  experiments,
   onChanged,
   onDelete,
   onRegenerate,
 }: {
   clip: Clip;
   canPost: boolean;
+  minScore: number;
+  experiments: Experiment[];
   onChanged: () => void;
   onDelete: () => void;
   onRegenerate: () => void;
@@ -475,24 +501,64 @@ function ClipCard({
     onChanged();
   }
 
+  const experiment = experiments.find((e) => e.id === clip.experimentId);
+  const heldByGate =
+    clip.status === "ready" &&
+    !clip.posted &&
+    clip.autoPost &&
+    minScore > 0 &&
+    clip.brainScore &&
+    clip.brainScore.score < minScore;
+
   return (
     <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between gap-2 text-sm">
         <span className="font-mono font-semibold text-fog">
           {fmt(clip.start)} → {fmt(clip.end)}
         </span>
-        <span
-          className={
-            clip.status === "ready"
-              ? "font-semibold text-brand"
-              : clip.status === "error"
-                ? "text-red-400"
-                : "animate-pulse text-fog/60"
-          }
-        >
-          {STATUS_LABEL[clip.status] ?? clip.status}
+        <span className="flex items-center gap-2">
+          {clip.brainScore && (
+            <span
+              title={clip.brainScore.reason}
+              className={
+                "rounded-full px-2 py-0.5 text-xs font-bold " +
+                (clip.brainScore.score >= 70
+                  ? "bg-brand/15 text-brand"
+                  : clip.brainScore.score >= 40
+                    ? "bg-ink-border text-fog/70"
+                    : "bg-red-500/15 text-red-400")
+              }
+            >
+              🧠 {clip.brainScore.score}
+            </span>
+          )}
+          <span
+            className={
+              clip.status === "ready"
+                ? "font-semibold text-brand"
+                : clip.status === "error"
+                  ? "text-red-400"
+                  : "animate-pulse text-fog/60"
+            }
+          >
+            {STATUS_LABEL[clip.status] ?? clip.status}
+          </span>
         </span>
       </div>
+      {clip.brainScore && (
+        <p className="mt-1 text-xs text-fog/50">{clip.brainScore.reason}</p>
+      )}
+      {experiment && (
+        <p className="mt-1 text-xs text-fog/50">
+          🧪 Testing: <span className="text-fog/70">{experiment.hypothesis}</span>
+        </p>
+      )}
+      {heldByGate && (
+        <p className="mt-1 text-xs text-amber-400">
+          Held for review — scored {clip.brainScore!.score}, below your auto-post
+          bar of {minScore}.
+        </p>
+      )}
       {clip.error && <p className="mt-1 text-xs text-red-400">{clip.error}</p>}
 
       {clip.file && !busy && (
@@ -615,12 +681,24 @@ function ClipCard({
           </a>
         )}
         {clip.status === "ready" && (
-          <button
-            onClick={onRegenerate}
-            className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink"
-          >
-            Regenerate hooks
-          </button>
+          <>
+            <button
+              onClick={onRegenerate}
+              className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink"
+            >
+              Regenerate hooks
+            </button>
+            <button
+              onClick={async () => {
+                await fetch(`/api/clips/${clip.id}/score`, { method: "POST" });
+                onChanged();
+              }}
+              title="Re-run the Brain's performance prediction"
+              className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink"
+            >
+              Rescore
+            </button>
+          </>
         )}
         <button
           onClick={onDelete}

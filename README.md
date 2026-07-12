@@ -11,6 +11,10 @@ Turn long footage — streams, sports, podcasts, YouTube videos — into ready-t
 
 Post clips, record their numbers (typed in on each clip card, or fetched from the X API), then hit **Analyze performance** on the dashboard. Claude finds the patterns — which moment types, lengths, and hook styles perform — and writes a playbook that is fed back into the AI moment scanner, the live clipper's picks, and the hook writer. The more clips you rate, the sharper it gets.
 
+**Brain scores.** Every finished clip gets a 0–100 performance prediction judged against the playbook, with a one-line reason. Clips sort by score, and you can set an auto-post bar ("only auto-post clips scoring ≥ 70") — anything below waits in the queue for your call. Rescore any clip after the playbook updates.
+
+**Experiments.** Each analysis also proposes up to 3 A/B experiments ("question hooks beat statement hooks?"). New clips rotate between variants and a control group automatically — variant clips get the experiment's instruction applied to their hooks/captions and a 🧪 tag. The next analysis compares the numbers, declares winners, folds them into the playbook, and proposes fresh experiments. That's the self-evolving part: it doesn't just learn from what you did, it decides what to try next.
+
 ## Posting
 
 Clips wait in the queue for approval by default. Add X API keys (developer.x.com, free tier, Read+Write) to `.env.local` to post from the clip card — or flip on **Auto-post** to have finished clips posted automatically. Views/likes/reposts are stored per clip and feed the learning loop.

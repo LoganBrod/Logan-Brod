@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { CLIPS_DIR, DATA_DIR, WORK_DIR, ensureDirs } from "./paths";
-import { getClip, getPromoSettings, getVideo, updateClip } from "./store";
+import { getClip, getMinScore, getPromoSettings, getVideo, updateClip } from "./store";
 import {
   appendEndCard,
   burnSubtitles,
@@ -14,6 +14,7 @@ import { buildAss } from "./subtitles";
 import { buildEndCardAss } from "./endcard";
 import { generateHooks } from "./hooks";
 import { postClipToX, xConfigured } from "./postx";
+import { experimentInstruction, pickExperiment, scoreClip } from "./evolve";
 
 /**
  * Full clip pipeline: cut/reframe -> transcribe -> burn captions -> append
@@ -29,6 +30,12 @@ export async function processClip(clipId: string): Promise<void> {
   if (!video) {
     updateClip(clipId, { status: "error", error: "Source video not found" });
     return;
+  }
+
+  // Assign this clip to an A/B experiment arm (or control)
+  if (!clip.experimentId) {
+    clip.experimentId = pickExperiment();
+    updateClip(clipId, { experimentId: clip.experimentId });
   }
 
   const source = path.join(DATA_DIR, video.file);
@@ -96,7 +103,8 @@ export async function processClip(clipId: string): Promise<void> {
       const result = await generateHooks(
         transcriptText,
         clip.notes,
-        promo.enabled ? promo.main : undefined
+        promo.enabled ? promo.main : undefined,
+        experimentInstruction(clip.experimentId)
       );
       if (result) {
         updateClip(clipId, { hooks: result.hooks, caption: result.caption });
@@ -105,8 +113,20 @@ export async function processClip(clipId: string): Promise<void> {
       console.error(`Hook generation failed for clip ${clipId}:`, err);
     }
 
-    // 6. Auto-post to X (approval mode when off — clip just waits in the queue)
-    if (clip.autoPost && xConfigured()) {
+    // 6. Brain score — predicted performance against the learned playbook
+    let score: number | null = null;
+    try {
+      score = (await scoreClip(clipId))?.score ?? null;
+    } catch (err) {
+      console.error(`Scoring failed for clip ${clipId}:`, err);
+    }
+
+    // 7. Auto-post to X (approval mode when off — clip just waits in the
+    // queue). The score gate holds low-rated clips for manual review; with
+    // no score available (no key / scoring failed) the gate doesn't block.
+    const minScore = getMinScore();
+    const passesGate = minScore === 0 || score === null || score >= minScore;
+    if (clip.autoPost && xConfigured() && passesGate) {
       updateClip(clipId, { status: "posting" });
       try {
         await postClipToX(clipId);
@@ -140,11 +160,14 @@ export async function regenerateHooks(clipId: string): Promise<void> {
     const result = await generateHooks(
       clip.transcript ?? "",
       clip.notes,
-      promo.enabled ? promo.main : undefined
+      promo.enabled ? promo.main : undefined,
+      experimentInstruction(clip.experimentId)
     );
     if (result) {
       updateClip(clipId, { hooks: result.hooks, caption: result.caption });
     }
+    // Hooks changed — the old score is stale
+    await scoreClip(clipId).catch(() => null);
     updateClip(clipId, { status: "ready" });
   } catch (err) {
     updateClip(clipId, {
