@@ -11,7 +11,13 @@ import VideoTable from "../components/diagnostics/VideoTable";
 import Recommendations from "../components/diagnostics/Recommendations";
 import DeepDive from "../components/diagnostics/DeepDive";
 
-type Platform = "youtube" | "twitch";
+type Platform = "youtube" | "twitch" | "kick";
+
+const PLATFORM_NAMES: Record<Platform, string> = {
+  youtube: "YouTube",
+  twitch: "Twitch",
+  kick: "Kick",
+};
 
 interface ApiResponse extends Diagnostics {
   channel: {
@@ -37,6 +43,12 @@ const PLATFORMS: { id: Platform; label: string; dot: string; placeholder: string
     label: "Twitch",
     dot: "bg-[#9146FF]",
     placeholder: "username or twitch.tv URL",
+  },
+  {
+    id: "kick",
+    label: "Kick",
+    dot: "bg-[#53FC18]",
+    placeholder: "username or kick.com URL",
   },
 ];
 
@@ -90,12 +102,14 @@ export default function DiagnosticsPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 sm:py-14">
       <header className="text-center">
-        <h1 className="text-3xl font-bold sm:text-4xl">
-          Channel <span className="rank-gold">Diagnostics</span>
+        <h1 className="text-3xl font-extrabold uppercase tracking-tight sm:text-4xl">
+          <span className="text-levoz-teal">Data</span> finds the patterns.
+          <br />
+          You get the <span className="text-levoz-teal">growth</span>.
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-gray-400">
-          Analyze any YouTube or Twitch channel to see which videos perform best
-          — and the patterns behind why they win.
+        <p className="mx-auto mt-4 max-w-xl text-sm text-gray-400">
+          LevoZ scans any YouTube, Twitch, or Kick channel to find which videos
+          perform best — and the patterns behind why they win.
         </p>
       </header>
 
@@ -109,8 +123,8 @@ export default function DiagnosticsPage() {
               aria-pressed={platform === p.id}
               className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 platform === p.id
-                  ? "border-roobet-gold bg-roobet-gold/10 text-white"
-                  : "border-roobet-border bg-roobet-card text-gray-400 hover:text-white"
+                  ? "border-levoz-teal bg-levoz-teal/10 text-white"
+                  : "border-levoz-border bg-levoz-card text-gray-400 hover:text-white"
               }`}
             >
               <span className={`h-2 w-2 rounded-full ${p.dot}`} aria-hidden />
@@ -124,12 +138,12 @@ export default function DiagnosticsPage() {
             value={channel}
             onChange={(e) => setChannel(e.target.value)}
             placeholder={activePlatform.placeholder}
-            className="min-w-0 flex-1 rounded-xl border border-roobet-border bg-roobet-card px-4 py-3 text-white placeholder-gray-500 outline-none transition-colors focus:border-roobet-gold"
+            className="min-w-0 flex-1 rounded-xl border border-levoz-border bg-levoz-card px-4 py-3 text-white placeholder-gray-500 outline-none transition-colors focus:border-levoz-teal"
           />
           <button
             type="submit"
             disabled={loading || !channel.trim()}
-            className="gold-gradient shrink-0 rounded-xl px-5 py-3 font-semibold text-black transition-opacity disabled:opacity-40"
+            className="teal-gradient shrink-0 rounded-xl px-5 py-3 font-semibold text-black transition-opacity disabled:opacity-40"
           >
             {loading ? "Analyzing…" : "Analyze"}
           </button>
@@ -165,7 +179,7 @@ export default function DiagnosticsPage() {
 
       {data && (
         <div className="animate-fade-in mt-10 space-y-8">
-          <section className="flex items-center gap-4 rounded-xl border border-roobet-border bg-roobet-card p-4">
+          <section className="flex items-center gap-4 rounded-xl border border-levoz-border bg-levoz-card p-4">
             {data.channel.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -179,12 +193,12 @@ export default function DiagnosticsPage() {
                 href={data.channel.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-lg font-bold text-white hover:text-roobet-gold"
+                className="text-lg font-bold text-white hover:text-levoz-teal"
               >
                 {data.channel.name}
               </a>
               <div className="text-sm text-gray-400">
-                {data.channel.platform === "youtube" ? "YouTube" : "Twitch"}
+                {PLATFORM_NAMES[data.channel.platform]}
                 {data.channel.followers !== null &&
                   ` · ${formatViews(data.channel.followers)} ${
                     data.channel.platform === "youtube" ? "subscribers" : "followers"
@@ -197,7 +211,7 @@ export default function DiagnosticsPage() {
 
           <section>
             <h2 className="mb-3 text-xl font-bold">
-              Why your top videos <span className="rank-gold">win</span>
+              Why your top videos <span className="rank-teal">win</span>
             </h2>
             <InsightGrid insights={data.insights} />
           </section>
@@ -205,7 +219,7 @@ export default function DiagnosticsPage() {
           {data.recommendations.length > 0 && (
             <section>
               <h2 className="mb-1 text-xl font-bold">
-                Improvement <span className="rank-gold">plan</span>
+                Improvement <span className="rank-teal">plan</span>
               </h2>
               <p className="mb-3 text-xs text-gray-500">
                 Your measured patterns cross-referenced against published
@@ -221,7 +235,7 @@ export default function DiagnosticsPage() {
 
           <section>
             <h2 className="mb-3 text-xl font-bold">
-              Videos ranked by <span className="rank-gold">performance</span>
+              Videos ranked by <span className="rank-teal">performance</span>
             </h2>
             <p className="mb-3 text-xs text-gray-500">
               Score blends lifetime views, views-per-day velocity
@@ -238,15 +252,15 @@ export default function DiagnosticsPage() {
 
       {!data && !loading && !error && (
         <div className="mt-12 grid gap-3 text-center text-sm text-gray-500 sm:grid-cols-3">
-          <div className="rounded-xl border border-roobet-border p-4">
+          <div className="rounded-xl border border-levoz-border p-4">
             <div className="text-2xl" aria-hidden>🏆</div>
             <p className="mt-2">Ranks every video by views, velocity & engagement</p>
           </div>
-          <div className="rounded-xl border border-roobet-border p-4">
+          <div className="rounded-xl border border-levoz-border p-4">
             <div className="text-2xl" aria-hidden>🔍</div>
             <p className="mt-2">Finds your best posting day, video length & title patterns</p>
           </div>
-          <div className="rounded-xl border border-roobet-border p-4">
+          <div className="rounded-xl border border-levoz-border p-4">
             <div className="text-2xl" aria-hidden>💡</div>
             <p className="mt-2">Explains why each top performer worked</p>
           </div>

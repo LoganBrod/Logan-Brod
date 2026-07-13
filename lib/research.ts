@@ -10,7 +10,9 @@ export interface WebFinding {
   snippet: string;
 }
 
-const QUERIES: Record<"youtube" | "twitch", string[]> = {
+type ResearchPlatform = "youtube" | "twitch" | "kick";
+
+const QUERIES: Record<ResearchPlatform, string[]> = {
   youtube: [
     "best time and day to post YouTube videos study data",
     "YouTube hashtags and keywords best practices for views",
@@ -20,6 +22,10 @@ const QUERIES: Record<"youtube" | "twitch", string[]> = {
     "best time and day to stream on Twitch for growth study",
     "how to grow a Twitch channel clips strategy best practices",
   ],
+  kick: [
+    "best time and day to stream on Kick for growth",
+    "how to grow a Kick streaming channel best practices clips",
+  ],
 };
 
 // Cache results in the server process so repeated diagnoses don't re-search
@@ -27,7 +33,7 @@ const cache = new Map<string, { findings: WebFinding[]; expiresAt: number }>();
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6h
 
 export async function liveResearch(
-  platform: "youtube" | "twitch"
+  platform: ResearchPlatform
 ): Promise<WebFinding[] | null> {
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) return null;

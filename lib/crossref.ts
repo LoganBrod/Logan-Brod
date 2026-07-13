@@ -24,9 +24,11 @@ function median(nums: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+export type CrossRefPlatform = "youtube" | "twitch" | "kick";
+
 export function crossReference(
   diag: Diagnostics,
-  platform: "youtube" | "twitch"
+  platform: CrossRefPlatform
 ): Recommendation[] {
   const recs: Recommendation[] = [];
   const { videos, insights, summary } = diag;
@@ -177,20 +179,21 @@ export function crossReference(
     });
   }
 
-  // --- Twitch: clips strategy ---
-  if (platform === "twitch") {
+  // --- Twitch / Kick: clips strategy ---
+  if (platform === "twitch" || platform === "kick") {
+    const platformName = platform === "twitch" ? "Twitch" : "Kick";
     const clips = videos
       .filter((v) => v.kind === "clip")
       .sort((a, b) => b.views - a.views);
     const topClip = clips[0];
     recs.push({
       id: "clips",
-      topic: BENCHMARKS.twitchClips.topic,
+      topic: `Clips & discoverability (${platformName})`,
       status: clips.length > 0 ? "opportunity" : "adjust",
       yourData:
         clips.length > 0
           ? `Your top clip ("${topClip.title}") has ${formatViews(topClip.views)} views — your clips show exactly which stream moments resonate.`
-          : "No clips found on your channel — you're missing Twitch's main discoverability lever.",
+          : `No clips found on your channel — you're missing ${platformName}'s main discoverability lever.`,
       industry: BENCHMARKS.twitchClips.guidance,
       action:
         clips.length > 0

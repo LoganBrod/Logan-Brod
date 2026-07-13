@@ -17,6 +17,13 @@ const config: Config = {
           border: "#1E1E3A",
           green: "#00C853",
         },
+        // LevoZ brand (channel diagnostics)
+        levoz: {
+          teal: "#2EE6C8",
+          dark: "#0A0F10",
+          card: "#101719",
+          border: "#1E2D2D",
+        },
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

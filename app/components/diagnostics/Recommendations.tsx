@@ -14,7 +14,7 @@ const STATUS: Record<
   opportunity: {
     label: "Opportunity",
     icon: "◆",
-    classes: "border-roobet-gold/40 bg-roobet-gold/10 text-roobet-gold",
+    classes: "border-levoz-teal/40 bg-levoz-teal/10 text-levoz-teal",
   },
   aligned: {
     label: "Aligned",
@@ -37,7 +37,7 @@ export default function Recommendations({
         return (
           <div
             key={rec.id}
-            className="rounded-xl border border-roobet-border bg-roobet-card p-4"
+            className="rounded-xl border border-levoz-border bg-levoz-card p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold text-white">{rec.topic}</h3>
@@ -64,7 +64,7 @@ export default function Recommendations({
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Do this
                 </dt>
-                <dd className="mt-0.5 font-medium text-roobet-gold">{rec.action}</dd>
+                <dd className="mt-0.5 font-medium text-levoz-teal">{rec.action}</dd>
               </div>
             </dl>
             <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
@@ -85,7 +85,7 @@ export default function Recommendations({
       })}
 
       {webFindings && webFindings.length > 0 && (
-        <div className="rounded-xl border border-roobet-border bg-roobet-card p-4">
+        <div className="rounded-xl border border-levoz-border bg-levoz-card p-4">
           <h3 className="font-semibold text-white">🌐 Fresh from the web</h3>
           <p className="mt-1 text-xs text-gray-500">
             Live research pulled just now to keep the benchmarks current.
@@ -97,7 +97,7 @@ export default function Recommendations({
                   href={f.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-gray-200 underline decoration-dotted hover:text-roobet-gold"
+                  className="font-medium text-gray-200 underline decoration-dotted hover:text-levoz-teal"
                 >
                   {f.title}
                 </a>

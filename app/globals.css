@@ -38,6 +38,19 @@ body {
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  /* LevoZ brand (channel diagnostics) */
+  .teal-gradient {
+    background: linear-gradient(135deg, #2EE6C8, #14B8A6, #0D9488);
+  }
+  .rank-teal {
+    background: linear-gradient(135deg, #2EE6C8 0%, #14B8A6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .levoz-glow {
+    box-shadow: 0 0 32px rgba(46, 230, 200, 0.08);
+  }
 }
 
 /* Custom scrollbar */

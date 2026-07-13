@@ -15,8 +15,8 @@ export default function VideoTable({ videos }: { videos: RankedVideo[] }) {
   const visible = showAll ? videos : videos.slice(0, 15);
 
   return (
-    <div className="rounded-xl border border-roobet-border bg-roobet-card">
-      <ol className="divide-y divide-roobet-border">
+    <div className="rounded-xl border border-levoz-border bg-levoz-card">
+      <ol className="divide-y divide-levoz-border">
         {visible.map((v, i) => (
           <li key={v.id}>
             <a
@@ -52,15 +52,15 @@ export default function VideoTable({ videos }: { videos: RankedVideo[] }) {
                     <span>{formatDuration(v.durationSeconds)}</span>
                   )}
                   <span>{new Date(v.publishedAt).toLocaleDateString()}</span>
-                  <span className="rounded border border-roobet-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
+                  <span className="rounded border border-levoz-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
                     {KIND_LABEL[v.kind] ?? v.kind}
                   </span>
                 </div>
                 {/* Score bar: single gold series, direct-labeled */}
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-roobet-border">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-levoz-border">
                     <div
-                      className="h-full rounded-full bg-roobet-gold"
+                      className="h-full rounded-full bg-levoz-teal"
                       style={{ width: `${Math.max(2, v.score)}%` }}
                     />
                   </div>
@@ -73,7 +73,7 @@ export default function VideoTable({ videos }: { videos: RankedVideo[] }) {
                     {v.reasons.map((r) => (
                       <span
                         key={r}
-                        className="rounded-full border border-roobet-gold/30 bg-roobet-gold/10 px-2 py-0.5 text-[11px] text-roobet-gold"
+                        className="rounded-full border border-levoz-teal/30 bg-levoz-teal/10 px-2 py-0.5 text-[11px] text-levoz-teal"
                       >
                         {r}
                       </span>
@@ -88,7 +88,7 @@ export default function VideoTable({ videos }: { videos: RankedVideo[] }) {
       {videos.length > 15 && (
         <button
           onClick={() => setShowAll(!showAll)}
-          className="w-full border-t border-roobet-border py-3 text-sm text-gray-400 transition-colors hover:text-white"
+          className="w-full border-t border-levoz-border py-3 text-sm text-gray-400 transition-colors hover:text-white"
         >
           {showAll ? "Show top 15 only" : `Show all ${videos.length} videos`}
         </button>

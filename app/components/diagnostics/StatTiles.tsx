@@ -26,7 +26,7 @@ export default function StatTiles({ summary }: { summary: ChannelSummary }) {
       {tiles.map((t) => (
         <div
           key={t.label}
-          className="rounded-xl border border-roobet-border bg-roobet-card px-4 py-3"
+          className="rounded-xl border border-levoz-border bg-levoz-card px-4 py-3"
         >
           <div className="text-2xl font-bold text-white">{t.value}</div>
           <div className="mt-1 text-xs text-gray-400">{t.label}</div>

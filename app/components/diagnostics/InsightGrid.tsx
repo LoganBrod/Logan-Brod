@@ -25,13 +25,13 @@ export default function InsightGrid({ insights }: { insights: Insight[] }) {
       {insights.map((ins) => (
         <div
           key={ins.id}
-          className="rounded-xl border border-roobet-border bg-roobet-card p-4"
+          className="rounded-xl border border-levoz-border bg-levoz-card p-4"
         >
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-400">
             <span aria-hidden>{ICONS[ins.id] ?? "💡"}</span>
             {ins.title}
           </div>
-          <div className="mt-2 font-semibold text-roobet-gold">{ins.finding}</div>
+          <div className="mt-2 font-semibold text-levoz-teal">{ins.finding}</div>
           <p className="mt-1.5 text-sm leading-relaxed text-gray-300">{ins.detail}</p>
         </div>
       ))}

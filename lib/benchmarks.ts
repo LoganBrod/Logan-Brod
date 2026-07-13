@@ -107,9 +107,9 @@ export const BENCHMARKS = {
     sources: [SOURCES.backlinko, SOURCES.vidiq],
   },
   twitchClips: {
-    topic: "Clips & discoverability (Twitch)",
+    topic: "Clips & discoverability",
     guidance:
-      "Twitch discovery is weak in-platform: top streamers grow by clipping stream highlights and reposting to YouTube/Shorts/TikTok. Your most-viewed clips show which moments to repurpose.",
+      "Live-stream platforms have weak in-platform discovery: top streamers grow by clipping stream highlights and reposting to YouTube/Shorts/TikTok. Your most-viewed clips show which moments to repurpose.",
     sources: [SOURCES.twitchAffiliate],
   },
 } as const;

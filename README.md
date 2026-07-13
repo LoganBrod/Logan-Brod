@@ -3,7 +3,7 @@
 Next.js app with two features:
 
 1. **Roobet Wager Leaderboard** (`/`) — real-time wager leaderboard for the **lmb1** Roobet affiliate code
-2. **Channel Diagnostics** (`/diagnostics`) — analyze any YouTube or Twitch channel to see which videos perform best and why
+2. **LevoZ Channel Diagnostics** (`/diagnostics`) — analyze any YouTube, Twitch, or Kick channel to see which videos perform best and why
 
 ## Roobet Wager Leaderboard
 
@@ -15,9 +15,9 @@ A real-time wager leaderboard for the **lmb1** Roobet affiliate code. Pulls data
 - Auto-refreshes every 5 minutes
 - Server-side API proxy keeps your API token secure
 
-## Channel Diagnostics
+## LevoZ Channel Diagnostics
 
-Enter any YouTube channel (`@handle`, URL, or name) or Twitch channel (username or URL) and get:
+LevoZ-branded (dark + teal). Enter any YouTube channel (`@handle`, URL, or name), Twitch channel, or Kick channel (username or URL) and get:
 
 - **Every video ranked 0–100** by a score blending lifetime views, views-per-day velocity, and engagement (likes + comments per view)
 - **"Why it wins" chips on each top video** — e.g. "4.3× your median views", "posted on Saturday, your best day", "title uses winning keyword"
@@ -55,7 +55,7 @@ Connect your Google account (button on the diagnostics page) to unlock private Y
 
 Auth is a standard Google OAuth flow; the refresh token is stored only in an httpOnly cookie in your own browser — no database, and nothing is shared.
 
-**Data sources:** YouTube Data API v3 (up to 200 most recent uploads), Twitch Helix API (up to 100 VODs + 100 clips), YouTube Analytics API v2 (deep dive). All keys and tokens stay server-side.
+**Data sources:** YouTube Data API v3 (up to 200 most recent uploads), Twitch Helix API (up to 100 VODs + 100 clips), Kick site API (VODs + top clips — no key needed, but it sits behind Cloudflare and can occasionally block server-side requests; the app surfaces a clear retry message when that happens), YouTube Analytics API v2 (deep dive). All keys and tokens stay server-side.
 
 ### Getting API keys
 
