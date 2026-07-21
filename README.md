@@ -1,6 +1,6 @@
 # LevoZ
 
-> This repo also contains **[AdZ](./adz/README.md)** — the same learning-brain architecture pivoted to advertising: grade ads on real CTR/purchase data, then generate new image + video creatives from what converts. `cd adz && npm install && npm run dev` (port 3001).
+> This repo also contains **[SellZ](./sellz/README.md)** — the Brain pivoted to marketplace sales: grade eBay/Depop listings on real outcomes, learn why items sell or stall, research comps, diagnose stuck listings, generate better ones (`cd sellz && npm install && npm run dev`, port 3002) — and **[AdZ](./adz/README.md)** — the same learning-brain architecture pivoted to advertising: grade ads on real CTR/purchase data, then generate new image + video creatives from what converts. `cd adz && npm install && npm run dev` (port 3001).
 
 Turn long footage — streams, sports, podcasts, YouTube videos — into ready-to-post vertical clips. Upload a VOD, find the moments three ways, cut to 9:16, burn word-by-word captions, and get AI-written hooks and a caption for every clip.
 
