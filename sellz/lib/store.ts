@@ -1,5 +1,4 @@
-import fs from "fs";
-import { STORE_PATH, ensureDirs } from "./paths";
+import { readRaw, writeRaw } from "./db";
 
 export type Platform = "ebay" | "depop" | "other";
 export type ListingStatus = "draft" | "active" | "sold" | "stale" | "ended";
@@ -114,88 +113,88 @@ interface Store {
   seedListings?: SeedListing[];
 }
 
-function read(): Store {
-  ensureDirs();
+async function read(): Promise<Store> {
+  const raw = await readRaw();
+  if (!raw) return { listings: [] };
   try {
-    return JSON.parse(fs.readFileSync(STORE_PATH, "utf8"));
+    return JSON.parse(raw);
   } catch {
     return { listings: [] };
   }
 }
 
-function write(store: Store) {
-  ensureDirs();
-  const tmp = STORE_PATH + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
-  fs.renameSync(tmp, STORE_PATH);
+async function write(store: Store) {
+  await writeRaw(JSON.stringify(store, null, 2));
 }
 
-export function listListings(): Listing[] {
-  return read().listings;
+export async function listListings(): Promise<Listing[]> {
+  return (await read()).listings;
 }
 
-export function getListing(id: string): Listing | undefined {
-  return read().listings.find((l) => l.id === id);
+export async function getListing(id: string): Promise<Listing | undefined> {
+  return (await read()).listings.find((l) => l.id === id);
 }
 
-export function addListing(listing: Listing) {
-  const store = read();
+export async function addListing(listing: Listing) {
+  const store = await read();
   store.listings.unshift(listing);
-  write(store);
+  await write(store);
 }
 
-export function updateListing(id: string, patch: Partial<Listing>) {
-  const store = read();
+export async function updateListing(id: string, patch: Partial<Listing>) {
+  const store = await read();
   const listing = store.listings.find((l) => l.id === id);
   if (!listing) return;
   Object.assign(listing, patch);
-  write(store);
+  await write(store);
 }
 
-export function deleteListing(id: string) {
-  const store = read();
+export async function deleteListing(id: string) {
+  const store = await read();
   store.listings = store.listings.filter((l) => l.id !== id);
-  write(store);
+  await write(store);
 }
 
-export function getSellerSettings(): SellerSettings {
-  return { ...DEFAULT_SELLER, ...read().seller };
+export async function getSellerSettings(): Promise<SellerSettings> {
+  return { ...DEFAULT_SELLER, ...(await read()).seller };
 }
 
-export function updateSellerSettings(patch: Partial<SellerSettings>): SellerSettings {
-  const store = read();
+export async function updateSellerSettings(
+  patch: Partial<SellerSettings>
+): Promise<SellerSettings> {
+  const store = await read();
   const defined = Object.fromEntries(
     Object.entries(patch).filter(([, v]) => v !== undefined)
   );
   store.seller = { ...DEFAULT_SELLER, ...store.seller, ...defined };
-  write(store);
+  await write(store);
   return store.seller;
 }
 
-export function getPlaybook(): Playbook | undefined {
-  return read().playbook;
+export async function getPlaybook(): Promise<Playbook | undefined> {
+  return (await read()).playbook;
 }
 
-export function setPlaybook(playbook: Playbook) {
-  const store = read();
+export async function setPlaybook(playbook: Playbook) {
+  const store = await read();
   store.playbook = playbook;
-  write(store);
+  await write(store);
 }
 
-export function listSeedListings(): SeedListing[] {
-  return read().seedListings ?? [];
+export async function listSeedListings(): Promise<SeedListing[]> {
+  return (await read()).seedListings ?? [];
 }
 
-export function addSeedListing(seed: SeedListing) {
-  const store = read();
+export async function addSeedListing(seed: SeedListing) {
+  const store = await read();
   store.seedListings = [seed, ...(store.seedListings ?? [])].slice(0, 50);
-  write(store);
+  await write(store);
 }
 
-export function deleteSeedListing(id: string) {
-  const store = read();
+export async function deleteSeedListing(id: string) {
+  const store = await read();
   store.seedListings = (store.seedListings ?? []).filter((s) => s.id !== id);
-  write(store);
+  await write(store);
 }
 
 /** Days from listing to sale (or to now for unsold), null-safe */

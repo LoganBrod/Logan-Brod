@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET() {
-  return NextResponse.json(getPlaybook() ?? null);
+  return NextResponse.json((await getPlaybook()) ?? null);
 }
 
 export async function POST() {

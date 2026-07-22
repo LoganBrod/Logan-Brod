@@ -24,8 +24,8 @@ function requireKey() {
   }
 }
 
-function sellerContext(): string {
-  const s = getSellerSettings();
+async function sellerContext(): Promise<string> {
+  const s = await getSellerSettings();
   if (!s.niche.trim()) return "";
   return `\n\nThe seller:\nSells: ${s.niche}\nPlatforms: ${s.platforms}\nShipping: ${s.shipping || "(not set)"}\nShop style: ${s.style}`;
 }
@@ -99,17 +99,17 @@ Be honest about sample size. Never invent patterns the data doesn't show.`;
 
 export async function analyzePerformance(): Promise<Playbook> {
   requireKey();
-  const informative = listListings().filter(
+  const informative = (await listListings()).filter(
     (l) => l.status === "sold" || ((l.status === "active" || l.status === "stale" || l.status === "ended") && l.outcome)
   );
-  const seeds = listSeedListings();
+  const seeds = await listSeedListings();
   if (informative.length < 3 && seeds.length < 3) {
     throw new Error(
       `Need either 3+ listings with outcomes — sold or stuck (have ${informative.length}) — or 3+ reference listings fed to the Brain (have ${seeds.length}).`
     );
   }
 
-  const previous = getPlaybook();
+  const previous = await getPlaybook();
   const rows = informative
     .sort((a, b) => (b.status === "sold" ? 1 : 0) - (a.status === "sold" ? 1 : 0))
     .map((l, i) => listingRow(l, i + 1))
@@ -139,7 +139,7 @@ export async function analyzePerformance(): Promise<Playbook> {
     model: "claude-opus-4-8",
     max_tokens: 4000,
     thinking: { type: "adaptive" },
-    system: ANALYZE_PROMPT + sellerContext(),
+    system: ANALYZE_PROMPT + (await sellerContext()),
     messages: [
       { role: "user", content: `${ownContext}${seedContext}${experimentContext}` },
     ],
@@ -157,7 +157,7 @@ export async function analyzePerformance(): Promise<Playbook> {
     })),
     updatedAt: new Date().toISOString(),
   };
-  setPlaybook(playbook);
+  await setPlaybook(playbook);
   return playbook;
 }
 
@@ -180,7 +180,7 @@ const COMPS_PROMPT = `You research market comparables for a marketplace seller. 
 
 export async function researchComps(listingId: string): Promise<Comps> {
   requireKey();
-  const listing = getListing(listingId);
+  const listing = await getListing(listingId);
   if (!listing) throw new Error("Listing not found");
 
   const client = new Anthropic();
@@ -219,7 +219,7 @@ export async function researchComps(listingId: string): Promise<Comps> {
     manualNotes: listing.comps?.manualNotes,
     at: new Date().toISOString(),
   };
-  updateListing(listingId, { comps });
+  await updateListing(listingId, { comps });
   return comps;
 }
 
@@ -237,14 +237,14 @@ const SCORE_PROMPT = `You are the performance brain of a marketplace selling too
 
 export async function scoreListing(listingId: string): Promise<BrainScore | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  const listing = getListing(listingId);
+  const listing = await getListing(listingId);
   if (!listing) return null;
 
-  const playbook = getPlaybook();
+  const playbook = await getPlaybook();
   const experiment = playbook?.experiments?.find((e) => e.id === listing.experimentId);
   const system =
     SCORE_PROMPT +
-    sellerContext() +
+    (await sellerContext()) +
     (playbook
       ? `\n\nSeller playbook (from their real sales):\n${playbook.summary}\nListings: ${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "\n\nNo playbook exists yet — judge on general marketplace instincts and say so in the reason.");
@@ -278,7 +278,7 @@ export async function scoreListing(listingId: string): Promise<BrainScore | null
     reason: `${response.parsed_output.reason} Fix: ${response.parsed_output.fix}`,
     at: new Date().toISOString(),
   };
-  updateListing(listingId, { brainScore });
+  await updateListing(listingId, { brainScore });
   return brainScore;
 }
 
@@ -299,11 +299,11 @@ const DIAGNOSE_PROMPT = `You are the performance brain of a marketplace selling 
 
 export async function diagnose(listingId: string): Promise<Diagnosis> {
   requireKey();
-  const listing = getListing(listingId);
+  const listing = await getListing(listingId);
   if (!listing) throw new Error("Listing not found");
 
-  const playbook = getPlaybook();
-  const soldExamples = listListings()
+  const playbook = await getPlaybook();
+  const soldExamples = (await listListings())
     .filter((l) => l.status === "sold")
     .slice(0, 5)
     .map((l) => listingRow(l))
@@ -311,7 +311,7 @@ export async function diagnose(listingId: string): Promise<Diagnosis> {
 
   const system =
     DIAGNOSE_PROMPT +
-    sellerContext() +
+    (await sellerContext()) +
     (playbook
       ? `\n\nSeller playbook:\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");
@@ -344,7 +344,7 @@ export async function diagnose(listingId: string): Promise<Diagnosis> {
     ...response.parsed_output,
     at: new Date().toISOString(),
   };
-  updateListing(listingId, { diagnosis });
+  await updateListing(listingId, { diagnosis });
   return diagnosis;
 }
 
@@ -392,10 +392,10 @@ export async function generateListings(
   if (itemDescription.trim().length < 10) {
     throw new Error("Describe the item — brand, size, condition, flaws, anything a buyer asks");
   }
-  const playbook = getPlaybook();
+  const playbook = await getPlaybook();
   const system =
     GENERATE_PROMPT +
-    sellerContext() +
+    (await sellerContext()) +
     (playbook
       ? `\n\nSeller playbook (from real sales — follow it):\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");
@@ -431,12 +431,12 @@ export async function generateListings(
 }
 
 /** Round-robin a listing into "control" or an active experiment arm. */
-export function pickExperiment(): string {
-  const experiments = getPlaybook()?.experiments ?? [];
+export async function pickExperiment(): Promise<string> {
+  const experiments = (await getPlaybook())?.experiments ?? [];
   if (experiments.length === 0) return "control";
   const arms = ["control", ...experiments.map((e) => e.id)];
   const counts = new Map(arms.map((a) => [a, 0]));
-  for (const l of listListings()) {
+  for (const l of await listListings()) {
     if (l.experimentId && counts.has(l.experimentId)) {
       counts.set(l.experimentId, (counts.get(l.experimentId) ?? 0) + 1);
     }
@@ -446,7 +446,7 @@ export function pickExperiment(): string {
   );
 }
 
-export function experimentInstruction(experimentId?: string): string | undefined {
+export async function experimentInstruction(experimentId?: string): Promise<string | undefined> {
   if (!experimentId || experimentId === "control") return undefined;
-  return getPlaybook()?.experiments?.find((e) => e.id === experimentId)?.instruction;
+  return (await getPlaybook())?.experiments?.find((e) => e.id === experimentId)?.instruction;
 }

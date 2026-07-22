@@ -8,7 +8,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const listing = getListing(params.id);
+  const listing = await getListing(params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -16,7 +16,7 @@ export async function PUT(
   const d = (v: unknown) =>
     typeof v === "string" && isFinite(Date.parse(v)) ? new Date(v).toISOString() : undefined;
 
-  updateListing(listing.id, {
+  await updateListing(listing.id, {
     outcome: {
       views: n(body.views),
       watchers: n(body.watchers),
@@ -29,5 +29,5 @@ export async function PUT(
       updatedAt: new Date().toISOString(),
     },
   });
-  return NextResponse.json(getListing(listing.id));
+  return NextResponse.json(await getListing(listing.id));
 }

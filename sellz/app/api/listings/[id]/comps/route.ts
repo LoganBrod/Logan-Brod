@@ -10,11 +10,11 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const listing = getListing(params.id);
+  const listing = await getListing(params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
     await researchComps(listing.id);
-    return NextResponse.json(getListing(listing.id));
+    return NextResponse.json(await getListing(listing.id));
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Comps research failed" },

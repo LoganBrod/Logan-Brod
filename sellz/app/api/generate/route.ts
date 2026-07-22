@@ -23,12 +23,12 @@ export async function POST(req: NextRequest) {
   try {
     const listings: Listing[] = [];
     for (let i = 0; i < count; i++) {
-      const experimentId = pickExperiment();
+      const experimentId = await pickExperiment();
       const [gen] = await generateListings(
         item,
         platform,
         1,
-        experimentInstruction(experimentId)
+        await experimentInstruction(experimentId)
       );
       const listing: Listing = {
         id: crypto.randomUUID().slice(0, 8),
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         experimentId,
         createdAt: new Date().toISOString(),
       };
-      addListing(listing);
+      await addListing(listing);
       void scoreListing(listing.id);
       listings.push(listing);
     }

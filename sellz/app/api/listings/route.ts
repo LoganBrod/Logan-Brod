@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(listListings());
+  return NextResponse.json(await listListings());
 }
 
 /** Import an existing listing (sold, active, or stuck). */
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     };
   }
 
-  addListing(listing);
+  await addListing(listing);
   if (listing.status === "draft") void scoreListing(listing.id);
   return NextResponse.json(listing);
 }

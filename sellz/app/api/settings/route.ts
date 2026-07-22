@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json({
-    ...getSellerSettings(),
+    ...(await getSellerSettings()),
     hasBrain: Boolean(process.env.ANTHROPIC_API_KEY),
   });
 }
@@ -15,7 +15,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const clean = (v: unknown, max: number) =>
     typeof v === "string" ? v.slice(0, max) : undefined;
-  const updated = updateSellerSettings({
+  const updated = await updateSellerSettings({
     niche: clean(body.niche, 400),
     platforms: clean(body.platforms, 200),
     shipping: clean(body.shipping, 300),

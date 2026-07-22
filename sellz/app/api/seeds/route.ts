@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(listSeedListings());
+  return NextResponse.json(await listSeedListings());
 }
 
 export async function POST(req: NextRequest) {
@@ -19,19 +19,19 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  addSeedListing({
+  await addSeedListing({
     id: crypto.randomUUID().slice(0, 8),
     description,
     source: typeof body.source === "string" ? body.source.trim().slice(0, 300) : undefined,
     stats: typeof body.stats === "string" ? body.stats.trim().slice(0, 100) : undefined,
     addedAt: new Date().toISOString(),
   });
-  return NextResponse.json(listSeedListings());
+  return NextResponse.json(await listSeedListings());
 }
 
 export async function DELETE(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  deleteSeedListing(id);
-  return NextResponse.json(listSeedListings());
+  await deleteSeedListing(id);
+  return NextResponse.json(await listSeedListings());
 }
