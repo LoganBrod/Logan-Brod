@@ -18,7 +18,7 @@ export default function Reveal({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.05, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -3 }}
-      className={className}
+      className={`min-w-0 ${className}`}
     >
       {children}
     </motion.div>

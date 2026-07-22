@@ -35,7 +35,7 @@ export default function RootLayout({
         </div>
         <ToastProvider>
           <Sidebar />
-          <main className="relative ml-60 min-h-screen px-8 py-8">
+          <main className="relative min-h-screen px-4 py-5 sm:ml-60 sm:px-8 sm:py-8">
             <div className="mx-auto max-w-5xl">
               <PageTransition>{children}</PageTransition>
             </div>

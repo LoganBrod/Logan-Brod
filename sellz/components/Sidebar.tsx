@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
@@ -12,67 +13,153 @@ const NAV = [
   { href: "/listings", label: "Listings", icon: TagIcon },
 ];
 
-export default function Sidebar() {
-  const pathname = usePathname();
-
+function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col border-r border-ink-border/60 bg-ink-deep/95 backdrop-blur">
-      <Link href="/" className="group flex items-center gap-2 px-6 py-6">
-        <span className="text-2xl font-extrabold tracking-tight text-fog">
-          Levo<span className="text-brand">Z</span>
-        </span>
-      </Link>
-      <nav className="flex-1 space-y-1 px-3">
-        {NAV.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+    <nav className="flex-1 space-y-1 px-3">
+      {NAV.map((item) => {
+        const active = pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+          >
+            {active && (
+              <motion.span
+                layoutId="sidebar-active"
+                className="absolute inset-0 rounded-xl bg-brand/10 shadow-glow"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            {active && (
+              <motion.span
+                layoutId="sidebar-active-bar"
+                className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            <span
+              className={
+                "relative z-10 transition-colors " +
+                (active ? "text-brand" : "text-fog/50 group-hover:text-fog/80")
+              }
             >
-              {active && (
-                <motion.span
-                  layoutId="sidebar-active"
-                  className="absolute inset-0 rounded-xl bg-brand/10 shadow-glow"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                />
-              )}
-              {active && (
-                <motion.span
-                  layoutId="sidebar-active-bar"
-                  className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                />
-              )}
-              <span
-                className={
-                  "relative z-10 transition-colors " +
-                  (active ? "text-brand" : "text-fog/50 group-hover:text-fog/80")
-                }
-              >
-                <item.icon />
-              </span>
-              <span
-                className={
-                  "relative z-10 transition-colors " +
-                  (active ? "text-fog" : "text-fog/60 group-hover:text-fog/90")
-                }
-              >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="space-y-3 border-t border-ink-border/60 px-6 py-4">
-        <ThemeToggle />
-        <p className="text-[11px] leading-relaxed text-fog/30">Listings that learn what sells.</p>
-      </div>
-    </aside>
+              <item.icon />
+            </span>
+            <span
+              className={
+                "relative z-10 transition-colors " +
+                (active ? "text-fog" : "text-fog/60 group-hover:text-fog/90")
+              }
+            >
+              {item.label}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
+export default function Sidebar() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-ink-border/60 bg-ink-deep/95 backdrop-blur sm:flex">
+        <Link href="/" className="group flex items-center gap-2 px-6 py-6">
+          <span className="text-2xl font-extrabold tracking-tight text-fog">
+            Levo<span className="text-brand">Z</span>
+          </span>
+        </Link>
+        <NavLinks pathname={pathname} />
+        <div className="space-y-3 border-t border-ink-border/60 px-6 py-4">
+          <ThemeToggle />
+          <p className="text-[11px] leading-relaxed text-fog/30">Listings that learn what sells.</p>
+        </div>
+      </aside>
+
+      {/* Mobile top bar */}
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-border/60 bg-ink-deep/95 px-4 py-3 backdrop-blur sm:hidden">
+        <Link href="/" className="text-xl font-extrabold tracking-tight text-fog">
+          Levo<span className="text-brand">Z</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-ink-border text-fog/70"
+          >
+            <MenuIcon />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-30 bg-black/50 sm:hidden"
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 420, damping: 40 }}
+              className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-ink-border bg-ink-deep px-0 pb-4 sm:hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-6">
+                <span className="text-2xl font-extrabold tracking-tight text-fog">
+                  Levo<span className="text-brand">Z</span>
+                </span>
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Close menu"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-border text-fog/60"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+              <div className="space-y-3 border-t border-ink-border/60 px-6 pt-4">
+                <ThemeToggle />
+                <p className="text-[11px] leading-relaxed text-fog/30">Listings that learn what sells.</p>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+    </svg>
+  );
+}
 function ChartIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

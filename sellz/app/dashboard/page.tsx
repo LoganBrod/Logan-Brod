@@ -138,7 +138,7 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Recent listings */}
-        <section className="lg:col-span-3">
+        <section className="min-w-0 lg:col-span-3">
           <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
             Recent listings
           </h2>
@@ -197,7 +197,7 @@ export default function Dashboard() {
         </section>
 
         {/* Playbook teaser */}
-        <section className="lg:col-span-2">
+        <section className="min-w-0 lg:col-span-2">
           <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
             The Brain
           </h2>

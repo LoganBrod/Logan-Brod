@@ -25,10 +25,10 @@ export default function LandingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-4xl font-extrabold tracking-tight text-fog">
+        <h1 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
           Levo<span className="text-brand">Z</span>
         </h1>
-        <p className="mt-2 max-w-xl text-lg text-fog/60">
+        <p className="mt-2 max-w-xl text-base text-fog/60 sm:text-lg">
           The Brain that learns why your listings sell — and writes better ones.
         </p>
         <p className="mt-4 max-w-xl text-sm leading-relaxed text-fog/50">

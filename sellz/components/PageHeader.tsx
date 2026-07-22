@@ -17,7 +17,7 @@ export default function PageHeader({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <h1 className="text-3xl font-extrabold tracking-tight text-fog">
+      <h1 className="text-2xl font-extrabold tracking-tight text-fog sm:text-3xl">
         {title}
         {accent && <span className="text-brand">{accent}</span>}
       </h1>

@@ -50,7 +50,7 @@ export default function GeneratePage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-extrabold text-fog">
+        <h1 className="text-2xl font-extrabold text-fog sm:text-3xl">
           Write my listing <span className="text-brand">· from what sells</span>
         </h1>
         <p className="mx-auto mt-2 max-w-lg text-sm text-fog/60">
