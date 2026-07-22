@@ -4,11 +4,16 @@ import { STORE_PATH, ensureDirs } from "./paths";
 
 /**
  * Netlify Functions have no persistent disk — a file written during one
- * request can be gone by the next. Locally (plain `next dev`/`next start`)
- * there's no NETLIFY env var, so this falls back to the JSON file on disk
- * exactly as before.
+ * request can be gone by the next. `process.env.NETLIFY` turned out not to
+ * be reliably set inside this Next.js API route runtime (confirmed via
+ * /api/debug/blobs), so detect Netlify via SITE_ID / the Blobs context
+ * instead, both of which are actually present at request time. Locally
+ * (plain `next dev`/`next start`) none of these exist, so it falls back to
+ * the JSON file on disk exactly as before.
  */
-const useBlobs = Boolean(process.env.NETLIFY);
+const useBlobs = Boolean(
+  process.env.SITE_ID || process.env.NETLIFY_SITE_ID || process.env.NETLIFY_BLOBS_CONTEXT
+);
 
 const BLOB_STORE_NAME = "levoz-data";
 const BLOB_KEY = "store.json";
