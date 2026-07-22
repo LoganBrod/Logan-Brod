@@ -23,6 +23,9 @@ export async function PATCH(
   if (["draft", "active", "sold", "stale", "ended"].includes(body.status)) {
     await updateListing(listing.id, { status: body.status });
   }
+  if (typeof body.ebayItemId === "string") {
+    await updateListing(listing.id, { ebayItemId: body.ebayItemId.trim().slice(0, 40) });
+  }
   if (typeof body.manualComps === "string") {
     await updateListing(listing.id, {
       comps: {

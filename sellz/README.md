@@ -25,8 +25,29 @@ Open [http://localhost:3002](http://localhost:3002) (the clipper is 3000, AdZ is
 
 Only `ANTHROPIC_API_KEY` is needed — it powers grading, analysis, comps research (via Claude's web search), diagnosis, and generation.
 
+## eBay auto-sync (optional)
+
+Connecting an eBay Developer app lets the Brain page pull each listing's views and sold price/date automatically instead of you typing them into the Outcome tab.
+
+1. In the [eBay Developer Portal](https://developer.ebay.com/), grab your app's **App ID (Client ID)** and **Cert ID (Client Secret)**.
+2. Under your app's **User Tokens** settings, create a **RuName**. Set its "Your auth accepted URL" to `https://<your-deployed-domain>/api/ebay/callback` — this has to be a real `https://` address; eBay won't redirect to `localhost`. If you're testing locally, tunnel your dev server with something like [ngrok](https://ngrok.com) and use that tunnel's URL here instead.
+3. Add to `.env.local` (and to the same names in your host's environment variables, e.g. Netlify's site settings):
+   ```
+   EBAY_CLIENT_ID=...
+   EBAY_CLIENT_SECRET=...
+   EBAY_RUNAME=...
+   EBAY_ENV=production   # or "sandbox" while testing
+   ```
+4. On the Brain page, click **Connect eBay account**, log in, and grant access. Then on any eBay listing, paste its item ID (from the listing's URL) into the Outcome tab and hit **Sync from eBay**.
+
+Notes on what this can and can't do: views come from eBay's Analytics API, sold price/date from the Fulfillment (orders) API — both scoped read-only to your own account. Watcher count isn't pulled automatically (eBay doesn't expose it cleanly through these APIs) and stays manual. The order lookup only checks your most recent 50 orders, so it may miss a very old sale.
+
+## Deploying (Netlify)
+
+This repo includes `netlify.toml` wired for Netlify's official Next.js runtime. One thing to know: local dev stores data in `./data/store.json` on disk, but Netlify's functions have no persistent disk, so the deployed app automatically switches to [Netlify Blobs](https://docs.netlify.com/blobs/overview/) instead (see `lib/db.ts`) — no setup needed beyond deploying normally, Blobs works out of the box on Netlify.
+
 ## Notes
 
-- Data lives in `./data` (gitignored) — your sales numbers stay on your machine.
+- Local data lives in `./data` (gitignored) — your sales numbers stay on your machine. On Netlify it lives in Netlify Blobs instead (see above).
 - The generator/diagnoser never invents brands, sizes, measurements, or condition details you didn't state.
 - Comps research depends on what web search can reach; sold-price data is patchy for some categories — the paste-your-own-comps field covers the gap (checking eBay's sold filter yourself takes 30 seconds and is the best data).

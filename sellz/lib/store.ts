@@ -58,6 +58,8 @@ export interface Listing {
   diagnosis?: Diagnosis;
   /** "control" or the id of the active experiment this listing tests */
   experimentId?: string;
+  /** Real eBay item ID (from the listing's URL) — lets us auto-sync outcome data */
+  ebayItemId?: string;
   createdAt: string;
 }
 
@@ -106,11 +108,21 @@ export const DEFAULT_SELLER: SellerSettings = {
   style: "honest, detailed, no fluff",
 };
 
+export interface EbayTokens {
+  env: "sandbox" | "production";
+  accessToken: string;
+  refreshToken: string;
+  /** ISO timestamp the access token expires at */
+  accessTokenExpiresAt: string;
+  connectedAt: string;
+}
+
 interface Store {
   listings: Listing[];
   seller?: SellerSettings;
   playbook?: Playbook;
   seedListings?: SeedListing[];
+  ebay?: EbayTokens;
 }
 
 async function read(): Promise<Store> {
@@ -194,6 +206,22 @@ export async function addSeedListing(seed: SeedListing) {
 export async function deleteSeedListing(id: string) {
   const store = await read();
   store.seedListings = (store.seedListings ?? []).filter((s) => s.id !== id);
+  await write(store);
+}
+
+export async function getEbayTokens(): Promise<EbayTokens | undefined> {
+  return (await read()).ebay;
+}
+
+export async function setEbayTokens(tokens: EbayTokens) {
+  const store = await read();
+  store.ebay = tokens;
+  await write(store);
+}
+
+export async function clearEbayTokens() {
+  const store = await read();
+  delete store.ebay;
   await write(store);
 }
 

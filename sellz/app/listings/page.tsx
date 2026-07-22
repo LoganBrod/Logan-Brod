@@ -38,6 +38,7 @@ interface Listing {
     manualNotes?: string;
   };
   brainScore?: { score: number; reason: string };
+  ebayItemId?: string;
   diagnosis?: {
     text: string;
     rewrittenTitle: string;
@@ -310,6 +311,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [manualComps, setManualComps] = useState(l.comps?.manualNotes ?? "");
+  const [ebayItemId, setEbayItemId] = useState(l.ebayItemId ?? "");
   const [o, setO] = useState({
     views: l.outcome?.views ?? 0,
     watchers: l.outcome?.watchers ?? 0,
@@ -490,6 +492,49 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
           {tab === "outcome" && (
             <div className="rounded-xl bg-ink p-3 text-sm">
               <SectionLabel>Outcome</SectionLabel>
+              {l.platform === "ebay" && (
+                <div className="mt-2 flex flex-wrap items-end gap-2 border-b border-ink-border pb-3">
+                  <label className="min-w-0 flex-1 space-y-0.5">
+                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">
+                      eBay item ID
+                    </span>
+                    <input
+                      value={ebayItemId}
+                      onChange={(e) => setEbayItemId(e.target.value)}
+                      placeholder="e.g. 123456789012"
+                      className="w-full rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+                    />
+                  </label>
+                  <button
+                    onClick={() =>
+                      act(
+                        "link-ebay",
+                        `/api/listings/${l.id}`,
+                        {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ ebayItemId }),
+                        },
+                        "Linked to eBay listing"
+                      )
+                    }
+                    disabled={busyAction !== null}
+                    className="shrink-0 rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() =>
+                      act("ebay-sync", `/api/listings/${l.id}/ebay-sync`, undefined, "Synced from eBay")
+                    }
+                    disabled={busyAction !== null || !l.ebayItemId}
+                    title={!l.ebayItemId ? "Save an eBay item ID first" : undefined}
+                    className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+                  >
+                    {busyAction === "ebay-sync" ? "Syncing…" : "Sync from eBay"}
+                  </button>
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap items-end gap-2">
                 {(
                   [

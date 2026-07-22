@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
@@ -34,8 +35,106 @@ export default function BrainPage() {
         subtitle="Every grade, diagnosis, and draft listing traces back to what's set here."
       />
       <SellerPanel />
+      <Suspense fallback={null}>
+        <IntegrationsPanel />
+      </Suspense>
       <BrainPanel />
     </div>
+  );
+}
+
+interface EbayStatus {
+  configured: boolean;
+  connected: boolean;
+  env?: string;
+  connectedAt?: string;
+}
+
+function IntegrationsPanel() {
+  const toast = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<EbayStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function load() {
+    fetch("/api/ebay/status")
+      .then((r) => r.json())
+      .then(setStatus)
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get("ebay") === "connected") {
+      toast.push("eBay account connected");
+      load();
+      router.replace("/brain");
+    }
+    const err = searchParams.get("ebayError");
+    if (err) {
+      toast.push(decodeURIComponent(err), "error");
+      router.replace("/brain");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function disconnect() {
+    setBusy(true);
+    await fetch("/api/ebay/disconnect", { method: "POST" });
+    toast.push("eBay disconnected");
+    load();
+    setBusy(false);
+  }
+
+  if (!status) return null;
+
+  return (
+    <Reveal index={2}>
+      <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
+        <h2 className="text-lg font-extrabold text-fog">Integrations</h2>
+        <p className="mt-1 text-sm text-fog/60">
+          Connect eBay to auto-pull views and sold price/date instead of typing them in.
+        </p>
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-ink p-4">
+          <div className="min-w-0">
+            <p className="font-semibold text-fog">eBay</p>
+            {!status.configured ? (
+              <p className="mt-0.5 text-xs text-fog/40">
+                Not configured — set EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, and EBAY_RUNAME in .env.local
+              </p>
+            ) : status.connected ? (
+              <p className="mt-0.5 text-xs text-brand">
+                Connected ({status.env})
+                {status.connectedAt && ` · since ${new Date(status.connectedAt).toLocaleDateString()}`}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-fog/40">Not connected</p>
+            )}
+          </div>
+          {status.configured &&
+            (status.connected ? (
+              <button
+                onClick={disconnect}
+                disabled={busy}
+                className="shrink-0 rounded-lg bg-ink-border px-4 py-2 text-sm font-semibold text-fog transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <a
+                href="/api/ebay/connect"
+                className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim"
+              >
+                Connect eBay account
+              </a>
+            ))}
+        </div>
+      </section>
+    </Reveal>
   );
 }
 
