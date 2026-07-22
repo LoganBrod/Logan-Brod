@@ -1,4 +1,5 @@
 import fs from "fs";
+import { getStore } from "@netlify/blobs";
 import { STORE_PATH, ensureDirs } from "./paths";
 
 /**
@@ -12,14 +13,22 @@ const useBlobs = Boolean(process.env.NETLIFY);
 const BLOB_STORE_NAME = "levoz-data";
 const BLOB_KEY = "store.json";
 
-async function getBlobStore() {
-  const { getStore } = await import("@netlify/blobs");
+function getBlobStore() {
+  // Netlify normally auto-configures getStore() from the request environment.
+  // If that ever isn't wired up correctly, an explicit siteID + token (a
+  // Netlify Personal Access Token, set as NETLIFY_BLOBS_TOKEN) bypasses
+  // auto-detection entirely as a fallback.
+  const siteID = process.env.SITE_ID;
+  const token = process.env.NETLIFY_BLOBS_TOKEN;
+  if (siteID && token) {
+    return getStore({ name: BLOB_STORE_NAME, consistency: "strong", siteID, token });
+  }
   return getStore({ name: BLOB_STORE_NAME, consistency: "strong" });
 }
 
 export async function readRaw(): Promise<string | null> {
   if (useBlobs) {
-    const store = await getBlobStore();
+    const store = getBlobStore();
     return (await store.get(BLOB_KEY, { type: "text" })) ?? null;
   }
   ensureDirs();
@@ -32,7 +41,7 @@ export async function readRaw(): Promise<string | null> {
 
 export async function writeRaw(json: string): Promise<void> {
   if (useBlobs) {
-    const store = await getBlobStore();
+    const store = getBlobStore();
     await store.set(BLOB_KEY, json);
     return;
   }
