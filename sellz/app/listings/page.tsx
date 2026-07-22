@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import ScoreRing from "@/components/ScoreRing";
+import Reveal from "@/components/Reveal";
+import { CardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 interface Listing {
   id: string;
@@ -42,7 +47,7 @@ interface Listing {
 }
 
 const field =
-  "w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none";
+  "w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none transition-colors";
 
 const STATUS_COLOR: Record<string, string> = {
   sold: "text-brand",
@@ -53,7 +58,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function ListingsPage() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<Listing[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -65,7 +70,7 @@ export default function ListingsPage() {
     load();
   }, [load]);
 
-  const pending = listings.some((l) => l.source === "generated" && !l.brainScore);
+  const pending = (listings ?? []).some((l) => l.source === "generated" && !l.brainScore);
   useEffect(() => {
     if (!pending) return;
     const t = setInterval(load, 4000);
@@ -74,13 +79,21 @@ export default function ListingsPage() {
 
   return (
     <div className="space-y-6">
+      <motion.h1
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-2xl font-extrabold text-fog"
+      >
+        Listings
+      </motion.h1>
+
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
         <button
           onClick={() => setImportOpen(!importOpen)}
           className="flex w-full items-center justify-between text-left"
         >
           <div>
-            <h1 className="text-xl font-extrabold text-fog">Import a listing</h1>
+            <h2 className="text-xl font-extrabold text-fog">Import a listing</h2>
             <p className="text-sm text-fog/60">
               Feed the Brain your history — sold listings AND the ones that never
               moved. Both teach it.
@@ -88,24 +101,42 @@ export default function ListingsPage() {
           </div>
           <span className="text-fog/40">{importOpen ? "▲" : "▼"}</span>
         </button>
-        {importOpen && <ImportForm onDone={() => load()} />}
+        <AnimatePresence initial={false}>
+          {importOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <ImportForm onDone={() => load()} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
       <section>
         <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-          Listings
+          {listings ? `${listings.length} listing${listings.length === 1 ? "" : "s"}` : "Listings"}
         </h2>
-        {listings.length === 0 ? (
+        {!listings ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        ) : listings.length === 0 ? (
           <p className="text-sm text-fog/40">
             Nothing yet — import your history above, or generate listings from
-            the Brain page.
+            the Generate page.
           </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {[...listings]
               .sort((a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1))
-              .map((l) => (
-                <ListingCard key={l.id} listing={l} onChanged={load} />
+              .map((l, i) => (
+                <Reveal key={l.id} index={i}>
+                  <ListingCard listing={l} onChanged={load} />
+                </Reveal>
               ))}
           </div>
         )}
@@ -115,6 +146,7 @@ export default function ListingsPage() {
 }
 
 function ImportForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
   const [f, setF] = useState({
     title: "",
     platform: "ebay",
@@ -157,6 +189,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
       setF({ ...f, title: "", description: "", price: "", views: "", watchers: "", offers: "", soldPrice: "" });
+      toast.push("Listing imported");
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
@@ -225,6 +258,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
 }
 
 function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
+  const toast = useToast();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [manualComps, setManualComps] = useState(l.comps?.manualNotes ?? "");
@@ -243,12 +277,13 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
     });
   }
 
-  async function act(key: string, url: string, init?: RequestInit) {
+  async function act(key: string, url: string, init?: RequestInit, successMsg?: string) {
     setBusyAction(key);
     setActionError(null);
     try {
       const res = await fetch(url, init ?? { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
+      if (successMsg) toast.push(successMsg);
       onChanged();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed");
@@ -258,25 +293,14 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
   }
 
   return (
-    <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
+    <motion.div
+      layout
+      className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card transition-colors hover:border-brand/30"
+    >
       <div className="flex items-center justify-between gap-2 text-sm">
         <span className="min-w-0 truncate font-semibold text-fog">{l.title}</span>
         <span className="flex shrink-0 items-center gap-2">
-          {l.brainScore && (
-            <span
-              title={l.brainScore.reason}
-              className={
-                "rounded-full px-2 py-0.5 text-xs font-bold " +
-                (l.brainScore.score >= 70
-                  ? "bg-brand/15 text-brand"
-                  : l.brainScore.score >= 40
-                    ? "bg-ink-border text-fog/70"
-                    : "bg-red-500/15 text-red-400")
-              }
-            >
-              🧠 {l.brainScore.score}
-            </span>
-          )}
+          {l.brainScore && <ScoreRing score={l.brainScore.score} size={36} reason={l.brainScore.reason} />}
           <select
             value={l.status}
             onChange={(e) =>
@@ -330,7 +354,9 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
             Comps
           </h3>
           <button
-            onClick={() => act("comps", `/api/listings/${l.id}/comps`)}
+            onClick={() =>
+              act("comps", `/api/listings/${l.id}/comps`, undefined, "Comps updated")
+            }
             disabled={busyAction !== null}
             className="rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
           >
@@ -361,11 +387,16 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
           />
           <button
             onClick={() =>
-              act("manual", `/api/listings/${l.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ manualComps }),
-              })
+              act(
+                "manual",
+                `/api/listings/${l.id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ manualComps }),
+                },
+                "Comps saved"
+              )
             }
             className="shrink-0 rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
           >
@@ -403,11 +434,16 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
           ))}
           <button
             onClick={() =>
-              act("outcome", `/api/listings/${l.id}/outcome`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(o),
-              })
+              act(
+                "outcome",
+                `/api/listings/${l.id}/outcome`,
+                {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(o),
+                },
+                "Outcome saved"
+              )
             }
             className="rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
           >
@@ -417,40 +453,46 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       </div>
 
       {/* Diagnosis */}
-      {l.diagnosis && (
-        <div className="mt-3 rounded-xl border border-amber-400/30 bg-ink p-3 text-sm">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">
-            Why it isn't selling
-          </h3>
-          <p className="mt-1 text-xs text-fog/80">{l.diagnosis.text}</p>
-          <div className="mt-2 rounded-lg bg-ink-card p-2 text-xs">
-            <p className="font-bold text-fog">{l.diagnosis.rewrittenTitle}</p>
-            <p className="mt-1 whitespace-pre-wrap text-fog/70">
-              {l.diagnosis.rewrittenDescription}
-            </p>
-            <p className="mt-1 font-semibold text-brand">
-              Suggested price: ${l.diagnosis.suggestedPrice}
-            </p>
-            <button
-              onClick={() =>
-                copy(
-                  `${l.diagnosis!.rewrittenTitle}\n\n${l.diagnosis!.rewrittenDescription}`,
-                  "rewrite"
-                )
-              }
-              className="mt-1 rounded bg-ink-border px-2 py-0.5 text-fog transition hover:bg-brand hover:text-ink"
-            >
-              {copied === "rewrite" ? "Copied!" : "Copy rewrite"}
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {l.diagnosis && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-3 overflow-hidden rounded-xl border border-amber-400/30 bg-ink p-3 text-sm"
+          >
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">
+              Why it isn't selling
+            </h3>
+            <p className="mt-1 text-xs text-fog/80">{l.diagnosis.text}</p>
+            <div className="mt-2 rounded-lg bg-ink-card p-2 text-xs">
+              <p className="font-bold text-fog">{l.diagnosis.rewrittenTitle}</p>
+              <p className="mt-1 whitespace-pre-wrap text-fog/70">
+                {l.diagnosis.rewrittenDescription}
+              </p>
+              <p className="mt-1 font-semibold text-brand">
+                Suggested price: ${l.diagnosis.suggestedPrice}
+              </p>
+              <button
+                onClick={() =>
+                  copy(
+                    `${l.diagnosis!.rewrittenTitle}\n\n${l.diagnosis!.rewrittenDescription}`,
+                    "rewrite"
+                  )
+                }
+                className="mt-1 rounded bg-ink-border px-2 py-0.5 text-fog transition hover:bg-brand hover:text-ink"
+              >
+                {copied === "rewrite" ? "Copied!" : "Copy rewrite"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {actionError && <p className="mt-2 text-xs text-red-400">{actionError}</p>}
 
       <div className="mt-3 flex items-center gap-2 text-sm">
         <button
-          onClick={() => act("score", `/api/listings/${l.id}/score`)}
+          onClick={() => act("score", `/api/listings/${l.id}/score`, undefined, "Rescored")}
           disabled={busyAction !== null}
           className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
         >
@@ -468,13 +510,13 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
         <button
           onClick={() => {
             if (confirm("Delete this listing?"))
-              act("delete", `/api/listings/${l.id}`, { method: "DELETE" });
+              act("delete", `/api/listings/${l.id}`, { method: "DELETE" }, "Deleted");
           }}
           className="ml-auto rounded-lg px-2 py-1.5 text-fog/40 hover:text-red-400"
         >
           Delete
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

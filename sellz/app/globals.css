@@ -4,13 +4,9 @@
 
 body {
   background-color: #141b1d;
-  background-image: radial-gradient(
-    ellipse 80% 50% at 50% -10%,
-    rgba(45, 212, 191, 0.07),
-    transparent
-  );
   color: #c9d2d3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -19,6 +15,7 @@ body {
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #1b2426;
@@ -26,4 +23,27 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #313e42;
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
+.bg-noise-gradient {
+  background-image: radial-gradient(
+      ellipse 60% 40% at 15% -10%,
+      rgba(45, 212, 191, 0.1),
+      transparent
+    ),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(45, 212, 191, 0.06), transparent);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.07) 37%,
+    rgba(255, 255, 255, 0.03) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }

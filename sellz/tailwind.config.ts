@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./app/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: ["./app/**/*.{js,ts,jsx,tsx,mdx}", "./components/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
@@ -19,6 +19,23 @@ const config: Config = {
       },
       boxShadow: {
         card: "0 4px 24px rgba(0,0,0,0.25)",
+        glow: "0 0 40px rgba(45,212,191,0.12)",
+      },
+      keyframes: {
+        blob: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "33%": { transform: "translate(4%, -6%) scale(1.08)" },
+          "66%": { transform: "translate(-3%, 4%) scale(0.96)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      animation: {
+        blob: "blob 18s ease-in-out infinite",
+        "blob-slow": "blob 26s ease-in-out infinite reverse",
+        shimmer: "shimmer 1.8s linear infinite",
       },
     },
   },

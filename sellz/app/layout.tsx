@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
+import Sidebar from "@/components/Sidebar";
+import PageTransition from "@/components/PageTransition";
+import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
   title: "SellZ — listings that learn",
@@ -16,28 +18,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        <header className="sticky top-0 z-10 border-b border-ink-border/60 bg-ink/85 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-            <Link href="/" className="group inline-block">
-              <span className="text-2xl font-extrabold tracking-tight text-fog">
-                Sell<span className="text-brand">Z</span>
-              </span>
-              <span className="mt-0.5 block h-[3px] w-2/3 rounded-full bg-brand transition-all group-hover:w-full" />
-            </Link>
-            <nav className="flex items-center gap-4 text-sm font-semibold">
-              <Link href="/" className="text-fog/70 transition hover:text-brand">
-                Brain
-              </Link>
-              <Link
-                href="/listings"
-                className="text-fog/70 transition hover:text-brand"
-              >
-                Listings
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -left-40 -top-40 h-[32rem] w-[32rem] animate-blob rounded-full bg-brand/10 blur-3xl" />
+          <div className="absolute -right-32 top-1/3 h-[26rem] w-[26rem] animate-blob-slow rounded-full bg-brand/5 blur-3xl" />
+        </div>
+        <ToastProvider>
+          <Sidebar />
+          <main className="relative ml-60 min-h-screen px-8 py-8">
+            <div className="mx-auto max-w-5xl">
+              <PageTransition>{children}</PageTransition>
+            </div>
+          </main>
+        </ToastProvider>
       </body>
     </html>
   );

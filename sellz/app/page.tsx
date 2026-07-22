@@ -1,399 +1,288 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import AnimatedNumber from "@/components/AnimatedNumber";
+import Reveal from "@/components/Reveal";
+import { Skeleton } from "@/components/Skeleton";
+
+interface Listing {
+  id: string;
+  title: string;
+  platform: string;
+  price: number;
+  status: "draft" | "active" | "sold" | "stale" | "ended";
+  source: "imported" | "generated";
+  outcome?: { soldPrice?: number; listedAt?: string; soldAt?: string };
+  brainScore?: { score: number };
+  createdAt: string;
+}
 
 interface Playbook {
   updatedAt: string;
   summary: string;
-  listingGuidelines: string;
-  pricingGuidelines: string;
-  avoid: string;
-  experiments?: { id: string; hypothesis: string; instruction: string }[];
-  experimentResults?: string;
 }
 
-interface SeedListing {
-  id: string;
-  description: string;
-  source?: string;
-  stats?: string;
-}
+const STATUS_DOT: Record<string, string> = {
+  sold: "bg-brand",
+  stale: "bg-amber-400",
+  active: "bg-fog/50",
+  draft: "bg-fog/30",
+  ended: "bg-fog/20",
+};
 
-const field =
-  "w-full rounded-lg border border-ink-border bg-ink px-2 py-1.5 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none";
+function daysBetween(a?: string, b?: string): number | null {
+  if (!a || !b) return null;
+  const start = Date.parse(a);
+  const end = Date.parse(b);
+  if (!isFinite(start) || !isFinite(end)) return null;
+  return Math.max(0, Math.round((end - start) / 86400000));
+}
 
 export default function Dashboard() {
+  const [listings, setListings] = useState<Listing[] | null>(null);
+  const [playbook, setPlaybook] = useState<Playbook | null>(null);
+
+  useEffect(() => {
+    fetch("/api/listings").then((r) => r.json()).then(setListings).catch(() => setListings([]));
+    fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
+  }, []);
+
+  const stats = useMemo(() => {
+    if (!listings) return null;
+    const sold = listings.filter((l) => l.status === "sold");
+    const decided = listings.filter((l) => ["sold", "stale", "ended"].includes(l.status));
+    const revenue = sold.reduce((sum, l) => sum + (l.outcome?.soldPrice ?? 0), 0);
+    const sellTimes = sold
+      .map((l) => daysBetween(l.outcome?.listedAt, l.outcome?.soldAt))
+      .filter((d): d is number => d !== null);
+    const avgDays = sellTimes.length
+      ? sellTimes.reduce((a, b) => a + b, 0) / sellTimes.length
+      : null;
+    const sellThrough = decided.length ? (sold.length / decided.length) * 100 : null;
+    return {
+      total: listings.length,
+      sold: sold.length,
+      revenue,
+      avgDays,
+      sellThrough,
+    };
+  }, [listings]);
+
+  const recent = useMemo(
+    () => (listings ? [...listings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5) : []),
+    [listings]
+  );
+
   return (
-    <div className="space-y-6">
-      <SellerPanel />
-      <GeneratePanel />
-      <BrainPanel />
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-3xl font-extrabold tracking-tight text-fog">
+          Sell<span className="text-brand">Z</span>
+        </h1>
+        <p className="mt-1 text-fog/50">
+          Listings that learn what sells — one loop at a time.
+        </p>
+      </motion.div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {!stats ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="mt-3 h-7 w-20" />
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard label="Listings" value={<AnimatedNumber value={stats.total} />} index={0} />
+            <StatCard
+              label="Sold"
+              value={<AnimatedNumber value={stats.sold} />}
+              sub={stats.sellThrough !== null ? `${stats.sellThrough.toFixed(0)}% sell-through` : undefined}
+              index={1}
+            />
+            <StatCard
+              label="Revenue"
+              value={<AnimatedNumber value={stats.revenue} prefix="$" />}
+              index={2}
+            />
+            <StatCard
+              label="Avg. days to sell"
+              value={stats.avgDays !== null ? <AnimatedNumber value={stats.avgDays} decimals={1} /> : "—"}
+              index={3}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <QuickAction
+          href="/generate"
+          title="Write a listing"
+          desc="Describe an item, get playbook-driven drafts"
+          index={0}
+        />
+        <QuickAction
+          href="/listings"
+          title="Import history"
+          desc="Feed sold + stuck listings to the Brain"
+          index={1}
+        />
+        <QuickAction
+          href="/brain"
+          title="Analyze performance"
+          desc="Turn outcomes into a sharper playbook"
+          index={2}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Recent listings */}
+        <section className="lg:col-span-3">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+            Recent listings
+          </h2>
+          {!listings ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : recent.length === 0 ? (
+            <p className="text-sm text-fog/40">
+              Nothing yet —{" "}
+              <Link href="/listings" className="text-brand hover:underline">
+                import your history
+              </Link>{" "}
+              or{" "}
+              <Link href="/generate" className="text-brand hover:underline">
+                generate a listing
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {recent.map((l, i) => (
+                <Reveal key={l.id} index={i}>
+                  <Link
+                    href="/listings"
+                    className="flex items-center gap-3 rounded-xl border border-ink-border bg-ink-card px-4 py-3 shadow-card transition hover:border-brand/40"
+                  >
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[l.status]}`} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fog">
+                      {l.title}
+                    </span>
+                    <span className="shrink-0 text-xs text-fog/40">
+                      {l.platform} · ${l.price}
+                    </span>
+                    {l.brainScore && (
+                      <span
+                        className={
+                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold " +
+                          (l.brainScore.score >= 70
+                            ? "bg-brand/15 text-brand"
+                            : l.brainScore.score >= 40
+                              ? "bg-ink-border text-fog/70"
+                              : "bg-red-500/15 text-red-400")
+                        }
+                      >
+                        {l.brainScore.score}
+                      </span>
+                    )}
+                  </Link>
+                </Reveal>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Playbook teaser */}
+        <section className="lg:col-span-2">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+            The Brain
+          </h2>
+          <Reveal>
+            <Link
+              href="/brain"
+              className="block rounded-2xl border border-brand/30 bg-ink-card p-5 shadow-card transition hover:border-brand/60"
+            >
+              {playbook ? (
+                <>
+                  <p className="text-sm text-fog/80">{playbook.summary}</p>
+                  <p className="mt-3 text-xs text-fog/40">
+                    Last analyzed {new Date(playbook.updatedAt).toLocaleDateString()}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-fog/60">
+                  No playbook yet — import a few outcomes or pre-feed reference
+                  listings, then analyze on the Brain page.
+                </p>
+              )}
+              <span className="mt-3 inline-block text-sm font-semibold text-brand">
+                Open Brain →
+              </span>
+            </Link>
+          </Reveal>
+        </section>
+      </div>
     </div>
   );
 }
 
-function SellerPanel() {
-  const [s, setS] = useState({ niche: "", platforms: "", shipping: "", style: "" });
-  const [loaded, setLoaded] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((d) => {
-        setS({ niche: d.niche, platforms: d.platforms, shipping: d.shipping, style: d.style });
-        setLoaded(true);
-      })
-      .catch(() => {});
-  }, []);
-
-  async function save() {
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(s),
-    });
-    if (res.ok) setSaved(true);
-  }
-
-  if (!loaded) return null;
+function StatCard({
+  label,
+  value,
+  sub,
+  index,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  index: number;
+}) {
   return (
-    <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-      <h1 className="text-xl font-extrabold text-fog">What do you sell?</h1>
-      <p className="mt-1 text-sm text-fog/60">
-        Every graded and generated listing is anchored to this.
-      </p>
-      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <label className="space-y-1 sm:col-span-2">
-          <span className="text-fog/50">Niche</span>
-          <textarea
-            rows={2}
-            value={s.niche}
-            onChange={(e) => { setS({ ...s, niche: e.target.value }); setSaved(false); }}
-            placeholder="e.g. Y2K and vintage streetwear — Nike, Carhartt, band tees, sizes M-XL"
-            className={field}
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-fog/50">Platforms</span>
-          <input
-            value={s.platforms}
-            onChange={(e) => { setS({ ...s, platforms: e.target.value }); setSaved(false); }}
-            className={field}
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-fog/50">Shipping</span>
-          <input
-            value={s.shipping}
-            onChange={(e) => { setS({ ...s, shipping: e.target.value }); setSaved(false); }}
-            placeholder="e.g. free US shipping, ships next day"
-            className={field}
-          />
-        </label>
-        <label className="space-y-1 sm:col-span-2">
-          <span className="text-fog/50">Shop style</span>
-          <input
-            value={s.style}
-            onChange={(e) => { setS({ ...s, style: e.target.value }); setSaved(false); }}
-            className={field}
-          />
-        </label>
+    <Reveal index={index}>
+      <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-fog/40">{label}</p>
+        <p className="mt-1 text-2xl font-extrabold text-fog">{value}</p>
+        {sub && <p className="mt-0.5 text-xs text-brand">{sub}</p>}
       </div>
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={save}
-          className="rounded-lg bg-brand px-6 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim"
-        >
-          Save
-        </button>
-        {saved && <span className="text-sm text-brand">Saved ✓</span>}
-      </div>
-    </section>
+    </Reveal>
   );
 }
 
-function GeneratePanel() {
-  const router = useRouter();
-  const [item, setItem] = useState("");
-  const [platform, setPlatform] = useState("ebay");
-  const [count, setCount] = useState(2);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function generate() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item, platform, count }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      router.push("/listings");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function QuickAction({
+  href,
+  title,
+  desc,
+  index,
+}: {
+  href: string;
+  title: string;
+  desc: string;
+  index: number;
+}) {
   return (
-    <section className="rounded-2xl border border-brand/30 bg-ink-card p-6 shadow-card">
-      <h2 className="text-lg font-extrabold text-fog">
-        Write my listing <span className="text-brand">· from what sells</span>
-      </h2>
-      <p className="mt-1 text-sm text-fog/60">
-        Describe the item — brand, size, condition, flaws, anything a buyer would
-        ask. Drafts follow the playbook, get Brain-scored, and rotate through
-        experiments.
-      </p>
-      <textarea
-        rows={3}
-        value={item}
-        onChange={(e) => setItem(e.target.value)}
-        placeholder="e.g. Carhartt Detroit jacket, brown duck canvas, size L, blanket lined, 90s, small paint fleck on left cuff, zipper works"
-        className={`mt-4 ${field}`}
-      />
-      <div className="mt-3 flex flex-wrap items-end gap-3 text-sm">
-        <label className="space-y-1">
-          <span className="text-fog/50">Platform</span>
-          <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={field}>
-            <option value="ebay">eBay</option>
-            <option value="depop">Depop</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="text-fog/50">Variants</span>
-          <input
-            type="number"
-            min={1}
-            max={3}
-            value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
-            className="w-20 rounded-lg border border-ink-border bg-ink px-2 py-1.5 text-fog focus:border-brand focus:outline-none"
-          />
-        </label>
-        <button
-          onClick={generate}
-          disabled={busy || item.trim().length < 10}
-          className="rounded-lg bg-brand px-6 py-2 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
-        >
-          {busy ? "Writing…" : "Generate listings"}
-        </button>
-      </div>
-      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-    </section>
-  );
-}
-
-function BrainPanel() {
-  const [playbook, setPlaybook] = useState<Playbook | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [seeds, setSeeds] = useState<SeedListing[]>([]);
-  const [seedOpen, setSeedOpen] = useState(false);
-  const [seedDesc, setSeedDesc] = useState("");
-  const [seedStats, setSeedStats] = useState("");
-  const [seedError, setSeedError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
-    fetch("/api/seeds").then((r) => r.json()).then(setSeeds).catch(() => {});
-  }, []);
-
-  async function analyze() {
-    setAnalyzing(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/evolve", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Analysis failed");
-      setPlaybook(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
-    } finally {
-      setAnalyzing(false);
-    }
-  }
-
-  async function addSeed() {
-    setSeedError(null);
-    const res = await fetch("/api/seeds", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: seedDesc, stats: seedStats }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setSeedError(data.error ?? "Couldn't add reference");
-      return;
-    }
-    setSeeds(data);
-    setSeedDesc("");
-    setSeedStats("");
-  }
-
-  async function removeSeed(id: string) {
-    const res = await fetch(`/api/seeds?id=${id}`, { method: "DELETE" });
-    if (res.ok) setSeeds(await res.json());
-  }
-
-  return (
-    <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-extrabold text-fog">
-            Brain <span className="text-brand">· learns why things sell</span>
-          </h2>
-          <p className="text-sm text-fog/60">
-            Import listings with outcomes — sold AND stuck — then analyze. The
-            playbook steers grading, diagnosis, and every generated listing.
-          </p>
-        </div>
-        <button
-          onClick={analyze}
-          disabled={analyzing}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
-        >
-          {analyzing ? "Analyzing…" : "Analyze sales"}
-        </button>
-      </div>
-      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-
-      <div className="mt-4 rounded-xl border border-ink-border bg-ink p-3 text-sm">
-        <button
-          onClick={() => setSeedOpen(!seedOpen)}
-          className="flex w-full items-center justify-between text-left"
-        >
-          <span className="font-semibold text-fog">
-            Pre-feed the Brain{" "}
-            <span className="text-xs font-normal text-fog/40">
-              — {seeds.length} reference listing{seeds.length === 1 ? "" : "s"}.
-              Describe listings in your niche that sold well to bootstrap the
-              playbook.
-            </span>
-          </span>
-          <span className="text-fog/40">{seedOpen ? "▲" : "▼"}</span>
-        </button>
-        {seedOpen && (
-          <div className="mt-3 space-y-3">
-            <textarea
-              value={seedDesc}
-              onChange={(e) => setSeedDesc(e.target.value)}
-              rows={2}
-              maxLength={600}
-              placeholder="e.g. 'Vintage Carhartt Detroit L, title led with brand+model+size, 12 photos incl. flaws close-up, priced $95 (comps 80-110), sold in 3 days with 8 watchers.'"
-              className={`${field} bg-ink-card`}
-            />
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={seedStats}
-                onChange={(e) => setSeedStats(e.target.value)}
-                placeholder="Stats (optional), e.g. sold in 3 days"
-                className={`${field} min-w-0 flex-1 bg-ink-card`}
-              />
-              <button
-                onClick={addSeed}
-                disabled={seedDesc.trim().length < 10}
-                className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-            {seedError && <p className="text-xs text-red-400">{seedError}</p>}
-            {seeds.length > 0 && (
-              <ul className="space-y-1.5">
-                {seeds.map((s) => (
-                  <li key={s.id} className="flex items-start gap-2 text-xs">
-                    <span className="min-w-0 flex-1 text-fog/70">
-                      {s.description}
-                      {s.stats && <span className="text-brand"> · {s.stats}</span>}
-                    </span>
-                    <button
-                      onClick={() => removeSeed(s.id)}
-                      className="shrink-0 text-fog/40 hover:text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-
-      {playbook && (
-        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-          <div className="rounded-xl bg-ink p-3 sm:col-span-2">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
-              Why things sell (and don't)
-            </h3>
-            <p className="mt-1 text-fog/80">{playbook.summary}</p>
-          </div>
-          <div className="rounded-xl bg-ink p-3">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-              Listings
-            </h3>
-            <p className="mt-1 whitespace-pre-wrap text-fog/70">
-              {playbook.listingGuidelines}
-            </p>
-          </div>
-          <div className="rounded-xl bg-ink p-3">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-              Pricing
-            </h3>
-            <p className="mt-1 whitespace-pre-wrap text-fog/70">
-              {playbook.pricingGuidelines}
-            </p>
-          </div>
-          <div className="rounded-xl bg-ink p-3 sm:col-span-2">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-              Avoiding
-            </h3>
-            <p className="mt-1 whitespace-pre-wrap text-fog/70">{playbook.avoid}</p>
-          </div>
-          {playbook.experiments && playbook.experiments.length > 0 && (
-            <div className="rounded-xl border border-brand/30 bg-ink p-3 sm:col-span-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
-                🧪 Running experiments
-              </h3>
-              <ul className="mt-1 space-y-1.5">
-                {playbook.experiments.map((e) => (
-                  <li key={e.id} className="text-fog/80">
-                    {e.hypothesis}
-                    <span className="block text-xs text-fog/40">
-                      Variant listings: “{e.instruction}”
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs text-fog/40">
-                Generated listings rotate between these variants and a control
-                group — the next analysis declares winners.
-              </p>
-            </div>
-          )}
-          {playbook.experimentResults && (
-            <div className="rounded-xl bg-ink p-3 sm:col-span-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-                Last experiment results
-              </h3>
-              <p className="mt-1 whitespace-pre-wrap text-fog/70">
-                {playbook.experimentResults}
-              </p>
-            </div>
-          )}
-          <p className="text-xs text-fog/40 sm:col-span-2">
-            Last analyzed {new Date(playbook.updatedAt).toLocaleString()}
-          </p>
-        </div>
-      )}
-    </section>
+    <Reveal index={index}>
+      <Link
+        href={href}
+        className="group block rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card transition hover:border-brand/50"
+      >
+        <p className="font-bold text-fog">{title}</p>
+        <p className="mt-1 text-sm text-fog/50">{desc}</p>
+        <span className="mt-3 inline-block text-sm font-semibold text-brand transition group-hover:translate-x-1">
+          →
+        </span>
+      </Link>
+    </Reveal>
   );
 }
