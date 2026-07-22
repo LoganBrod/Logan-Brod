@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: HomeIcon },
@@ -64,8 +65,9 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-ink-border/60 px-6 py-4 text-[11px] leading-relaxed text-fog/30">
-        Listings that learn what sells.
+      <div className="space-y-3 border-t border-ink-border/60 px-6 py-4">
+        <ThemeToggle />
+        <p className="text-[11px] leading-relaxed text-fog/30">Listings that learn what sells.</p>
       </div>
     </aside>
   );

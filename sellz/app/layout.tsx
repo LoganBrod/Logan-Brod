@@ -10,13 +10,24 @@ export const metadata: Metadata = {
     "Grade your marketplace listings on real sales, learn why items sell (or don't), research comps, and generate better listings.",
 };
 
+const THEME_INIT_SCRIPT = `
+  try {
+    var stored = localStorage.getItem("levoz-theme");
+    var isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (isDark) document.documentElement.classList.add("dark");
+  } catch (e) {}
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-screen antialiased">
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute -left-40 -top-40 h-[32rem] w-[32rem] animate-blob rounded-full bg-brand/10 blur-3xl" />

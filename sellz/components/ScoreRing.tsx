@@ -19,7 +19,7 @@ export default function ScoreRing({
       style={{
         width: size,
         height: size,
-        background: `conic-gradient(${trackColor} ${deg}deg, #e2e6e7 ${deg}deg)`,
+        background: `conic-gradient(${trackColor} ${deg}deg, rgb(var(--color-ink-border)) ${deg}deg)`,
       }}
     >
       <div
