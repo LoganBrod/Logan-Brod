@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ScoreRing from "@/components/ScoreRing";
 import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
+import ListingPreview from "@/components/ListingPreview";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -422,12 +423,8 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
           className="mt-3"
         >
           {tab === "listing" && (
-            <div className="rounded-xl bg-ink p-3 text-sm">
-              <p className="whitespace-pre-wrap text-fog/80">{l.description}</p>
-              {l.tags.length > 0 && (
-                <p className="mt-1 text-xs text-fog/50">{l.tags.map((t) => `#${t}`).join(" ")}</p>
-              )}
-              {l.photosNote && <p className="mt-1 text-xs text-fog/40">📷 {l.photosNote}</p>}
+            <div>
+              <ListingPreview l={l} />
               <button
                 onClick={() => copy(`${l.title}\n\n${l.description}`, "copy")}
                 className="mt-2 rounded bg-ink-border px-2 py-0.5 text-xs text-fog transition hover:bg-brand hover:text-ink"
