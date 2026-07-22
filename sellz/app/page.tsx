@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import Reveal from "@/components/Reveal";
 import { Skeleton } from "@/components/Skeleton";
+import PageHeader from "@/components/PageHeader";
 
 interface Listing {
   id: string;
@@ -77,18 +77,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h1 className="text-3xl font-extrabold tracking-tight text-fog">
-          Sell<span className="text-brand">Z</span>
-        </h1>
-        <p className="mt-1 text-fog/50">
-          Listings that learn what sells — one loop at a time.
-        </p>
-      </motion.div>
+      <PageHeader
+        title="Levo"
+        accent="Z"
+        subtitle="Listings that learn what sells — one loop at a time."
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

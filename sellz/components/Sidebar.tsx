@@ -18,7 +18,7 @@ export default function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col border-r border-ink-border/60 bg-ink-deep/95 backdrop-blur">
       <Link href="/" className="group flex items-center gap-2 px-6 py-6">
         <span className="text-2xl font-extrabold tracking-tight text-fog">
-          Sell<span className="text-brand">Z</span>
+          Levo<span className="text-brand">Z</span>
         </span>
       </Link>
       <nav className="flex-1 space-y-1 px-3">

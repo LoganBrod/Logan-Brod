@@ -5,7 +5,7 @@ import PageTransition from "@/components/PageTransition";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "SellZ — listings that learn",
+  title: "LevoZ — listings that learn",
   description:
     "Grade your marketplace listings on real sales, learn why items sell (or don't), research comps, and generate better listings.",
 };

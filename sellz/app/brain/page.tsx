@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Reveal from "@/components/Reveal";
+import PageHeader from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
 
 interface Playbook {
@@ -28,13 +29,10 @@ const field =
 export default function BrainPage() {
   return (
     <div className="space-y-6">
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-2xl font-extrabold text-fog"
-      >
-        The Brain
-      </motion.h1>
+      <PageHeader
+        title="The Brain"
+        subtitle="Every grade, diagnosis, and draft listing traces back to what's set here."
+      />
       <SellerPanel />
       <BrainPanel />
     </div>
@@ -123,9 +121,17 @@ function SellerPanel() {
   );
 }
 
+type PlaybookTab = "guidelines" | "avoid" | "experiments";
+const PLAYBOOK_TABS: { key: PlaybookTab; label: string }[] = [
+  { key: "guidelines", label: "Guidelines" },
+  { key: "avoid", label: "Avoid" },
+  { key: "experiments", label: "Experiments" },
+];
+
 function BrainPanel() {
   const toast = useToast();
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
+  const [tab, setTab] = useState<PlaybookTab>("guidelines");
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seeds, setSeeds] = useState<SeedListing[]>([]);
@@ -186,8 +192,7 @@ function BrainPanel() {
               Performance <span className="text-brand">· learns why things sell</span>
             </h2>
             <p className="text-sm text-fog/60">
-              Import listings with outcomes — sold AND stuck — then analyze. The
-              playbook steers grading, diagnosis, and every generated listing.
+              Import listings with outcomes — sold AND stuck — then analyze.
             </p>
           </div>
           <motion.button
@@ -209,127 +214,181 @@ function BrainPanel() {
             <span className="font-semibold text-fog">
               Pre-feed the Brain{" "}
               <span className="text-xs font-normal text-fog/40">
-                — {seeds.length} reference listing{seeds.length === 1 ? "" : "s"}.
-                Describe listings in your niche that sold well to bootstrap the
-                playbook.
+                — {seeds.length} reference listing{seeds.length === 1 ? "" : "s"}
               </span>
             </span>
             <span className="text-fog/40">{seedOpen ? "▲" : "▼"}</span>
           </button>
-          {seedOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="mt-3 space-y-3 overflow-hidden"
-            >
-              <textarea
-                value={seedDesc}
-                onChange={(e) => setSeedDesc(e.target.value)}
-                rows={2}
-                maxLength={600}
-                placeholder="e.g. 'Vintage Carhartt Detroit L, title led with brand+model+size, 12 photos incl. flaws close-up, priced $95 (comps 80-110), sold in 3 days with 8 watchers.'"
-                className={`${field} bg-ink-card`}
-              />
-              <div className="flex flex-wrap gap-2">
-                <input
-                  value={seedStats}
-                  onChange={(e) => setSeedStats(e.target.value)}
-                  placeholder="Stats (optional), e.g. sold in 3 days"
-                  className={`${field} min-w-0 flex-1 bg-ink-card`}
-                />
-                <button
-                  onClick={addSeed}
-                  disabled={seedDesc.trim().length < 10}
-                  className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </div>
-              {seedError && <p className="text-xs text-red-400">{seedError}</p>}
-              {seeds.length > 0 && (
-                <ul className="space-y-1.5">
-                  {seeds.map((s) => (
-                    <li key={s.id} className="flex items-start gap-2 text-xs">
-                      <span className="min-w-0 flex-1 text-fog/70">
-                        {s.description}
-                        {s.stats && <span className="text-brand"> · {s.stats}</span>}
-                      </span>
-                      <button
-                        onClick={() => removeSeed(s.id)}
-                        className="shrink-0 text-fog/40 hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </motion.div>
-          )}
+          <AnimatePresence initial={false}>
+            {seedOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs text-fog/40">
+                    Describe listings in your niche that sold well to bootstrap the
+                    playbook before you have your own data.
+                  </p>
+                  <textarea
+                    value={seedDesc}
+                    onChange={(e) => setSeedDesc(e.target.value)}
+                    rows={2}
+                    maxLength={600}
+                    placeholder="e.g. 'Vintage Carhartt Detroit L, title led with brand+model+size, 12 photos incl. flaws close-up, priced $95 (comps 80-110), sold in 3 days with 8 watchers.'"
+                    className={`${field} bg-ink-card`}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={seedStats}
+                      onChange={(e) => setSeedStats(e.target.value)}
+                      placeholder="Stats (optional), e.g. sold in 3 days"
+                      className={`${field} min-w-0 flex-1 bg-ink-card`}
+                    />
+                    <button
+                      onClick={addSeed}
+                      disabled={seedDesc.trim().length < 10}
+                      className="rounded-lg bg-brand px-4 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {seedError && <p className="text-xs text-red-400">{seedError}</p>}
+                  {seeds.length > 0 && (
+                    <ul className="space-y-1.5">
+                      {seeds.map((s) => (
+                        <li key={s.id} className="flex items-start gap-2 text-xs">
+                          <span className="min-w-0 flex-1 text-fog/70">
+                            {s.description}
+                            {s.stats && <span className="text-brand"> · {s.stats}</span>}
+                          </span>
+                          <button
+                            onClick={() => removeSeed(s.id)}
+                            className="shrink-0 text-fog/40 hover:text-red-400"
+                          >
+                            ✕
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {playbook && (
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div className="rounded-xl bg-ink p-3 sm:col-span-2">
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="rounded-xl border border-brand/20 bg-ink p-4">
               <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
                 Why things sell (and don't)
               </h3>
               <p className="mt-1 text-fog/80">{playbook.summary}</p>
             </div>
-            <div className="rounded-xl bg-ink p-3">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-                Listings
-              </h3>
-              <p className="mt-1 whitespace-pre-wrap text-fog/70">
-                {playbook.listingGuidelines}
-              </p>
+
+            <div className="flex w-fit gap-1 rounded-lg border border-ink-border bg-ink p-1">
+              {PLAYBOOK_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={
+                    "relative rounded-md px-3 py-1.5 text-xs font-semibold transition-colors " +
+                    (tab === t.key ? "text-ink" : "text-fog/60 hover:text-fog")
+                  }
+                >
+                  {tab === t.key && (
+                    <motion.span
+                      layoutId="brain-tab-pill"
+                      className="absolute inset-0 rounded-md bg-brand"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{t.label}</span>
+                </button>
+              ))}
             </div>
-            <div className="rounded-xl bg-ink p-3">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-                Pricing
-              </h3>
-              <p className="mt-1 whitespace-pre-wrap text-fog/70">
-                {playbook.pricingGuidelines}
-              </p>
-            </div>
-            <div className="rounded-xl bg-ink p-3 sm:col-span-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-                Avoiding
-              </h3>
-              <p className="mt-1 whitespace-pre-wrap text-fog/70">{playbook.avoid}</p>
-            </div>
-            {playbook.experiments && playbook.experiments.length > 0 && (
-              <div className="rounded-xl border border-brand/30 bg-ink p-3 sm:col-span-2">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
-                  🧪 Running experiments
-                </h3>
-                <ul className="mt-1 space-y-1.5">
-                  {playbook.experiments.map((e) => (
-                    <li key={e.id} className="text-fog/80">
-                      {e.hypothesis}
-                      <span className="block text-xs text-fog/40">
-                        Variant listings: “{e.instruction}”
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-xs text-fog/40">
-                  Generated listings rotate between these variants and a control
-                  group — the next analysis declares winners.
-                </p>
-              </div>
-            )}
-            {playbook.experimentResults && (
-              <div className="rounded-xl bg-ink p-3 sm:col-span-2">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-                  Last experiment results
-                </h3>
-                <p className="mt-1 whitespace-pre-wrap text-fog/70">
-                  {playbook.experimentResults}
-                </p>
-              </div>
-            )}
-            <p className="text-xs text-fog/40 sm:col-span-2">
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tab}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {tab === "guidelines" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl bg-ink p-3">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                        Listings
+                      </h3>
+                      <p className="mt-1 whitespace-pre-wrap text-fog/70">
+                        {playbook.listingGuidelines}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-ink p-3">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                        Pricing
+                      </h3>
+                      <p className="mt-1 whitespace-pre-wrap text-fog/70">
+                        {playbook.pricingGuidelines}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {tab === "avoid" && (
+                  <div className="rounded-xl bg-ink p-3">
+                    <p className="whitespace-pre-wrap text-fog/70">{playbook.avoid}</p>
+                  </div>
+                )}
+
+                {tab === "experiments" && (
+                  <div className="space-y-3">
+                    {playbook.experiments && playbook.experiments.length > 0 ? (
+                      <div className="rounded-xl border border-brand/30 bg-ink p-3">
+                        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+                          🧪 Running experiments
+                        </h3>
+                        <ul className="mt-1 space-y-1.5">
+                          {playbook.experiments.map((e) => (
+                            <li key={e.id} className="text-fog/80">
+                              {e.hypothesis}
+                              <span className="block text-xs text-fog/40">
+                                Variant listings: "{e.instruction}"
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-2 text-xs text-fog/40">
+                          Generated listings rotate between these variants and a
+                          control group — the next analysis declares winners.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-fog/40">
+                        No experiments running yet — analyze again once you have a
+                        few more outcomes.
+                      </p>
+                    )}
+                    {playbook.experimentResults && (
+                      <div className="rounded-xl bg-ink p-3">
+                        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                          Last experiment results
+                        </h3>
+                        <p className="mt-1 whitespace-pre-wrap text-fog/70">
+                          {playbook.experimentResults}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            <p className="text-xs text-fog/40">
               Last analyzed {new Date(playbook.updatedAt).toLocaleString()}
             </p>
           </div>

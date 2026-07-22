@@ -1,6 +1,6 @@
-# SellZ — listings that learn
+# LevoZ — listings that learn
 
-Third sibling of the Brain family (LevoZ clips, AdZ ads): grade your marketplace listings on **real sales outcomes**, learn why items sell — and why the stuck ones don't — research comps, and generate better listings.
+Third sibling of the Brain family (the LevoZ clipper, AdZ ads) — this one grades your marketplace listings on **real sales outcomes**, learns why items sell — and why the stuck ones don't — researches comps, and generates better listings.
 
 ## The loop
 
@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3002](http://localhost:3002) (LevoZ is 3000, AdZ is 3001).
+Open [http://localhost:3002](http://localhost:3002) (the clipper is 3000, AdZ is 3001).
 
 Only `ANTHROPIC_API_KEY` is needed — it powers grading, analysis, comps research (via Claude's web search), diagnosis, and generation.
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ScoreRing from "@/components/ScoreRing";
 import Reveal from "@/components/Reveal";
+import PageHeader from "@/components/PageHeader";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -57,6 +58,14 @@ const STATUS_COLOR: Record<string, string> = {
   ended: "text-fog/40",
 };
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">
+      {children}
+    </h3>
+  );
+}
+
 export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -79,13 +88,10 @@ export default function ListingsPage() {
 
   return (
     <div className="space-y-6">
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-2xl font-extrabold text-fog"
-      >
-        Listings
-      </motion.h1>
+      <PageHeader
+        title="Listings"
+        subtitle="Feed it sold and stuck listings — grade, research comps, and diagnose what's not moving."
+      />
 
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
         <button
@@ -93,10 +99,9 @@ export default function ListingsPage() {
           className="flex w-full items-center justify-between text-left"
         >
           <div>
-            <h2 className="text-xl font-extrabold text-fog">Import a listing</h2>
+            <h2 className="text-lg font-extrabold text-fog">Import a listing</h2>
             <p className="text-sm text-fog/60">
-              Feed the Brain your history — sold listings AND the ones that never
-              moved. Both teach it.
+              Sold listings AND the ones that never moved — both teach the Brain.
             </p>
           </div>
           <span className="text-fog/40">{importOpen ? "▲" : "▼"}</span>
@@ -147,6 +152,7 @@ export default function ListingsPage() {
 
 function ImportForm({ onDone }: { onDone: () => void }) {
   const toast = useToast();
+  const [outcomeOpen, setOutcomeOpen] = useState(false);
   const [f, setF] = useState({
     title: "",
     platform: "ebay",
@@ -199,57 +205,95 @@ function ImportForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-      <input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Listing title" className={`${field} sm:col-span-2`} />
-      <div className="grid grid-cols-3 gap-3">
-        <select value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })} className={field}>
-          <option value="ebay">eBay</option>
-          <option value="depop">Depop</option>
-          <option value="other">Other</option>
-        </select>
-        <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className={field}>
-          <option value="active">active</option>
-          <option value="sold">sold</option>
-          <option value="stale">stale (not selling)</option>
-          <option value="ended">ended unsold</option>
-        </select>
-        <input type="number" min={0} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="Ask $" className={field} />
+    <div className="mt-5 space-y-5 text-sm">
+      <div className="space-y-3">
+        <SectionLabel>Basics</SectionLabel>
+        <input
+          value={f.title}
+          onChange={(e) => setF({ ...f, title: e.target.value })}
+          placeholder="Listing title"
+          className={field}
+        />
+        <div className="grid grid-cols-3 gap-3">
+          <select value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })} className={field}>
+            <option value="ebay">eBay</option>
+            <option value="depop">Depop</option>
+            <option value="other">Other</option>
+          </select>
+          <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className={field}>
+            <option value="active">active</option>
+            <option value="sold">sold</option>
+            <option value="stale">stale (not selling)</option>
+            <option value="ended">ended unsold</option>
+          </select>
+          <input type="number" min={0} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="Ask $" className={field} />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} placeholder="Category" className={field} />
-        <input value={f.condition} onChange={(e) => setF({ ...f, condition: e.target.value })} placeholder="Condition" className={field} />
+
+      <div className="space-y-3">
+        <SectionLabel>Details</SectionLabel>
+        <div className="grid grid-cols-2 gap-3">
+          <input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} placeholder="Category" className={field} />
+          <input value={f.condition} onChange={(e) => setF({ ...f, condition: e.target.value })} placeholder="Condition" className={field} />
+        </div>
+        <textarea rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Description" className={field} />
+        <div className="grid grid-cols-2 gap-3">
+          <input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="Tags, comma separated" className={field} />
+          <input value={f.photosNote} onChange={(e) => setF({ ...f, photosNote: e.target.value })} placeholder="What the photos show" className={field} />
+        </div>
       </div>
-      <textarea rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Description" className={`${field} sm:col-span-2`} />
-      <input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="Tags, comma separated" className={field} />
-      <input value={f.photosNote} onChange={(e) => setF({ ...f, photosNote: e.target.value })} placeholder="What the photos show" className={field} />
-      <div className="grid grid-cols-6 gap-2 sm:col-span-2">
-        {(
-          [
-            ["views", "views"],
-            ["watchers", "watchers"],
-            ["offers", "offers"],
-            ["soldPrice", "sold $"],
-            ["listedAt", "listed"],
-            ["soldAt", "sold date"],
-          ] as const
-        ).map(([k, label]) => (
-          <label key={k} className="space-y-0.5">
-            <span className="block text-[10px] uppercase tracking-wider text-fog/40">{label}</span>
-            <input
-              type={k === "listedAt" || k === "soldAt" ? "date" : "number"}
-              min={0}
-              value={f[k]}
-              onChange={(e) => setF({ ...f, [k]: e.target.value })}
-              className={field}
-            />
-          </label>
-        ))}
+
+      <div className="rounded-xl border border-ink-border/60 bg-ink/40 p-3">
+        <button
+          onClick={() => setOutcomeOpen(!outcomeOpen)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">
+            Outcome data <span className="font-normal normal-case text-fog/30">— optional, add if you have it</span>
+          </span>
+          <span className="text-fog/40">{outcomeOpen ? "▲" : "▼"}</span>
+        </button>
+        <AnimatePresence initial={false}>
+          {outcomeOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {(
+                  [
+                    ["views", "views"],
+                    ["watchers", "watchers"],
+                    ["offers", "offers"],
+                    ["soldPrice", "sold $"],
+                    ["listedAt", "listed"],
+                    ["soldAt", "sold date"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <label key={k} className="space-y-0.5">
+                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">{label}</span>
+                    <input
+                      type={k === "listedAt" || k === "soldAt" ? "date" : "number"}
+                      min={0}
+                      value={f[k]}
+                      onChange={(e) => setF({ ...f, [k]: e.target.value })}
+                      className={field}
+                    />
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      {error && <p className="text-xs text-red-400 sm:col-span-2">{error}</p>}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
       <button
         onClick={submit}
         disabled={busy || !f.title.trim()}
-        className="rounded-lg bg-brand px-6 py-2 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50 sm:col-span-2"
+        className="w-full rounded-lg bg-brand px-6 py-2 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
       >
         {busy ? "Importing…" : "Import listing"}
       </button>
@@ -257,8 +301,11 @@ function ImportForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+type TabKey = "listing" | "comps" | "outcome" | "diagnosis";
+
 function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
   const toast = useToast();
+  const [tab, setTab] = useState<TabKey>("listing");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [manualComps, setManualComps] = useState(l.comps?.manualNotes ?? "");
@@ -284,6 +331,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       const res = await fetch(url, init ?? { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
       if (successMsg) toast.push(successMsg);
+      if (key === "diagnose") setTab("diagnosis");
       onChanged();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed");
@@ -291,6 +339,13 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       setBusyAction(null);
     }
   }
+
+  const TABS: { key: TabKey; label: string; dot?: boolean }[] = [
+    { key: "listing", label: "Listing" },
+    { key: "comps", label: "Comps", dot: !!l.comps?.summary },
+    { key: "outcome", label: "Outcome" },
+    ...(l.diagnosis ? [{ key: "diagnosis" as const, label: "Diagnosis", dot: true }] : []),
+  ];
 
   return (
     <motion.div
@@ -331,161 +386,178 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       </p>
       {l.brainScore && <p className="mt-1 text-xs text-fog/50">{l.brainScore.reason}</p>}
 
-      <div className="mt-3 rounded-xl bg-ink p-3 text-sm">
-        <p className="whitespace-pre-wrap text-fog/80">{l.description}</p>
-        {l.tags.length > 0 && (
-          <p className="mt-1 text-xs text-fog/50">{l.tags.map((t) => `#${t}`).join(" ")}</p>
-        )}
-        {l.photosNote && (
-          <p className="mt-1 text-xs text-fog/40">📷 {l.photosNote}</p>
-        )}
-        <button
-          onClick={() => copy(`${l.title}\n\n${l.description}`, "copy")}
-          className="mt-2 rounded bg-ink-border px-2 py-0.5 text-xs text-fog transition hover:bg-brand hover:text-ink"
-        >
-          {copied === "copy" ? "Copied!" : "Copy listing"}
-        </button>
-      </div>
-
-      {/* Comps */}
-      <div className="mt-3 rounded-xl bg-ink p-3 text-sm">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-            Comps
-          </h3>
+      <div className="mt-3 flex gap-1 rounded-lg border border-ink-border bg-ink p-1 text-xs">
+        {TABS.map((t) => (
           <button
-            onClick={() =>
-              act("comps", `/api/listings/${l.id}/comps`, undefined, "Comps updated")
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={
+              "relative flex-1 rounded-md px-2 py-1.5 font-semibold transition-colors " +
+              (tab === t.key ? "text-ink" : "text-fog/60 hover:text-fog")
             }
-            disabled={busyAction !== null}
-            className="rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
           >
-            {busyAction === "comps" ? "Researching…" : l.comps?.summary ? "Re-research" : "Research comps"}
-          </button>
-        </div>
-        {l.comps?.summary ? (
-          <div className="mt-1 text-xs text-fog/70">
-            <p>{l.comps.summary}</p>
-            {l.comps.priceLow !== undefined && (
-              <p className="mt-0.5 font-semibold text-brand">
-                ${l.comps.priceLow} – ${l.comps.priceHigh}
-              </p>
-            )}
-            <p className="mt-0.5 text-fog/50">{l.comps.demandNotes}</p>
-          </div>
-        ) : (
-          <p className="mt-1 text-xs text-fog/40">
-            Not researched yet — or paste your own below.
-          </p>
-        )}
-        <div className="mt-2 flex gap-2">
-          <input
-            value={manualComps}
-            onChange={(e) => setManualComps(e.target.value)}
-            placeholder="Paste comps you found (sold prices, links)"
-            className={`${field} bg-ink-card text-xs`}
-          />
-          <button
-            onClick={() =>
-              act(
-                "manual",
-                `/api/listings/${l.id}`,
-                {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ manualComps }),
-                },
-                "Comps saved"
-              )
-            }
-            className="shrink-0 rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-
-      {/* Outcome */}
-      <div className="mt-3 rounded-xl bg-ink p-3 text-sm">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-          Outcome
-        </h3>
-        <div className="mt-1 flex flex-wrap items-end gap-2">
-          {(
-            [
-              ["views", "views"],
-              ["watchers", "watchers"],
-              ["offers", "offers"],
-              ["soldPrice", "sold $"],
-            ] as const
-          ).map(([k, label]) => (
-            <label key={k} className="space-y-0.5">
-              <span className="block text-[10px] uppercase tracking-wider text-fog/40">
-                {label}
-              </span>
-              <input
-                type="number"
-                min={0}
-                value={o[k]}
-                onChange={(e) => setO({ ...o, [k]: e.target.value })}
-                className="w-20 rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+            {tab === t.key && (
+              <motion.span
+                layoutId={`tab-pill-${l.id}`}
+                className="absolute inset-0 rounded-md bg-brand"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
-            </label>
-          ))}
-          <button
-            onClick={() =>
-              act(
-                "outcome",
-                `/api/listings/${l.id}/outcome`,
-                {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(o),
-                },
-                "Outcome saved"
-              )
-            }
-            className="rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
-          >
-            Save
+            )}
+            <span className="relative z-10">
+              {t.label}
+              {t.dot && tab !== t.key && (
+                <span className="ml-1 inline-block h-1 w-1 rounded-full bg-brand align-middle" />
+              )}
+            </span>
           </button>
-        </div>
+        ))}
       </div>
 
-      {/* Diagnosis */}
-      <AnimatePresence>
-        {l.diagnosis && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="mt-3 overflow-hidden rounded-xl border border-amber-400/30 bg-ink p-3 text-sm"
-          >
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">
-              Why it isn't selling
-            </h3>
-            <p className="mt-1 text-xs text-fog/80">{l.diagnosis.text}</p>
-            <div className="mt-2 rounded-lg bg-ink-card p-2 text-xs">
-              <p className="font-bold text-fog">{l.diagnosis.rewrittenTitle}</p>
-              <p className="mt-1 whitespace-pre-wrap text-fog/70">
-                {l.diagnosis.rewrittenDescription}
-              </p>
-              <p className="mt-1 font-semibold text-brand">
-                Suggested price: ${l.diagnosis.suggestedPrice}
-              </p>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+          className="mt-3"
+        >
+          {tab === "listing" && (
+            <div className="rounded-xl bg-ink p-3 text-sm">
+              <p className="whitespace-pre-wrap text-fog/80">{l.description}</p>
+              {l.tags.length > 0 && (
+                <p className="mt-1 text-xs text-fog/50">{l.tags.map((t) => `#${t}`).join(" ")}</p>
+              )}
+              {l.photosNote && <p className="mt-1 text-xs text-fog/40">📷 {l.photosNote}</p>}
               <button
-                onClick={() =>
-                  copy(
-                    `${l.diagnosis!.rewrittenTitle}\n\n${l.diagnosis!.rewrittenDescription}`,
-                    "rewrite"
-                  )
-                }
-                className="mt-1 rounded bg-ink-border px-2 py-0.5 text-fog transition hover:bg-brand hover:text-ink"
+                onClick={() => copy(`${l.title}\n\n${l.description}`, "copy")}
+                className="mt-2 rounded bg-ink-border px-2 py-0.5 text-xs text-fog transition hover:bg-brand hover:text-ink"
               >
-                {copied === "rewrite" ? "Copied!" : "Copy rewrite"}
+                {copied === "copy" ? "Copied!" : "Copy listing"}
               </button>
             </div>
-          </motion.div>
-        )}
+          )}
+
+          {tab === "comps" && (
+            <div className="rounded-xl bg-ink p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <SectionLabel>Comps</SectionLabel>
+                <button
+                  onClick={() => act("comps", `/api/listings/${l.id}/comps`, undefined, "Comps updated")}
+                  disabled={busyAction !== null}
+                  className="rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
+                >
+                  {busyAction === "comps" ? "Researching…" : l.comps?.summary ? "Re-research" : "Research comps"}
+                </button>
+              </div>
+              {l.comps?.summary ? (
+                <div className="mt-1 text-xs text-fog/70">
+                  <p>{l.comps.summary}</p>
+                  {l.comps.priceLow !== undefined && (
+                    <p className="mt-0.5 font-semibold text-brand">
+                      ${l.comps.priceLow} – ${l.comps.priceHigh}
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-fog/50">{l.comps.demandNotes}</p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-fog/40">Not researched yet — or paste your own below.</p>
+              )}
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={manualComps}
+                  onChange={(e) => setManualComps(e.target.value)}
+                  placeholder="Paste comps you found (sold prices, links)"
+                  className={`${field} bg-ink-card text-xs`}
+                />
+                <button
+                  onClick={() =>
+                    act(
+                      "manual",
+                      `/api/listings/${l.id}`,
+                      {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ manualComps }),
+                      },
+                      "Comps saved"
+                    )
+                  }
+                  className="shrink-0 rounded bg-ink-border px-2 py-0.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tab === "outcome" && (
+            <div className="rounded-xl bg-ink p-3 text-sm">
+              <SectionLabel>Outcome</SectionLabel>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                {(
+                  [
+                    ["views", "views"],
+                    ["watchers", "watchers"],
+                    ["offers", "offers"],
+                    ["soldPrice", "sold $"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <label key={k} className="space-y-0.5">
+                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">{label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={o[k]}
+                      onChange={(e) => setO({ ...o, [k]: e.target.value })}
+                      className="w-20 rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+                    />
+                  </label>
+                ))}
+                <button
+                  onClick={() =>
+                    act(
+                      "outcome",
+                      `/api/listings/${l.id}/outcome`,
+                      {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(o),
+                      },
+                      "Outcome saved"
+                    )
+                  }
+                  className="rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tab === "diagnosis" && l.diagnosis && (
+            <div className="rounded-xl border border-amber-400/30 bg-ink p-3 text-sm">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">
+                Why it isn't selling
+              </h3>
+              <p className="mt-1 text-xs text-fog/80">{l.diagnosis.text}</p>
+              <div className="mt-2 rounded-lg bg-ink-card p-2 text-xs">
+                <p className="font-bold text-fog">{l.diagnosis.rewrittenTitle}</p>
+                <p className="mt-1 whitespace-pre-wrap text-fog/70">{l.diagnosis.rewrittenDescription}</p>
+                <p className="mt-1 font-semibold text-brand">
+                  Suggested price: ${l.diagnosis.suggestedPrice}
+                </p>
+                <button
+                  onClick={() =>
+                    copy(`${l.diagnosis!.rewrittenTitle}\n\n${l.diagnosis!.rewrittenDescription}`, "rewrite")
+                  }
+                  className="mt-1 rounded bg-ink-border px-2 py-0.5 text-fog transition hover:bg-brand hover:text-ink"
+                >
+                  {copied === "rewrite" ? "Copied!" : "Copy rewrite"}
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
       </AnimatePresence>
 
       {actionError && <p className="mt-2 text-xs text-red-400">{actionError}</p>}
