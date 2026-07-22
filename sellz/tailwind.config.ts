@@ -10,16 +10,16 @@ const config: Config = {
           dim: "#14b8a6",
         },
         ink: {
-          DEFAULT: "#1b2426",
-          deep: "#141b1d",
-          card: "#212c2f",
-          border: "#313e42",
+          DEFAULT: "#fafbfb",
+          deep: "#eef1f1",
+          card: "#ffffff",
+          border: "#e2e6e7",
         },
-        fog: "#c9d2d3",
+        fog: "#1b2426",
       },
       boxShadow: {
-        card: "0 4px 24px rgba(0,0,0,0.25)",
-        glow: "0 0 40px rgba(45,212,191,0.12)",
+        card: "0 2px 16px rgba(15,30,30,0.08)",
+        glow: "0 0 30px rgba(45,212,191,0.18)",
       },
       keyframes: {
         blob: {

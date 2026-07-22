@@ -9,7 +9,7 @@ export default function ScoreRing({
   size?: number;
   reason?: string;
 }) {
-  const trackColor = score >= 70 ? "#2dd4bf" : score >= 40 ? "#c9d2d3" : "#f87171";
+  const trackColor = score >= 70 ? "#2dd4bf" : score >= 40 ? "#94a3b8" : "#f87171";
   const deg = Math.max(0, Math.min(360, (score / 100) * 360));
 
   return (
@@ -19,7 +19,7 @@ export default function ScoreRing({
       style={{
         width: size,
         height: size,
-        background: `conic-gradient(${trackColor} ${deg}deg, #313e42 ${deg}deg)`,
+        background: `conic-gradient(${trackColor} ${deg}deg, #e2e6e7 ${deg}deg)`,
       }}
     >
       <div

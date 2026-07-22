@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 body {
-  background-color: #141b1d;
-  color: #c9d2d3;
+  background-color: #fafbfb;
+  color: #1b2426;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
 }
 
 ::selection {
-  background: rgba(45, 212, 191, 0.3);
+  background: rgba(45, 212, 191, 0.25);
 }
 
 ::-webkit-scrollbar {
@@ -18,10 +18,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1b2426;
+  background: #f0f2f2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #313e42;
+  background: #d3d9da;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -40,9 +40,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.07) 37%,
-    rgba(255, 255, 255, 0.03) 63%
+    rgba(15, 30, 30, 0.04) 25%,
+    rgba(15, 30, 30, 0.08) 37%,
+    rgba(15, 30, 30, 0.04) 63%
   );
   background-size: 400% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
