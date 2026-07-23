@@ -5,6 +5,7 @@ import type { LeaderboardData, LeaderboardEntry } from "./api/leaderboard/route"
 import Countdown from "./components/Countdown";
 import TopThree from "./components/TopThree";
 import LeaderboardTable from "./components/LeaderboardTable";
+import SiteNav from "./components/SiteNav";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -73,6 +74,8 @@ export default function Home() {
               </p>
             </div>
           </div>
+
+          <SiteNav active="/" />
 
           <div className="text-right">
             {lastRefresh && (
