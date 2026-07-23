@@ -9,6 +9,8 @@ A small Next.js app with a few independent tools:
   sentiment scoring.
 - **`/nba`** — NBA improving players vs market: compares a player's last-10-games scoring
   average to their season average, alongside a snapshot card market price.
+- **`/alerts`** — Watch rules evaluated by a daily Vercel Cron job, with Discord
+  notifications when one trips.
 
 ## Features
 
@@ -43,6 +45,24 @@ A small Next.js app with a few independent tools:
 - Requires `BALLDONTLIE_API_KEY` (free signup). The free tier is rate-limited, so the page
   takes an explicit, comma-separated list of player names (max 10) rather than scanning the
   whole league.
+
+### Alerts (`/alerts`)
+- Two rule types (the engine is built to take more later, e.g. deal alerts and
+  market-dip alerts):
+  - **Buzz spike** — fires when today's Reddit mention count for a player is at least
+    `spikePct`% above the trailing daily average (needs 3 days of baseline history first,
+    minimum 5 mentions, 48h cooldown between fires).
+  - **NBA breakout** — fires when a player's last-10-games PPG minus season PPG crosses
+    your threshold, on the upward transition only (a sustained hot streak pings once).
+- **Storage**: Upstash Redis. Add it in the Vercel dashboard (Storage → Marketplace →
+  Upstash, free tier) — the `UPSTASH_REDIS_REST_*` env vars are injected automatically.
+- **Notifications**: a Discord webhook (`DISCORD_WEBHOOK_URL`). Create one in any server
+  you own: Server Settings → Integrations → Webhooks → New Webhook → Copy URL.
+- **Schedule**: `vercel.json` registers a cron hitting `/api/alerts/check` daily at 13:00
+  UTC. Vercel's Hobby plan allows at most one run per day; on Pro you can tighten the
+  schedule. Cron only runs on the production deployment. Set `CRON_SECRET` to protect the
+  endpoint (Vercel sends it automatically). You can also trigger a check manually from the
+  `/alerts` page.
 
 ## Deploy to Vercel (recommended)
 
