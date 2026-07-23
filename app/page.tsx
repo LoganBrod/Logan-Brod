@@ -1,5 +1,7 @@
 import Link from "next/link";
-import SiteNav from "./components/SiteNav";
+import Sidebar from "./components/Sidebar";
+import PageHeader from "./components/PageHeader";
+import Ticker from "./components/Ticker";
 
 const TOOLS = [
   {
@@ -23,28 +25,35 @@ const TOOLS = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-roobet-dark">
-      <header className="border-b border-roobet-border bg-roobet-card/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="text-white font-bold text-lg">Tools</h1>
-          <SiteNav active="/" />
-        </div>
-      </header>
+    <div className="flex">
+      <Sidebar active="/" />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-3">
-          {TOOLS.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              className="bg-roobet-card border border-roobet-border rounded-2xl p-6 card-glow hover:border-roobet-gold/50 transition-colors"
-            >
-              <h2 className="text-white font-bold text-lg mb-2">{tool.title}</h2>
-              <p className="text-gray-400 text-sm">{tool.description}</p>
-            </Link>
-          ))}
+      <main className="flex-1 min-w-0">
+        <Ticker
+          items={TOOLS.map((t) => ({ label: t.title.toUpperCase(), value: "OPEN", tone: "positive" }))}
+        />
+
+        <div className="max-w-5xl mx-auto px-6 py-10">
+          <PageHeader
+            eyebrow="Live Overview"
+            title="Sports Card Intelligence"
+            subtitle="Deal scanning, player sentiment, and performance-vs-market tools in one place."
+          />
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {TOOLS.map((tool) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="bg-ink-card border border-ink-border rounded-2xl p-6 card-glow hover:border-ink-gold/50 transition-colors"
+              >
+                <h2 className="text-white font-bold text-lg mb-2">{tool.title}</h2>
+                <p className="text-gray-500 text-sm">{tool.description}</p>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

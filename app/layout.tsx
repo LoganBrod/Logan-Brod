@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Playfair_Display } from "next/font/google";
 import "./globals.css";
+
+const serif = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Sports Card Tools",
@@ -12,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-roobet-dark antialiased">{children}</body>
+    <html lang="en" className={serif.variable}>
+      <body className="min-h-screen bg-ink-bg antialiased">{children}</body>
     </html>
   );
 }

@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import SiteNav from "../components/SiteNav";
+import { useCallback, useMemo, useState } from "react";
+import Sidebar from "../components/Sidebar";
+import PageHeader from "../components/PageHeader";
+import StatPanel from "../components/StatPanel";
+import Badge, { type BadgeTone } from "../components/Badge";
+import Ticker from "../components/Ticker";
 import type { BuzzResult } from "../api/buzz/route";
 
-function sentimentLabel(score: number) {
-  if (score > 0.15) return { text: "Positive", className: "text-roobet-green" };
-  if (score < -0.15) return { text: "Negative", className: "text-red-400" };
-  return { text: "Neutral", className: "text-gray-400" };
+function sentimentBadge(score: number): { label: string; tone: BadgeTone } {
+  if (score > 0.15) return { label: "Positive", tone: "positive" };
+  if (score < -0.15) return { label: "Negative", tone: "negative" };
+  return { label: "Neutral", tone: "neutral" };
 }
 
 export default function BuzzPage() {
@@ -38,122 +42,119 @@ export default function BuzzPage() {
     [player]
   );
 
-  const overall = result ? sentimentLabel(result.averageSentiment) : null;
+  const overall = result ? sentimentBadge(result.averageSentiment) : null;
+
+  const tickerItems = useMemo(() => {
+    if (!result || result.topMentions.length === 0) {
+      return [
+        { label: "TRY", value: "ANTHONY EDWARDS", tone: "neutral" as const },
+        { label: "TRY", value: "VICTOR WEMBANYAMA", tone: "neutral" as const },
+      ];
+    }
+    return result.topMentions.slice(0, 8).map((m) => ({
+      label: `r/${m.subreddit}`,
+      value: sentimentBadge(m.sentiment).label.toUpperCase(),
+      tone:
+        m.sentiment > 0.15 ? ("positive" as const) : m.sentiment < -0.15 ? ("negative" as const) : ("neutral" as const),
+    }));
+  }, [result]);
 
   return (
-    <main className="min-h-screen bg-roobet-dark">
-      <header className="border-b border-roobet-border bg-roobet-card/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="text-white font-bold text-lg">Player Social Buzz</h1>
-          <SiteNav active="/buzz" />
-        </div>
-      </header>
+    <div className="flex">
+      <Sidebar active="/buzz" />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <p className="text-gray-400 text-sm mb-6">
-          Pulls recent Reddit mentions for a player (last month) and scores sentiment with a
-          simple keyword lexicon. Twitter/X and Instagram are intentionally excluded — their
-          terms of service prohibit automated scraping, and their official APIs require a paid
-          tier this app doesn&apos;t assume you have.
-        </p>
+      <main className="flex-1 min-w-0">
+        <Ticker items={tickerItems} />
 
-        <form
-          onSubmit={runSearch}
-          className="bg-roobet-card border border-roobet-border rounded-2xl p-6 mb-8 card-glow flex gap-4 flex-wrap"
-        >
-          <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-            <label className="text-gray-500 text-xs uppercase tracking-widest">Player name</label>
-            <input
-              value={player}
-              onChange={(e) => setPlayer(e.target.value)}
-              placeholder="e.g. Anthony Edwards"
-              className="bg-roobet-dark border border-roobet-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-roobet-gold"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading || !player.trim()}
-            className="self-end bg-roobet-gold text-roobet-dark font-semibold rounded-lg px-4 py-2 text-sm hover:brightness-95 disabled:opacity-50 transition"
+        <div className="max-w-5xl mx-auto px-6 py-10">
+          <PageHeader
+            eyebrow="Social Signal"
+            title="Player Social Buzz"
+            subtitle="Recent Reddit mentions for a player, scored with a keyword sentiment lexicon. Twitter/X and Instagram are excluded — automated access violates their terms of service."
+          />
+
+          <form
+            onSubmit={runSearch}
+            className="bg-ink-card border border-ink-border rounded-2xl p-6 mb-8 card-glow flex gap-4 flex-wrap"
           >
-            {loading ? "Searching…" : "Search"}
-          </button>
-        </form>
-
-        {error && (
-          <div className="bg-red-900/20 border border-red-700 rounded-xl p-4 text-red-400 text-sm mb-6">
-            {error}
-          </div>
-        )}
-
-        {result && (
-          <>
-            <div className="bg-roobet-card border border-roobet-border rounded-2xl p-6 mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Stat label="Mentions" value={String(result.mentionCount)} />
-              <Stat
-                label="Overall Sentiment"
-                value={overall?.text ?? "—"}
-                valueClassName={overall?.className}
+            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+              <label className="text-gray-500 text-xs uppercase tracking-widest">Player name</label>
+              <input
+                value={player}
+                onChange={(e) => setPlayer(e.target.value)}
+                placeholder="e.g. Anthony Edwards"
+                className="bg-ink-bg border border-ink-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-ink-gold"
               />
-              <Stat label="Positive" value={String(result.positiveMentions)} valueClassName="text-roobet-green" />
-              <Stat label="Negative" value={String(result.negativeMentions)} valueClassName="text-red-400" />
             </div>
+            <button
+              type="submit"
+              disabled={loading || !player.trim()}
+              className="self-end bg-ink-gold text-ink-bg font-semibold rounded-lg px-4 py-2 text-sm hover:brightness-95 disabled:opacity-50 transition"
+            >
+              {loading ? "Searching…" : "Search"}
+            </button>
+          </form>
 
-            {result.topMentions.length === 0 ? (
-              <p className="text-gray-400 text-center py-12">No recent mentions found.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {result.topMentions.map((m) => {
-                  const label = sentimentLabel(m.sentiment);
-                  return (
-                    <a
-                      key={m.id}
-                      href={m.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-roobet-card border border-roobet-border rounded-xl p-4 hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-white font-medium">{m.title}</p>
-                          <p className="text-gray-600 text-xs mt-1">
-                            r/{m.subreddit} · u/{m.author} · {m.score} upvotes · {m.numComments} comments
-                          </p>
+          {error && (
+            <div className="bg-red-900/20 border border-ink-red rounded-xl p-4 text-ink-red text-sm mb-6">
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <>
+              <StatPanel
+                items={[
+                  { label: "Mentions", value: String(result.mentionCount) },
+                  {
+                    label: "Overall Sentiment",
+                    value: overall?.label ?? "—",
+                    deltaTone:
+                      overall?.tone === "positive" ? "positive" : overall?.tone === "negative" ? "negative" : "neutral",
+                  },
+                  { label: "Positive", value: String(result.positiveMentions), deltaTone: "positive" },
+                  { label: "Negative", value: String(result.negativeMentions), deltaTone: "negative" },
+                ]}
+              />
+
+              {result.topMentions.length === 0 ? (
+                <p className="text-gray-500 text-center py-12">No recent mentions found.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {result.topMentions.map((m) => {
+                    const badge = sentimentBadge(m.sentiment);
+                    return (
+                      <a
+                        key={m.id}
+                        href={m.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-ink-card border border-ink-border rounded-xl p-4 hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-white font-medium">{m.title}</p>
+                            <p className="text-gray-600 text-xs mt-1">
+                              r/{m.subreddit} · u/{m.author} · {m.score} upvotes · {m.numComments} comments
+                            </p>
+                          </div>
+                          <Badge label={badge.label} tone={badge.tone} />
                         </div>
-                        <span className={`text-xs font-bold whitespace-nowrap ${label.className}`}>
-                          {label.text}
-                        </span>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <footer className="border-t border-roobet-border py-6 mt-12">
-        <div className="max-w-5xl mx-auto px-4 text-center text-gray-600 text-xs">
-          <p>Not affiliated with Reddit. Sentiment scoring is a simple heuristic, not a professional analysis.</p>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
-      </footer>
-    </main>
-  );
-}
 
-function Stat({
-  label,
-  value,
-  valueClassName = "text-white",
-}: {
-  label: string;
-  value: string;
-  valueClassName?: string;
-}) {
-  return (
-    <div>
-      <p className="text-gray-500 text-xs uppercase tracking-widest">{label}</p>
-      <p className={`font-bold text-lg mt-0.5 ${valueClassName}`}>{value}</p>
+        <footer className="border-t border-ink-border py-6 mt-12">
+          <div className="max-w-5xl mx-auto px-6 text-center text-gray-600 text-xs">
+            <p>Not affiliated with Reddit. Sentiment scoring is a simple heuristic, not a professional analysis.</p>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }
