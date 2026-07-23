@@ -61,7 +61,13 @@ interface RedditChild {
   };
 }
 
-export async function searchRedditMentions(query: string, limit = 50): Promise<SocialMention[]> {
+export type RedditTimeWindow = "hour" | "day" | "week" | "month" | "year";
+
+export async function searchRedditMentions(
+  query: string,
+  limit = 50,
+  time: RedditTimeWindow = "month"
+): Promise<SocialMention[]> {
   const token = await getRedditToken();
   const base = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
   const headers: Record<string, string> = { "User-Agent": USER_AGENT };
@@ -71,7 +77,7 @@ export async function searchRedditMentions(query: string, limit = 50): Promise<S
     q: query,
     sort: "new",
     limit: String(limit),
-    t: "month",
+    t: time,
   });
 
   const res = await fetch(`${base}/search.json?${params.toString()}`, { headers, cache: "no-store" });

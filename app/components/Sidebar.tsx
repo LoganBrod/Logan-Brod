@@ -5,6 +5,7 @@ const LINKS = [
   { href: "/cards", label: "Card Deals" },
   { href: "/buzz", label: "Player Buzz" },
   { href: "/nba", label: "NBA Trends" },
+  { href: "/alerts", label: "Alerts" },
 ];
 
 function NavItems({ active }: { active: string }) {
