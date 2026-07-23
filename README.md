@@ -1,8 +1,8 @@
-# Logan Brod Tools
+# Sports Card Tools
 
 A small Next.js app with a few independent tools:
 
-- **`/`** — Roobet Wager Leaderboard for the **lmb1** affiliate code.
+- **`/`** — Hub linking to the tools below.
 - **`/cards`** — Sports card deal finder: scans active eBay listings and flags ones priced
   at or below a configurable fraction (default 80%) of the market comp price.
 - **`/buzz`** — Player social buzz: recent Reddit mentions for a player with basic
@@ -11,13 +11,6 @@ A small Next.js app with a few independent tools:
   average to their season average, alongside a snapshot card market price.
 
 ## Features
-
-### Roobet leaderboard
-- Live leaderboard ranked by total wagered amount
-- Podium-style top 3 with gold / silver / bronze styling
-- Countdown timer to contest end
-- Auto-refreshes every 5 minutes
-- Server-side API proxy keeps your API token secure
 
 ### Sports card deal finder (`/cards`)
 - Active listings via the **eBay Browse API** (OAuth2 client-credentials)
@@ -68,7 +61,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
-
-## Affiliate link
-
-Sign up at [roobet.com/?ref=lmb1](https://roobet.com/?ref=lmb1) to participate in the contest.

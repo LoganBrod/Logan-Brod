@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { Playfair_Display } from "next/font/google";
 import "./globals.css";
 
+const serif = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Roobet Wager Leaderboard | lmb1",
-  description: "Track the top wagers for the lmb1 Roobet affiliate leaderboard competition.",
-  icons: {
-    icon: "https://roobet.com/favicon.ico",
-  },
+  title: "Sports Card Tools",
+  description: "Card deal finder, player social buzz, and NBA trend tools.",
 };
 
 export default function RootLayout({
@@ -15,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-roobet-dark antialiased">{children}</body>
+    <html lang="en" className={serif.variable}>
+      <body className="min-h-screen bg-ink-bg antialiased">{children}</body>
     </html>
   );
 }
