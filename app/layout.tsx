@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Roobet Wager Leaderboard | lmb1",
-  description: "Track the top wagers for the lmb1 Roobet affiliate leaderboard competition.",
-  icons: {
-    icon: "https://roobet.com/favicon.ico",
-  },
+  title: "Sports Card Tools",
+  description: "Card deal finder, player social buzz, and NBA trend tools.",
 };
 
 export default function RootLayout({
