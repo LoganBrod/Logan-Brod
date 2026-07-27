@@ -23,12 +23,13 @@ function PhotoThumb({ photosNote, photos }: { photosNote: string; photos?: strin
   // Real uploaded photos when we have them, placeholder otherwise
   if (photos && photos.length > 0) {
     return (
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200">
+      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+        {/* Contain rather than cover so the whole item stays visible */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/api/photos/${photos[0]}`}
           alt=""
-          className="h-full w-full object-cover"
+          className="max-h-full max-w-full object-contain"
           loading="lazy"
         />
         {photos.length > 1 && (

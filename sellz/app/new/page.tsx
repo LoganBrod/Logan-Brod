@@ -211,11 +211,17 @@ function PhotoSlot({ slot, onFile }: { slot: Slot; onFile: (f: File) => void }) 
       </p>
       <button
         onClick={() => inputRef.current?.click()}
-        className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-ink-border bg-ink transition hover:border-brand/50"
+        className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-ink-border bg-ink transition hover:border-brand/50"
       >
         {slot.preview ? (
+          // object-contain, not cover: phone photos are usually portrait and
+          // cover would crop the top and bottom of the item off.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={slot.preview} alt={slot.label} className="h-full w-full object-cover" />
+          <img
+            src={slot.preview}
+            alt={slot.label}
+            className="max-h-full max-w-full object-contain"
+          />
         ) : (
           <span className="flex flex-col items-center gap-1 text-fog/40">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
