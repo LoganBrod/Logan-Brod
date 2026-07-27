@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import PageTransition from "@/components/PageTransition";
 import { ToastProvider } from "@/components/Toast";
 
+// Self-hosted at build time by next/font, so no render-blocking Google link
+// and no layout shift while the face loads.
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-outfit",
+});
+
 export const metadata: Metadata = {
-  title: "LevoZ — listings that learn",
+  title: "LevoZ: listings that learn",
   description:
-    "Grade your marketplace listings on real sales, learn why items sell (or don't), research comps, and generate better listings.",
+    "Photograph an item and LevoZ identifies it, prices it against real sales, writes the listing, and posts it to eBay once you approve.",
 };
 
 const THEME_INIT_SCRIPT = `
@@ -24,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>

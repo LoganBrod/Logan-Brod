@@ -1,8 +1,12 @@
-"use client";
-
-import { motion } from "framer-motion";
-
-/** Staggered fade-up wrapper for grids/lists. Wrap each item with `<Reveal index={i}>`. */
+/**
+ * Staggered fade-up wrapper for grids and lists. Wrap each item with
+ * `<Reveal index={i}>`.
+ *
+ * Deliberately CSS-only rather than JS-driven: an entrance that starts at
+ * opacity 0 must never depend on hydration succeeding, or slow and failed
+ * scripts leave the page looking empty. The global prefers-reduced-motion
+ * rule in globals.css collapses this to an instant appearance.
+ */
 export default function Reveal({
   children,
   index = 0,
@@ -13,14 +17,11 @@ export default function Reveal({
   className?: string;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.05, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3 }}
-      className={`min-w-0 ${className}`}
+    <div
+      className={`animate-rise min-w-0 transition-transform duration-200 hover:-translate-y-0.5 ${className}`}
+      style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

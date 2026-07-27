@@ -1,46 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import Reveal from "@/components/Reveal";
+import HeroShowcase from "@/components/HeroShowcase";
 
 const STEPS = [
-  { n: "1", title: "Photograph it", desc: "Front and back. Vision identifies the item, brand, size, and visible flaws." },
-  { n: "2", title: "It prices it", desc: "Comps against what similar items actually sold for and what's worked for you before." },
-  { n: "3", title: "You approve", desc: "Review the draft, tweak anything, and list it straight to eBay in one click." },
+  { n: "1", title: "Photograph it", desc: "Front and back. Vision reads the item, brand, size, and any visible flaws." },
+  { n: "2", title: "It prices it", desc: "Comped against what similar items actually sold for, plus what has worked for you before." },
+  { n: "3", title: "You approve", desc: "Review the draft, change anything, and list it straight to eBay." },
 ];
 
 const SHORTCUTS = [
-  { href: "/new", title: "New listing", desc: "Photo in, finished listing out — then list it to eBay", icon: CameraIcon },
+  { href: "/new", title: "New listing", desc: "Photo in, finished listing out, then straight to eBay", icon: CameraIcon },
   { href: "/analytics", title: "Analytics", desc: "Profit, margins, and which sources actually pay off", icon: ProfitIcon },
-  { href: "/dashboard", title: "Dashboard", desc: "Live stats — sold, revenue, sell-through, recent listings", icon: ChartIcon },
-  { href: "/listings", title: "Listings", desc: "Your history: grade, comps, costs, diagnose what's stuck", icon: TagIcon },
-  { href: "/brain", title: "Brain", desc: "Settings, the playbook, and the eBay connection", icon: BrainIcon },
+  { href: "/dashboard", title: "Dashboard", desc: "Sold, revenue, sell-through, and recent activity", icon: ChartIcon },
+  { href: "/listings", title: "Listings", desc: "Your history: grades, comps, costs, and what is stuck", icon: TagIcon },
+  { href: "/brain", title: "Brain", desc: "Settings, the playbook, and your eBay connection", icon: BrainIcon },
   { href: "/generate", title: "Write from text", desc: "No photos handy? Describe the item instead", icon: SparkIcon },
 ];
 
 export default function LandingPage() {
   return (
-    <div className="space-y-10">
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h1 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
-          Levo<span className="text-brand">Z</span>
-        </h1>
-        <p className="mt-2 max-w-xl text-base text-fog/60 sm:text-lg">
-          The Brain that learns why your listings sell — and writes better ones.
-        </p>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-fog/50">
-          Photograph an item front and back and LevoZ identifies it, prices it
-          against comparable sales from well-rated sellers, writes the title and
-          description, and lists it to eBay once you approve. It tracks what each
-          item cost you, so it learns which items — and which sources — actually
-          make money.
-        </p>
-      </motion.div>
+    <div className="space-y-16">
+      <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="animate-rise">
+          <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-fog sm:text-5xl">
+            Photograph it.
+            <br />
+            <span className="text-brand">It writes the listing.</span>
+          </h1>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-fog/60">
+            Clothing, collectables, sneakers, cameras. LevoZ identifies the item,
+            prices it against real sales, and lists it to eBay once you approve.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              href="/new"
+              className="rounded-full bg-brand px-6 py-3 text-sm font-bold text-ink transition hover:bg-brand-dim"
+            >
+              Start a listing
+            </Link>
+            <Link
+              href="/analytics"
+              className="rounded-full border border-ink-border bg-ink-card px-6 py-3 text-sm font-semibold text-fog transition hover:border-brand/50"
+            >
+              See your numbers
+            </Link>
+          </div>
+        </div>
+
+        <div className="animate-emerge">
+          <HeroShowcase />
+        </div>
+      </section>
 
       <div>
         <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
@@ -49,7 +61,7 @@ export default function LandingPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {STEPS.map((s, i) => (
             <Reveal key={s.n} index={i}>
-              <div className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
+              <div className="h-full rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
                 <span className="text-xs font-bold tracking-wide text-brand">STEP {s.n}</span>
                 <p className="mt-1 font-bold text-fog">{s.title}</p>
                 <p className="mt-1 text-sm text-fog/50">{s.desc}</p>

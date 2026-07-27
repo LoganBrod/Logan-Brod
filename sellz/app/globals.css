@@ -4,12 +4,14 @@
 
 :root {
   --color-ink: 250 251 251;
-  --color-ink-deep: 238 241 241;
-  --color-ink-card: 255 255 255;
+  --color-ink-deep: 243 245 245;
+  /* Off-white, never pure #fff, so stacked surfaces stay distinguishable */
+  --color-ink-card: 253 253 252;
   --color-ink-border: 226 230 231;
-  --color-fog: 27 36 38;
+  --color-fog: 24 32 34;
   --shadow-card: 0 2px 16px rgba(15, 30, 30, 0.08);
   --shadow-glow: 0 0 30px rgba(45, 212, 191, 0.18);
+  --shadow-pop: 0 30px 60px -18px rgba(15, 30, 30, 0.35), 0 8px 20px -8px rgba(15, 30, 30, 0.2);
   --scrollbar-track: 240 242 242;
   --scrollbar-thumb: 211 217 218;
   --skeleton-a: rgba(15, 30, 30, 0.04);
@@ -17,13 +19,14 @@
 }
 
 .dark {
-  --color-ink: 27 36 38;
-  --color-ink-deep: 20 27 29;
+  --color-ink: 22 29 31;
+  --color-ink-deep: 17 23 25;
   --color-ink-card: 33 44 47;
   --color-ink-border: 49 62 66;
-  --color-fog: 201 210 211;
+  --color-fog: 209 217 218;
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.25);
   --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.12);
+  --shadow-pop: 0 30px 60px -18px rgba(0, 0, 0, 0.65), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
   --scrollbar-track: 27 36 38;
   --scrollbar-thumb: 49 62 66;
   --skeleton-a: rgba(255, 255, 255, 0.03);
@@ -33,7 +36,8 @@
 body {
   background-color: rgb(var(--color-ink));
   color: rgb(var(--color-fog));
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-outfit), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   overflow-x: hidden;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -75,4 +79,25 @@ body {
   );
   background-size: 400% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* 3D stage for the hero showcase */
+.stage-3d {
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Anyone who asks for less motion gets a static, readable page instead. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

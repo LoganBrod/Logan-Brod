@@ -114,7 +114,7 @@ export default function NewListingPage() {
       setDraft(data.listing);
       setAnalysis(data.analysis);
       setComps(data.comps);
-      toast.push("Draft ready — review it before listing");
+      toast.push("Draft ready. Review it before listing");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
@@ -148,7 +148,7 @@ export default function NewListingPage() {
     <div className="space-y-6">
       <PageHeader
         title="New listing"
-        subtitle="Photograph the item — front and back — and the Brain writes the whole listing."
+        subtitle="Photograph the item, front and back, and the Brain writes the whole listing."
       />
 
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
@@ -167,7 +167,7 @@ export default function NewListingPage() {
         <label className="mt-5 block space-y-1 text-sm">
           <span className="text-fog/50">
             Anything the photos don&apos;t show{" "}
-            <span className="text-fog/30">(optional — measurements, flaws, history)</span>
+            <span className="text-fog/30">(optional: measurements, flaws, history)</span>
           </span>
           <textarea
             rows={2}
@@ -442,7 +442,7 @@ function ReviewStep({
 
       {readiness && !readiness.ready && (
         <p className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
-          eBay can&apos;t publish yet — missing: {readiness.missing.join(", ")}. Set these up in My
+          eBay cannot publish yet. Missing: {readiness.missing.join(", ")}. Set these up in My
           eBay → Account → Business Policies, then come back.
         </p>
       )}

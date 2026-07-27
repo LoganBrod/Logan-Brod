@@ -107,7 +107,7 @@ export default function Dashboard() {
             />
             <StatCard
               label="Avg. days to sell"
-              value={stats.avgDays !== null ? <AnimatedNumber value={stats.avgDays} decimals={1} /> : "—"}
+              value={stats.avgDays !== null ? <AnimatedNumber value={stats.avgDays} decimals={1} /> : "n/a"}
               index={3}
             />
           </>
@@ -150,9 +150,9 @@ export default function Dashboard() {
             </div>
           ) : recent.length === 0 ? (
             <p className="text-sm text-fog/40">
-              Nothing yet —{" "}
+              Nothing yet.{" "}
               <Link href="/listings" className="text-brand hover:underline">
-                import your history
+                Import your history
               </Link>{" "}
               or{" "}
               <Link href="/generate" className="text-brand hover:underline">
@@ -215,7 +215,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <p className="text-sm text-fog/60">
-                  No playbook yet — import a few outcomes or pre-feed reference
+                  No playbook yet. Import a few outcomes or pre-feed reference
                   listings, then analyze on the Brain page.
                 </p>
               )}

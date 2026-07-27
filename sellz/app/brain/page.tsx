@@ -100,11 +100,11 @@ function IntegrationsPanel() {
     try {
       const res = await fetch("/api/ebay/disconnect", { method: "POST" });
       if (!res.ok) throw new Error(`Disconnect failed (HTTP ${res.status})`);
-      // Re-check before claiming success — previously this reported
+      // Re-check before claiming success. Previously this reported
       // "disconnected" even when the server hadn't actually cleared anything.
       const fresh = await load();
       if (fresh?.connected) {
-        toast.push("eBay still shows as connected — try again", "error");
+        toast.push("eBay still shows as connected, try again", "error");
       } else {
         toast.push("eBay disconnected");
       }
@@ -135,7 +135,7 @@ function IntegrationsPanel() {
             <p className="font-semibold text-fog">eBay</p>
             {!status.configured ? (
               <p className="mt-0.5 text-xs text-fog/40">
-                Not configured — set EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, and EBAY_RUNAME in .env.local
+                Not configured. Set EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, and EBAY_RUNAME in .env.local
               </p>
             ) : status.connected ? (
               <p className="mt-0.5 text-xs text-brand">
@@ -224,7 +224,7 @@ function SellerPanel() {
               rows={2}
               value={s.niche}
               onChange={(e) => setS({ ...s, niche: e.target.value })}
-              placeholder="e.g. Y2K and vintage streetwear — Nike, Carhartt, band tees, sizes M-XL"
+              placeholder="e.g. Y2K and vintage streetwear: Nike, Carhartt, band tees, sizes M-XL"
               className={field}
             />
           </label>
@@ -341,7 +341,7 @@ function BrainPanel() {
               Performance <span className="text-brand">· learns why things sell</span>
             </h2>
             <p className="text-sm text-fog/60">
-              Import listings with outcomes — sold AND stuck — then analyze.
+              Import listings with outcomes, sold and stuck, then analyze.
             </p>
           </div>
           <motion.button
@@ -363,7 +363,7 @@ function BrainPanel() {
             <span className="font-semibold text-fog">
               Pre-feed the Brain{" "}
               <span className="text-xs font-normal text-fog/40">
-                — {seeds.length} reference listing{seeds.length === 1 ? "" : "s"}
+                · {seeds.length} reference listing{seeds.length === 1 ? "" : "s"}
               </span>
             </span>
             <span className="text-fog/40">{seedOpen ? "▲" : "▼"}</span>
@@ -513,12 +513,12 @@ function BrainPanel() {
                         </ul>
                         <p className="mt-2 text-xs text-fog/40">
                           Generated listings rotate between these variants and a
-                          control group — the next analysis declares winners.
+                          control group. The next analysis declares winners.
                         </p>
                       </div>
                     ) : (
                       <p className="text-xs text-fog/40">
-                        No experiments running yet — analyze again once you have a
+                        No experiments running yet. Analyze again once you have a
                         few more outcomes.
                       </p>
                     )}

@@ -32,11 +32,23 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        rise: {
+          from: { opacity: "0", transform: "translateY(14px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        emerge: {
+          from: { opacity: "0", transform: "scale(0.94)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         blob: "blob 18s ease-in-out infinite",
         "blob-slow": "blob 26s ease-in-out infinite reverse",
         shimmer: "shimmer 1.8s linear infinite",
+        // Entrances run in CSS, not JS, so content is never stuck invisible
+        // if hydration is slow or scripts fail.
+        rise: "rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
+        emerge: "emerge 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both",
       },
     },
   },

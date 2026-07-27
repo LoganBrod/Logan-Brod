@@ -100,7 +100,7 @@ export default function ListingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Listings"
-        subtitle="Feed it sold and stuck listings — grade, research comps, and diagnose what's not moving."
+        subtitle="Feed it sold and stuck listings, then grade, research comps, and diagnose what is not moving."
       />
 
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
@@ -111,7 +111,7 @@ export default function ListingsPage() {
           <div>
             <h2 className="text-lg font-extrabold text-fog">Import a listing</h2>
             <p className="text-sm text-fog/60">
-              Sold listings AND the ones that never moved — both teach the Brain.
+              Sold listings and the ones that never moved. Both teach the Brain.
             </p>
           </div>
           <span className="text-fog/40">{importOpen ? "▲" : "▼"}</span>
@@ -141,7 +141,7 @@ export default function ListingsPage() {
           </div>
         ) : listings.length === 0 ? (
           <p className="text-sm text-fog/40">
-            Nothing yet — import your history above, or generate listings from
+            Nothing yet. Import your history above, or generate listings from
             the Generate page.
           </p>
         ) : (
@@ -259,7 +259,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
           className="flex w-full items-center justify-between text-left"
         >
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">
-            Outcome data <span className="font-normal normal-case text-fog/30">— optional, add if you have it</span>
+            Outcome data <span className="font-normal normal-case text-fog/30">· optional, add if you have it</span>
           </span>
           <span className="text-fog/40">{outcomeOpen ? "▲" : "▼"}</span>
         </button>
@@ -480,7 +480,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
                   <p className="mt-0.5 text-fog/50">{l.comps.demandNotes}</p>
                 </div>
               ) : (
-                <p className="mt-1 text-xs text-fog/40">Not researched yet — or paste your own below.</p>
+                <p className="mt-1 text-xs text-fog/40">Not researched yet. Paste your own below.</p>
               )}
               <div className="mt-2 flex gap-2">
                 <input
@@ -661,7 +661,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
                 </button>
               </div>
               <p className="mt-2 text-[11px] text-fog/30">
-                Feeds the Analytics page — margins, best-performing categories, and which sources
+                Feeds the Analytics page: margins, best-performing categories, and which sources
                 are worth repeating.
               </p>
             </div>

@@ -137,9 +137,9 @@ export default function AnalyticsPage() {
         <PageHeader title="Analytics" subtitle="Profit, margins, and what's actually worth sourcing." />
         <p className="rounded-2xl border border-ink-border bg-ink-card p-6 text-sm text-fog/50 shadow-card">
           No sold items yet. Once a listing is marked <span className="text-fog">sold</span> with a
-          sale price, it shows up here —{" "}
+          sale price, it shows up here.{" "}
           <Link href="/listings" className="text-brand hover:underline">
-            add your sold history
+            Add your sold history
           </Link>{" "}
           to get started.
         </p>
@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
         />
         <Stat
           label="Avg. margin"
-          value={totals.avgMargin !== null ? <AnimatedNumber value={totals.avgMargin} suffix="%" decimals={1} /> : "—"}
+          value={totals.avgMargin !== null ? <AnimatedNumber value={totals.avgMargin} suffix="%" decimals={1} /> : "n/a"}
           index={2}
         />
         <Stat label="Spent on stock" value={<AnimatedNumber value={totals.spend} prefix="$" decimals={2} />} index={3} />

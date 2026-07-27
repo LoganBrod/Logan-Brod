@@ -1,18 +1,20 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 
+/**
+ * Fades each route in on navigation.
+ *
+ * This wraps every page, so it must never be able to leave content hidden.
+ * A JS-driven `initial={{ opacity: 0 }}` did exactly that: if hydration was
+ * slow or scripts failed, the whole app rendered blank. The animation is CSS
+ * instead, and the pathname key remounts the node so it replays per route.
+ */
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <motion.div
-      key={pathname}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-    >
+    <div key={pathname} className="animate-rise">
       {children}
-    </motion.div>
+    </div>
   );
 }

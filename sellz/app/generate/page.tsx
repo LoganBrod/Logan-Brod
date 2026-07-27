@@ -54,7 +54,7 @@ export default function GeneratePage() {
           Write my listing <span className="text-brand">· from what sells</span>
         </h1>
         <p className="mx-auto mt-2 max-w-lg text-sm text-fog/60">
-          Describe the item — brand, size, condition, flaws, anything a buyer
+          Describe the item: brand, size, condition, flaws, anything a buyer
           would ask. Drafts follow the playbook, get Brain-scored, and rotate
           through experiments.
         </p>
