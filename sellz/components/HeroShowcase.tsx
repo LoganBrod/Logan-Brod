@@ -115,12 +115,12 @@ export default function HeroShowcase() {
           spill outside the stage box for the lift to read. The fan is scaled
           down below sm instead, which keeps it inside a phone viewport. */}
       <div
-        className="stage-3d relative mx-auto flex h-[15rem] w-full max-w-xl items-center justify-center sm:h-[19rem]"
+        className="stage-3d relative mx-auto flex h-[17rem] w-full max-w-3xl items-center justify-center sm:h-[23rem]"
         onMouseMove={onMove}
         onMouseLeave={onLeave}
       >
         <motion.div
-          className="preserve-3d relative h-full w-full scale-[0.72] sm:scale-100"
+          className="preserve-3d relative h-full w-full scale-[0.62] sm:scale-90 lg:scale-100"
           style={reduceMotion ? undefined : { rotateX, rotateY }}
         >
           <AnimatePresence mode="popLayout">
@@ -176,10 +176,12 @@ function ShowcaseCard({
   // Offsets are measured from the centre of the stage, so each card is
   // centred by its flex wrapper and only the fan offset is animated. Doing
   // it this way avoids fighting a -50% centring translate.
+  // Tight overlap plus a big z gap is what makes the front card read as
+  // lifting out; spread them apart and it flattens into three tiles.
   const layout = [
-    { x: 0, y: 8, z: 80, rot: -2, scale: 1, opacity: 1 },
-    { x: 132, y: -26, z: -90, rot: 7, scale: 0.88, opacity: 0.95 },
-    { x: -132, y: -18, z: -150, rot: -8, scale: 0.82, opacity: 0.9 },
+    { x: 0, y: 14, z: 150, rot: -2, scale: 1, opacity: 1 },
+    { x: 158, y: -34, z: -120, rot: 9, scale: 0.84, opacity: 0.9 },
+    { x: -158, y: -26, z: -190, rot: -10, scale: 0.78, opacity: 0.82 },
   ][depth];
 
   return (

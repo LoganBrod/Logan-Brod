@@ -1,109 +1,171 @@
-"use client";
-
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import HeroShowcase from "@/components/HeroShowcase";
 
 const STEPS = [
-  { n: "1", title: "Photograph it", desc: "Front and back. Vision reads the item, brand, size, and any visible flaws." },
-  { n: "2", title: "It prices it", desc: "Comped against what similar items actually sold for, plus what has worked for you before." },
-  { n: "3", title: "You approve", desc: "Review the draft, change anything, and list it straight to eBay." },
+  {
+    n: "01",
+    title: "Photograph it",
+    desc: "Front and back. Vision reads the item, the brand, the size, and any wear that is actually visible.",
+  },
+  {
+    n: "02",
+    title: "It prices it",
+    desc: "Comped against what comparable items sold for, weighted to sellers with strong feedback, plus your own history.",
+  },
+  {
+    n: "03",
+    title: "You approve",
+    desc: "Review the draft, change anything, and publish straight to eBay. Nothing goes live without you.",
+  },
 ];
 
-const SHORTCUTS = [
-  { href: "/new", title: "New listing", desc: "Photo in, finished listing out, then straight to eBay", icon: CameraIcon },
-  { href: "/analytics", title: "Analytics", desc: "Profit, margins, and which sources actually pay off", icon: ProfitIcon },
-  { href: "/dashboard", title: "Dashboard", desc: "Sold, revenue, sell-through, and recent activity", icon: ChartIcon },
-  { href: "/listings", title: "Listings", desc: "Your history: grades, comps, costs, and what is stuck", icon: TagIcon },
-  { href: "/brain", title: "Brain", desc: "Settings, the playbook, and your eBay connection", icon: BrainIcon },
-  { href: "/generate", title: "Write from text", desc: "No photos handy? Describe the item instead", icon: SparkIcon },
+const FEATURES = [
+  {
+    icon: CameraIcon,
+    title: "Photo to listing",
+    desc: "Title, description, condition, and price written from the photos themselves, with a confidence score and an honest list of what the photos could not show.",
+  },
+  {
+    icon: TagIcon,
+    title: "Real comparables",
+    desc: "Sold prices where your eBay account has access, otherwise active listings from sellers above 98% feedback. Always labelled so you know which you are seeing.",
+  },
+  {
+    icon: ProfitIcon,
+    title: "Profit, not just revenue",
+    desc: "Record what you paid, what shipping and fees cost, and where you sourced it. See margins per item, per category, and per supplier.",
+  },
+  {
+    icon: BrainIcon,
+    title: "It learns from outcomes",
+    desc: "Sold and stuck listings both teach it. The playbook rewrites itself as your results come in, and running experiments get judged on real numbers.",
+  },
 ];
 
 export default function LandingPage() {
   return (
-    <div className="space-y-16">
-      <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-        <div className="animate-rise">
-          <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-fog sm:text-5xl">
-            Photograph it.
-            <br />
-            <span className="text-brand">It writes the listing.</span>
-          </h1>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-fog/60">
-            Clothing, collectables, sneakers, cameras. LevoZ identifies the item,
-            prices it against real sales, and lists it to eBay once you approve.
+    <div>
+      {/* Hero */}
+      <section className="relative overflow-hidden px-5 pb-4 pt-14 sm:pt-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="animate-rise text-xs font-bold uppercase tracking-[0.25em] text-brand">
+            For resellers
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+          <h1 className="animate-rise mt-4 text-[2.6rem] font-extrabold leading-[1.03] tracking-tight text-fog sm:text-6xl">
+            Smarter listings.
+            <br />
+            Priced by what sold.
+          </h1>
+          <p className="animate-rise mx-auto mt-5 max-w-xl text-base leading-relaxed text-fog/60 sm:text-lg">
+            Photograph an item and LevoZ writes the listing, prices it against real
+            sales, and posts it to eBay once you approve.
+          </p>
+          <div className="animate-rise mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/new"
-              className="rounded-full bg-brand px-6 py-3 text-sm font-bold text-ink transition hover:bg-brand-dim"
+              className="rounded-full bg-brand px-7 py-3.5 text-sm font-bold text-ink shadow-glow transition hover:bg-brand-dim"
             >
               Start a listing
             </Link>
             <Link
               href="/analytics"
-              className="rounded-full border border-ink-border bg-ink-card px-6 py-3 text-sm font-semibold text-fog transition hover:border-brand/50"
+              className="rounded-full border border-ink-border bg-ink-card px-7 py-3.5 text-sm font-semibold text-fog transition hover:border-brand/50"
             >
               See your numbers
             </Link>
           </div>
         </div>
 
-        <div className="animate-emerge">
+        <div className="animate-emerge mt-4">
           <HeroShowcase />
         </div>
       </section>
 
-      <div>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-          How it works
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {STEPS.map((s, i) => (
-            <Reveal key={s.n} index={i}>
-              <div className="h-full rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
-                <span className="text-xs font-bold tracking-wide text-brand">STEP {s.n}</span>
-                <p className="mt-1 font-bold text-fog">{s.title}</p>
-                <p className="mt-1 text-sm text-fog/50">{s.desc}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
+      {/* Marketplaces */}
+      <section className="border-y border-ink-border/60 bg-ink-deep/30 px-5 py-8">
+        <p className="text-center text-sm font-semibold text-fog/50">
+          Built for eBay and Depop sellers, from one-off flips to full-time shops
+        </p>
+      </section>
 
-      <div>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-          Jump in
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {SHORTCUTS.map((s, i) => (
-            <Reveal key={s.href} index={i}>
-              <Link
-                href={s.href}
-                className="group flex items-start gap-4 rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card transition hover:border-brand/50"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                  <s.icon />
-                </span>
-                <span className="min-w-0">
-                  <p className="font-bold text-fog">{s.title}</p>
-                  <p className="mt-0.5 text-sm text-fog/50">{s.desc}</p>
-                  <span className="mt-2 inline-block text-sm font-semibold text-brand transition group-hover:translate-x-1">
-                    →
-                  </span>
-                </span>
-              </Link>
-            </Reveal>
-          ))}
+      {/* How it works */}
+      <section className="px-5 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
+              Three steps, start to listed
+            </h2>
+            <p className="mt-3 text-base text-fog/55">
+              The whole loop runs from your phone camera to a live eBay listing.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <Reveal key={s.n} index={i}>
+                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-7 shadow-card">
+                  <span className="text-sm font-extrabold text-brand">{s.n}</span>
+                  <p className="mt-3 text-lg font-bold text-fog">{s.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-fog/55">{s.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features */}
+      <section className="border-t border-ink-border/60 bg-ink-deep/30 px-5 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
+              Everything the listing needs
+            </h2>
+            <p className="mt-3 text-base text-fog/55">
+              Not a template filler. It reads the item, checks the market, and tracks
+              what each sale actually earned.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.title} index={i}>
+                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-7 shadow-card">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+                    <f.icon />
+                  </span>
+                  <p className="mt-4 text-lg font-bold text-fog">{f.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-fog/55">{f.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Closing call to action */}
+      <section className="px-5 py-20 sm:py-28">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-ink-border bg-ink-card p-10 text-center shadow-card sm:p-14">
+          <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
+            Point a camera at it
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-base text-fog/55">
+            Two photos is enough to get a priced, written, ready to publish listing.
+          </p>
+          <Link
+            href="/new"
+            className="mt-8 inline-block rounded-full bg-brand px-8 py-3.5 text-sm font-bold text-ink shadow-glow transition hover:bg-brand-dim"
+          >
+            Start a listing
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
 
 function CameraIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="6" width="18" height="14" rx="2" strokeLinejoin="round" />
       <circle cx="12" cy="13" r="3.5" />
       <path d="M8 6l1.5-2h5L16 6" strokeLinejoin="round" />
@@ -112,22 +174,15 @@ function CameraIcon() {
 }
 function ProfitIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M3 17l5.5-5.5 3.5 3.5L21 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15 6h6v6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
-function ChartIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 20V10M12 20V4M20 20v-7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 function BrainIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path
         d="M9.5 4a2.5 2.5 0 0 0-2.5 2.5v.6A3 3 0 0 0 5 10v1a3 3 0 0 0 1 2.24V15a3 3 0 0 0 3 3v0a2 2 0 0 0 2-2V6.5A2.5 2.5 0 0 0 9.5 4Z"
         strokeLinejoin="round"
@@ -139,20 +194,9 @@ function BrainIcon() {
     </svg>
   );
 }
-function SparkIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path
-        d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="12" r="2.5" />
-    </svg>
-  );
-}
 function TagIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path
         d="M11.5 4h-5A2.5 2.5 0 0 0 4 6.5v5c0 .4.16.78.44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l5-5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 4Z"
         strokeLinejoin="round"

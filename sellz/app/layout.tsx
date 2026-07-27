@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import TopNav from "@/components/TopNav";
+import SiteFooter from "@/components/SiteFooter";
 import PageTransition from "@/components/PageTransition";
 import { ToastProvider } from "@/components/Toast";
 
@@ -43,12 +44,11 @@ export default function RootLayout({
           <div className="absolute -right-32 top-1/3 h-[26rem] w-[26rem] animate-blob-slow rounded-full bg-brand/5 blur-3xl" />
         </div>
         <ToastProvider>
-          <Sidebar />
-          <main className="relative min-h-screen px-4 py-5 sm:ml-60 sm:px-8 sm:py-8">
-            <div className="mx-auto max-w-5xl">
-              <PageTransition>{children}</PageTransition>
-            </div>
+          <TopNav />
+          <main className="relative">
+            <PageTransition>{children}</PageTransition>
           </main>
+          <SiteFooter />
         </ToastProvider>
       </body>
     </html>

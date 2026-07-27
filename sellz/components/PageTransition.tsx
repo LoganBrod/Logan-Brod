@@ -12,8 +12,16 @@ import { usePathname } from "next/navigation";
  */
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // The landing page runs full bleed so its sections can span the viewport.
+  // Every app route gets the standard reading container.
+  const fullBleed = pathname === "/";
   return (
-    <div key={pathname} className="animate-rise">
+    <div
+      key={pathname}
+      className={
+        fullBleed ? "animate-rise" : "animate-rise mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10"
+      }
+    >
       {children}
     </div>
   );

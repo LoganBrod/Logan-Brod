@@ -151,7 +151,9 @@ export default function NewListingPage() {
         subtitle="Photograph the item, front and back, and the Brain writes the whole listing."
       />
 
-      <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
+      {/* Capped width: the photo slots are square, so on a wide screen an
+          unconstrained grid turns them into oversized empty boxes. */}
+      <section className="max-w-3xl rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
         <div className="grid gap-4 sm:grid-cols-2">
           {slots.map((slot, i) => (
             <PhotoSlot key={i} slot={slot} onFile={(f) => upload(i, f)} />
