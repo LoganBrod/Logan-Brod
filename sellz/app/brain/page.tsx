@@ -59,18 +59,22 @@ function IntegrationsPanel() {
   const [busy, setBusy] = useState(false);
 
   function load() {
-    fetch("/api/ebay/status")
+    return fetch("/api/ebay/status", { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`Status check failed (HTTP ${r.status})`);
         return r.json();
       })
-      .then((d) => {
+      .then((d: EbayStatus) => {
         setStatus(d);
         setLoadError(null);
+        return d;
       })
-      .catch((err) =>
-        setLoadError(err instanceof Error ? err.message : "Couldn't reach the eBay status endpoint")
-      );
+      .catch((err) => {
+        setLoadError(
+          err instanceof Error ? err.message : "Couldn't reach the eBay status endpoint"
+        );
+        return undefined;
+      });
   }
 
   useEffect(() => {
@@ -93,10 +97,22 @@ function IntegrationsPanel() {
 
   async function disconnect() {
     setBusy(true);
-    await fetch("/api/ebay/disconnect", { method: "POST" });
-    toast.push("eBay disconnected");
-    load();
-    setBusy(false);
+    try {
+      const res = await fetch("/api/ebay/disconnect", { method: "POST" });
+      if (!res.ok) throw new Error(`Disconnect failed (HTTP ${res.status})`);
+      // Re-check before claiming success — previously this reported
+      // "disconnected" even when the server hadn't actually cleared anything.
+      const fresh = await load();
+      if (fresh?.connected) {
+        toast.push("eBay still shows as connected — try again", "error");
+      } else {
+        toast.push("eBay disconnected");
+      }
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Disconnect failed", "error");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
