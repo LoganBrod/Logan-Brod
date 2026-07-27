@@ -55,13 +55,22 @@ function IntegrationsPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<EbayStatus | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   function load() {
     fetch("/api/ebay/status")
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => {});
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Status check failed (HTTP ${r.status})`);
+        return r.json();
+      })
+      .then((d) => {
+        setStatus(d);
+        setLoadError(null);
+      })
+      .catch((err) =>
+        setLoadError(err instanceof Error ? err.message : "Couldn't reach the eBay status endpoint")
+      );
   }
 
   useEffect(() => {
@@ -90,8 +99,6 @@ function IntegrationsPanel() {
     setBusy(false);
   }
 
-  if (!status) return null;
-
   return (
     <Reveal index={2}>
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
@@ -99,6 +106,14 @@ function IntegrationsPanel() {
         <p className="mt-1 text-sm text-fog/60">
           Connect eBay to auto-pull views and sold price/date instead of typing them in.
         </p>
+        {loadError && (
+          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            {loadError}
+          </p>
+        )}
+        {!status ? (
+          <p className="mt-4 text-xs text-fog/40">Checking eBay connection…</p>
+        ) : (
         <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-ink p-4">
           <div className="min-w-0">
             <p className="font-semibold text-fog">eBay</p>
@@ -133,6 +148,7 @@ function IntegrationsPanel() {
               </a>
             ))}
         </div>
+        )}
       </section>
     </Reveal>
   );
@@ -142,15 +158,21 @@ function SellerPanel() {
   const toast = useToast();
   const [s, setS] = useState({ niche: "", platforms: "", shipping: "", style: "" });
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Couldn't load settings (HTTP ${r.status})`);
+        return r.json();
+      })
       .then((d) => {
         setS({ niche: d.niche, platforms: d.platforms, shipping: d.shipping, style: d.style });
         setLoaded(true);
       })
-      .catch(() => {});
+      .catch((err) =>
+        setLoadError(err instanceof Error ? err.message : "Couldn't load settings")
+      );
   }, []);
 
   async function save() {
@@ -160,9 +182,9 @@ function SellerPanel() {
       body: JSON.stringify(s),
     });
     if (res.ok) toast.push("Saved");
+    else toast.push(`Save failed (HTTP ${res.status})`, "error");
   }
 
-  if (!loaded) return null;
   return (
     <Reveal>
       <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
@@ -170,6 +192,15 @@ function SellerPanel() {
         <p className="mt-1 text-sm text-fog/60">
           Every graded and generated listing is anchored to this.
         </p>
+        {loadError && (
+          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            {loadError}
+          </p>
+        )}
+        {!loaded && !loadError && (
+          <p className="mt-4 text-xs text-fog/40">Loading…</p>
+        )}
+        {loaded && (
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2">
             <span className="text-fog/50">Niche</span>
@@ -207,14 +238,17 @@ function SellerPanel() {
             />
           </label>
         </div>
-        <div className="mt-4">
-          <button
-            onClick={save}
-            className="rounded-lg bg-brand px-6 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim active:scale-95"
-          >
-            Save
-          </button>
-        </div>
+        )}
+        {loaded && (
+          <div className="mt-4">
+            <button
+              onClick={save}
+              className="rounded-lg bg-brand px-6 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim active:scale-95"
+            >
+              Save
+            </button>
+          </div>
+        )}
       </section>
     </Reveal>
   );
