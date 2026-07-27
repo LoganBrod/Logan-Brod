@@ -5,7 +5,7 @@ Third sibling of the Brain family (the LevoZ clipper, AdZ ads) — this one grad
 ## The main loop: photo → listing → eBay
 
 1. **Photograph the item** (`/new`) — front and back. Claude's vision identifies what it is, the brand and size if the tags are legible, and any visible flaws. It says how confident it is and flags what it *couldn't* tell from the photos.
-2. **It prices against comps** — if eBay is connected, it pulls comparable items: real sold prices where your account has Marketplace Insights access, otherwise active listings from sellers with 98%+ feedback (clearly labelled as asking prices, not sales). Your own playbook and sold history weigh in too.
+2. **It prices against comps** — if eBay is connected, it pulls comparable active listings from sellers with 98%+ feedback, clearly labelled as asking prices rather than sales, since eBay's sold-price API is a restricted Limited Release (see below). Your own playbook and sold history weigh in too.
 3. **Review and approve** — the draft title, price, condition, and description are all editable. "Approve & list on eBay" publishes it as a real, buyable listing. There's a confirmation step, because that's a real listing real buyers can purchase.
 4. **Track what it made** — record what you paid for an item (Listings → Cost tab) and `/analytics` shows profit, margin, your best and thinnest margins, and which categories and sourcing spots actually pay off.
 
@@ -53,7 +53,7 @@ The "Approve & list on eBay" button uses the Inventory API, which has requiremen
 
 - **Business policies are mandatory.** eBay refuses to publish an offer unless your seller account has a payment policy, a return policy, a shipping (fulfillment) policy, and an inventory location. Set them in My eBay → Account → Business Policies. The review screen checks this up front and tells you exactly what's missing rather than failing at the last step.
 - **Photos must be publicly reachable.** eBay fetches images by URL, so uploaded photos are served from `/api/photos/[id]` on your deployed site. This means publishing works from the deployed app, not from `localhost`. Set `PUBLIC_SITE_URL` if the origin the app sees isn't the public one.
-- **Sold-price comps are gated.** eBay's Marketplace Insights API (actual sold prices) is restricted and most developer accounts aren't granted it. Without it, comps fall back to active listings from high-feedback sellers — useful, but asking prices rather than confirmed sales. The UI labels which one you're looking at.
+- **Sold-price comps are not available on a normal keyset.** eBay's Marketplace Insights API (actual sold prices) is a *Limited Release* that eBay approves case by case, and their docs state it is closed to new users. A standard developer account does not have it, and there is no self-serve way to turn it on. Comps therefore use active listings from sellers with 98%+ feedback, which are asking prices, and the UI says so rather than implying they are sales. If you are ever granted access, set `EBAY_MARKETPLACE_INSIGHTS=true`; note it also needs a client-credentials app token scoped to `buy.marketplace.insights`, which is separate from the user token everything else uses.
 - **Scopes changed.** Publishing needs `sell.inventory` and `sell.account.readonly`, so if you connected eBay before this feature existed, disconnect and reconnect to re-consent with the new scopes.
 
 ## Deploying (Netlify)

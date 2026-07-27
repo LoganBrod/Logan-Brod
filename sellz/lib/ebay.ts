@@ -32,8 +32,11 @@ const SCOPES = [
   "https://api.ebay.com/oauth/api_scope/sell.inventory",
   // Business policies + merchant location, required to publish an offer
   "https://api.ebay.com/oauth/api_scope/sell.account.readonly",
-  // Sold-item comps; only works if the account is granted access
-  "https://api.ebay.com/oauth/api_scope/sell.marketplace.insights.readonly",
+  // Deliberately NOT requesting buy.marketplace.insights here. That API is a
+  // Limited Release that eBay approves case by case and is closed to new
+  // users, it needs a client-credentials app token rather than this user
+  // token, and asking for a scope the keyset was never granted risks the
+  // whole consent failing. See soldCompsAvailable() below.
 ].join(" ");
 
 const MARKETPLACE_ID = "EBAY_US";
@@ -271,11 +274,25 @@ interface InsightsSale {
 }
 
 /**
- * Actual sold prices via Marketplace Insights. This API is restricted —
- * most developer accounts are not granted access, in which case eBay
- * returns 403 and we simply report no sold comps rather than failing.
+ * True only when this deployment has been granted eBay's Limited Release
+ * Marketplace Insights API. It is approved case by case and closed to new
+ * users, so it is off unless explicitly switched on. Without it there is no
+ * official source of sold prices, and comps fall back to asking prices.
+ */
+export function soldCompsAvailable(): boolean {
+  return process.env.EBAY_MARKETPLACE_INSIGHTS === "true";
+}
+
+/**
+ * Actual sold prices via Marketplace Insights.
+ *
+ * Note this needs a client-credentials application token scoped to
+ * buy.marketplace.insights, which is a different token from the user token
+ * used everywhere else here. It stays unreachable until the account is
+ * approved and EBAY_MARKETPLACE_INSIGHTS is set.
  */
 async function insightsSoldComps(query: string, tokens: EbayTokens): Promise<EbayComp[]> {
+  if (!soldCompsAvailable()) return [];
   const params = new URLSearchParams({ q: query.slice(0, 100), limit: "40" });
   const res = await fetch(
     `${API_BASE[tokens.env]}/buy/marketplace_insights/v1_beta/item_sales/search?${params.toString()}`,
@@ -347,9 +364,9 @@ export async function researchEbayComps(query: string): Promise<CompsResult> {
     note: soldDataAvailable
       ? `Based on ${sold.length} actual sold ${sold.length === 1 ? "item" : "items"} on eBay.`
       : topRated.length >= 3
-        ? `eBay didn't return sold-price data for this account, so this is based on ${topRated.length} active listings from sellers with 98%+ feedback — these are asking prices, not confirmed sales.`
+        ? `Asking prices, not confirmed sales: based on ${topRated.length} active listings from sellers with 98%+ feedback. eBay's sold-price API is a Limited Release that this account does not have.`
         : active.length
-          ? `Only ${active.length} comparable active ${active.length === 1 ? "listing" : "listings"} found, and no sold-price access. Treat this as a weak signal.`
+          ? `Weak signal: only ${active.length} comparable active ${active.length === 1 ? "listing" : "listings"} found, and no access to sold prices.`
           : "No comparable eBay listings found for this search.",
   };
 }
