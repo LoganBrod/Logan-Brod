@@ -9,6 +9,8 @@ interface PreviewListing {
   category: string;
   tags: string[];
   photosNote: string;
+  /** Stored photo ids, if the seller uploaded real photos */
+  photos?: string[];
 }
 
 function photoCount(note: string): number {
@@ -17,8 +19,27 @@ function photoCount(note: string): number {
   return Math.min(Math.max(n, 1), 12);
 }
 
-function PhotoThumb({ photosNote }: { photosNote: string }) {
-  const photos = photoCount(photosNote);
+function PhotoThumb({ photosNote, photos }: { photosNote: string; photos?: string[] }) {
+  // Real uploaded photos when we have them, placeholder otherwise
+  if (photos && photos.length > 0) {
+    return (
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/api/photos/${photos[0]}`}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+        {photos.length > 1 && (
+          <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 shadow-sm">
+            {photos.length} pics
+          </span>
+        )}
+      </div>
+    );
+  }
+  const count = photoCount(photosNote);
   return (
     <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
@@ -27,7 +48,7 @@ function PhotoThumb({ photosNote }: { photosNote: string }) {
         <path d="M21 15l-5-5-4 4-3-3-6 6" />
       </svg>
       <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 shadow-sm">
-        {photos} pics
+        {count} pics
       </span>
     </div>
   );
@@ -43,7 +64,7 @@ export default function ListingPreview({ l }: { l: PreviewListing }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
       <div className="flex gap-3">
-        <PhotoThumb photosNote={l.photosNote} />
+        <PhotoThumb photosNote={l.photosNote} photos={l.photos} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-dim">

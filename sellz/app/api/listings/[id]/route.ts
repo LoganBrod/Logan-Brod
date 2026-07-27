@@ -26,6 +26,13 @@ export async function PATCH(
   if (typeof body.ebayItemId === "string") {
     await updateListing(listing.id, { ebayItemId: body.ebayItemId.trim().slice(0, 40) });
   }
+  // Seller edits from the review step
+  const edits: Record<string, unknown> = {};
+  if (typeof body.title === "string") edits.title = body.title.trim().slice(0, 200);
+  if (typeof body.description === "string") edits.description = body.description.slice(0, 4000);
+  if (typeof body.condition === "string") edits.condition = body.condition.trim().slice(0, 200);
+  if (isFinite(Number(body.price)) && Number(body.price) >= 0) edits.price = Number(body.price);
+  if (Object.keys(edits).length) await updateListing(listing.id, edits);
   if (typeof body.manualComps === "string") {
     await updateListing(listing.id, {
       comps: {

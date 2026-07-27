@@ -39,6 +39,14 @@ interface Listing {
   };
   brainScore?: { score: number; reason: string };
   ebayItemId?: string;
+  photos?: string[];
+  publishedAt?: string;
+  cost?: {
+    purchasePrice?: number;
+    shippingCost?: number;
+    fees?: number;
+    source?: string;
+  };
   diagnosis?: {
     text: string;
     rewrittenTitle: string;
@@ -303,7 +311,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-type TabKey = "listing" | "comps" | "outcome" | "diagnosis";
+type TabKey = "listing" | "comps" | "outcome" | "cost" | "diagnosis";
 
 function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
   const toast = useToast();
@@ -312,6 +320,12 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
   const [actionError, setActionError] = useState<string | null>(null);
   const [manualComps, setManualComps] = useState(l.comps?.manualNotes ?? "");
   const [ebayItemId, setEbayItemId] = useState(l.ebayItemId ?? "");
+  const [cost, setCost] = useState({
+    purchasePrice: l.cost?.purchasePrice ?? "",
+    shippingCost: l.cost?.shippingCost ?? "",
+    fees: l.cost?.fees ?? "",
+    source: l.cost?.source ?? "",
+  });
   const [o, setO] = useState({
     views: l.outcome?.views ?? 0,
     watchers: l.outcome?.watchers ?? 0,
@@ -347,8 +361,15 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
     { key: "listing", label: "Listing" },
     { key: "comps", label: "Comps", dot: !!l.comps?.summary },
     { key: "outcome", label: "Outcome" },
+    { key: "cost", label: "Cost", dot: l.cost?.purchasePrice !== undefined },
     ...(l.diagnosis ? [{ key: "diagnosis" as const, label: "Diagnosis", dot: true }] : []),
   ];
+
+  const profit =
+    l.status === "sold" && l.outcome?.soldPrice !== undefined && l.cost?.purchasePrice !== undefined
+      ? l.outcome.soldPrice -
+        (l.cost.purchasePrice + (l.cost.shippingCost ?? 0) + (l.cost.fees ?? 0))
+      : null;
 
   return (
     <motion.div
@@ -573,6 +594,76 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
                   Save
                 </button>
               </div>
+            </div>
+          )}
+
+          {tab === "cost" && (
+            <div className="rounded-xl bg-ink p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <SectionLabel>Cost basis</SectionLabel>
+                {profit !== null && (
+                  <span
+                    className={
+                      "rounded-full px-2 py-0.5 text-xs font-bold " +
+                      (profit >= 0 ? "bg-brand/15 text-brand" : "bg-red-500/15 text-red-400")
+                    }
+                  >
+                    {profit >= 0 ? "+" : "−"}${Math.abs(profit).toFixed(2)} profit
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {(
+                  [
+                    ["purchasePrice", "paid $"],
+                    ["shippingCost", "shipping $"],
+                    ["fees", "fees $"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <label key={k} className="space-y-0.5">
+                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">
+                      {label}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={cost[k]}
+                      onChange={(e) => setCost({ ...cost, [k]: e.target.value })}
+                      className="w-full rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={cost.source}
+                  onChange={(e) => setCost({ ...cost, source: e.target.value })}
+                  placeholder="Where you sourced it (thrift, wholesale, estate sale…)"
+                  className={`${field} bg-ink-card text-xs`}
+                />
+                <button
+                  onClick={() =>
+                    act(
+                      "cost",
+                      `/api/listings/${l.id}/cost`,
+                      {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(cost),
+                      },
+                      "Cost saved"
+                    )
+                  }
+                  className="shrink-0 rounded bg-ink-border px-3 py-1 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink"
+                >
+                  Save
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] text-fog/30">
+                Feeds the Analytics page — margins, best-performing categories, and which sources
+                are worth repeating.
+              </p>
             </div>
           )}
 

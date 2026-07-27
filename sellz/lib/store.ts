@@ -13,6 +13,19 @@ export interface ListingOutcome {
   updatedAt: string;
 }
 
+/** What it cost to acquire and move an item — drives profit and margin. */
+export interface CostBasis {
+  /** What you paid for the item */
+  purchasePrice?: number;
+  /** Shipping you paid out (postage, packaging) */
+  shippingCost?: number;
+  /** Marketplace + payment fees */
+  fees?: number;
+  /** Where you sourced it, for spotting which sources pay off */
+  source?: string;
+  updatedAt: string;
+}
+
 export interface Comps {
   summary: string;
   priceLow?: number;
@@ -53,6 +66,7 @@ export interface Listing {
   status: ListingStatus;
   source: "imported" | "generated";
   outcome?: ListingOutcome;
+  cost?: CostBasis;
   comps?: Comps;
   brainScore?: BrainScore;
   diagnosis?: Diagnosis;
@@ -60,6 +74,12 @@ export interface Listing {
   experimentId?: string;
   /** Real eBay item ID (from the listing's URL) — lets us auto-sync outcome data */
   ebayItemId?: string;
+  /** Stored photo ids (front, back, extras) served from /api/photos/[id] */
+  photos?: string[];
+  /** Set once we've published this listing to eBay from here */
+  publishedAt?: string;
+  /** SKU we generated when publishing via the eBay Inventory API */
+  ebaySku?: string;
   createdAt: string;
 }
 
@@ -223,6 +243,40 @@ export async function clearEbayTokens() {
   const store = await read();
   delete store.ebay;
   await write(store);
+}
+
+export interface Profit {
+  revenue: number;
+  cost: number;
+  profit: number;
+  /** Profit as a % of revenue. Null when there's no revenue to divide by. */
+  marginPct: number | null;
+  /** True only when we know both what it sold for and what it cost */
+  complete: boolean;
+}
+
+/**
+ * Profit for one listing. Only meaningful once it's sold and has a cost
+ * basis; `complete` says whether both halves are actually known so callers
+ * can avoid quoting a margin that's really just "we don't know the cost".
+ */
+export function listingProfit(l: Listing): Profit | null {
+  const revenue = l.outcome?.soldPrice;
+  if (l.status !== "sold" || revenue === undefined) return null;
+
+  const purchase = l.cost?.purchasePrice;
+  const shipping = l.cost?.shippingCost ?? 0;
+  const fees = l.cost?.fees ?? 0;
+  const cost = (purchase ?? 0) + shipping + fees;
+  const profit = revenue - cost;
+
+  return {
+    revenue,
+    cost,
+    profit,
+    marginPct: revenue > 0 ? (profit / revenue) * 100 : null,
+    complete: purchase !== undefined,
+  };
 }
 
 /** Days from listing to sale (or to now for unsold), null-safe */

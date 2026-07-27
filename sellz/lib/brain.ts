@@ -430,6 +430,105 @@ export async function generateListings(
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Vision: identify an item from its photos and write the whole listing
+// ---------------------------------------------------------------------------
+
+const PhotoListingSchema = z.object({
+  identified: z
+    .string()
+    .describe("What the item plainly is, e.g. 'Carhartt Detroit jacket, brown duck canvas'"),
+  brand: z.string().describe("Brand if legible on the item or its tags, else empty string"),
+  size: z.string().describe("Size if legible on a tag, else empty string"),
+  title: z.string().describe("eBay title, <=80 chars, keyword-dense: brand, model, size, colour"),
+  description: z.string().describe("Full listing description, ready to post"),
+  price: z.number().describe("Suggested asking price in dollars"),
+  category: z.string().describe("Plain-language category, e.g. 'Men's Jackets'"),
+  condition: z
+    .string()
+    .describe("Condition based ONLY on what is visible in the photos, flaws included"),
+  tags: z.array(z.string()).describe("Search keywords, up to 8"),
+  visibleFlaws: z
+    .string()
+    .describe("Any wear, stains, holes, fading visible in the photos — empty string if none seen"),
+  photosNote: z.string().describe("Any additional shots worth taking before listing"),
+  confidence: z
+    .number()
+    .describe("0-100: how confident you are in the identification from these photos alone"),
+  uncertainties: z
+    .string()
+    .describe("What you could NOT determine from the photos and the seller should confirm"),
+});
+
+export type PhotoListing = z.infer<typeof PhotoListingSchema>;
+
+const PHOTO_PROMPT = `You are the listing writer of a marketplace selling tool. You are shown photos of one physical item — typically the front and the back — and you write a complete, ready-to-post eBay listing for it.
+
+Rules that matter:
+- Describe ONLY what you can actually see. Never invent a brand, size, material, model year, or measurement that isn't legible in the photos. If a tag is unreadable, say so in "uncertainties" rather than guessing.
+- Call out visible flaws honestly (wear, stains, pilling, scuffs, fading, missing buttons). Honest flaw disclosure is what stops returns and builds seller rating — it belongs in the description, not hidden.
+- eBay titles are what buyers type into search: brand, model, size, colour, key attribute. <=80 characters, no filler words, no ALL CAPS.
+- The description should build trust: what it is, condition stated plainly, flaws, and what the buyer receives.
+- Set "confidence" honestly. A clear branded tag means high confidence; a generic unbranded item photographed dimly means low confidence, and you should say why in "uncertainties".
+
+If comparable sold items and a seller playbook are provided, price and phrase against them — they reflect what has actually sold.`;
+
+/**
+ * Generate a full listing from item photos. `images` are raw base64 payloads
+ * with their media types, in the order the seller uploaded them.
+ */
+export async function generateFromPhotos(
+  images: { base64: string; mediaType: string }[],
+  sellerNotes: string,
+  compsContext?: string
+): Promise<PhotoListing> {
+  requireKey();
+  if (images.length === 0) throw new Error("Add at least one photo of the item");
+
+  const playbook = await getPlaybook();
+  const system =
+    PHOTO_PROMPT +
+    (await sellerContext()) +
+    (playbook
+      ? `\n\nSeller playbook (learned from their real sales — follow it):\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
+      : "");
+
+  const content: Anthropic.ContentBlockParam[] = images.map((img, i) => ({
+    type: "image" as const,
+    source: { type: "base64" as const, media_type: img.mediaType as "image/jpeg", data: img.base64 },
+    ...(i === 0 ? {} : {}),
+  }));
+
+  content.push({
+    type: "text",
+    text: [
+      images.length > 1
+        ? `The ${images.length} photos above show the same item (typically front, then back).`
+        : "The photo above shows the item.",
+      sellerNotes.trim()
+        ? `The seller adds: ${sellerNotes.trim()}`
+        : "The seller added no extra notes — work from the photos alone.",
+      compsContext ?? "",
+      "Write the eBay listing.",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  });
+
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 4000,
+    thinking: { type: "adaptive" },
+    system,
+    messages: [{ role: "user", content }],
+    output_config: { format: zodOutputFormat(PhotoListingSchema) },
+  });
+
+  if (!response.parsed_output) throw new Error("Photo analysis returned no structured output");
+  return { ...response.parsed_output, tags: response.parsed_output.tags.slice(0, 8) };
+}
+
 /** Round-robin a listing into "control" or an active experiment arm. */
 export async function pickExperiment(): Promise<string> {
   const experiments = (await getPlaybook())?.experiments ?? [];

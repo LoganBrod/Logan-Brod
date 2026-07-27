@@ -2,15 +2,20 @@
 
 Third sibling of the Brain family (the LevoZ clipper, AdZ ads) — this one grades your marketplace listings on **real sales outcomes**, learns why items sell — and why the stuck ones don't — researches comps, and generates better listings.
 
-## The loop
+## The main loop: photo → listing → eBay
 
-1. **Set your niche** — what you sell, platforms, shipping, shop style.
-2. **Feed the Brain** — import listings with outcomes: the sold ones (sale price, days-to-sell, views/watchers) AND the ones that never moved. Both teach it. Pre-feed reference listings from your niche to bootstrap.
-3. **Analyze** — Claude contrasts sold vs stuck: title keywords, pricing vs comps, photos, condition framing. Writes a playbook (listing + pricing guidelines, avoid list), judges running experiments, proposes new ones.
-4. **Research comps** — per listing, the Brain searches the web for what comparable items actually sold for and stores a price range + demand notes. Paste your own comps when you have better data.
-5. **Diagnose** — for anything not selling: "Why isn't it selling?" contrasts it against your sold listings and comps, explains the problem ranked by impact, and rewrites the title + description with a suggested price.
-6. **Generate** — describe an item; get platform-aware drafts (eBay keyword titles vs Depop casual + hashtags) with price, tags, and a photo checklist — Brain-scored and rotating through experiments.
-7. **Close the loop** — record outcomes, re-analyze. Every cycle sharpens the next listing.
+1. **Photograph the item** (`/new`) — front and back. Claude's vision identifies what it is, the brand and size if the tags are legible, and any visible flaws. It says how confident it is and flags what it *couldn't* tell from the photos.
+2. **It prices against comps** — if eBay is connected, it pulls comparable items: real sold prices where your account has Marketplace Insights access, otherwise active listings from sellers with 98%+ feedback (clearly labelled as asking prices, not sales). Your own playbook and sold history weigh in too.
+3. **Review and approve** — the draft title, price, condition, and description are all editable. "Approve & list on eBay" publishes it as a real, buyable listing. There's a confirmation step, because that's a real listing real buyers can purchase.
+4. **Track what it made** — record what you paid for an item (Listings → Cost tab) and `/analytics` shows profit, margin, your best and thinnest margins, and which categories and sourcing spots actually pay off.
+
+## The learning loop
+
+- **Set your niche** — what you sell, platforms, shipping, shop style.
+- **Feed the Brain** — import listings with outcomes: the sold ones AND the ones that never moved. Both teach it. Pre-feed reference listings to bootstrap.
+- **Analyze** — Claude contrasts sold vs stuck and writes a playbook (listing + pricing guidelines, avoid list), judges running experiments, proposes new ones.
+- **Diagnose** — for anything not selling, it explains why, ranked by impact, and rewrites the title + description with a suggested price.
+- **Close the loop** — record outcomes, re-analyze. Every cycle sharpens the next listing.
 
 ## Setup
 
@@ -40,7 +45,16 @@ Connecting an eBay Developer app lets the Brain page pull each listing's views a
    ```
 4. On the Brain page, click **Connect eBay account**, log in, and grant access. Then on any eBay listing, paste its item ID (from the listing's URL) into the Outcome tab and hit **Sync from eBay**.
 
-Notes on what this can and can't do: views come from eBay's Analytics API, sold price/date from the Fulfillment (orders) API — both scoped read-only to your own account. Watcher count isn't pulled automatically (eBay doesn't expose it cleanly through these APIs) and stays manual. The order lookup only checks your most recent 50 orders, so it may miss a very old sale.
+Notes on what this can and can't do: views come from eBay's Analytics API, sold price/date from the Fulfillment (orders) API. Watcher count isn't pulled automatically (eBay doesn't expose it cleanly through these APIs) and stays manual. The order lookup only checks your most recent 50 orders, so it may miss a very old sale.
+
+### Publishing listings to eBay
+
+The "Approve & list on eBay" button uses the Inventory API, which has requirements beyond just connecting your account:
+
+- **Business policies are mandatory.** eBay refuses to publish an offer unless your seller account has a payment policy, a return policy, a shipping (fulfillment) policy, and an inventory location. Set them in My eBay → Account → Business Policies. The review screen checks this up front and tells you exactly what's missing rather than failing at the last step.
+- **Photos must be publicly reachable.** eBay fetches images by URL, so uploaded photos are served from `/api/photos/[id]` on your deployed site. This means publishing works from the deployed app, not from `localhost`. Set `PUBLIC_SITE_URL` if the origin the app sees isn't the public one.
+- **Sold-price comps are gated.** eBay's Marketplace Insights API (actual sold prices) is restricted and most developer accounts aren't granted it. Without it, comps fall back to active listings from high-feedback sellers — useful, but asking prices rather than confirmed sales. The UI labels which one you're looking at.
+- **Scopes changed.** Publishing needs `sell.inventory` and `sell.account.readonly`, so if you connected eBay before this feature existed, disconnect and reconnect to re-consent with the new scopes.
 
 ## Deploying (Netlify)
 

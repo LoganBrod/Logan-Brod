@@ -5,16 +5,18 @@ import { motion } from "framer-motion";
 import Reveal from "@/components/Reveal";
 
 const STEPS = [
-  { n: "1", title: "Feed it", desc: "Import listings with real outcomes — sold, and the ones that never moved." },
-  { n: "2", title: "It learns", desc: "Claude contrasts winners vs. losers into a playbook of what actually works." },
-  { n: "3", title: "It writes", desc: "New listings, priced and worded by what's sold before — Brain-scored on the way out." },
+  { n: "1", title: "Photograph it", desc: "Front and back. Vision identifies the item, brand, size, and visible flaws." },
+  { n: "2", title: "It prices it", desc: "Comps against what similar items actually sold for and what's worked for you before." },
+  { n: "3", title: "You approve", desc: "Review the draft, tweak anything, and list it straight to eBay in one click." },
 ];
 
 const SHORTCUTS = [
+  { href: "/new", title: "New listing", desc: "Photo in, finished listing out — then list it to eBay", icon: CameraIcon },
+  { href: "/analytics", title: "Analytics", desc: "Profit, margins, and which sources actually pay off", icon: ProfitIcon },
   { href: "/dashboard", title: "Dashboard", desc: "Live stats — sold, revenue, sell-through, recent listings", icon: ChartIcon },
-  { href: "/brain", title: "Brain", desc: "Settings, the playbook, and pre-feed reference listings", icon: BrainIcon },
-  { href: "/generate", title: "Generate", desc: "Describe an item, get playbook-driven drafts", icon: SparkIcon },
-  { href: "/listings", title: "Listings", desc: "Import history, grade, research comps, diagnose", icon: TagIcon },
+  { href: "/listings", title: "Listings", desc: "Your history: grade, comps, costs, diagnose what's stuck", icon: TagIcon },
+  { href: "/brain", title: "Brain", desc: "Settings, the playbook, and the eBay connection", icon: BrainIcon },
+  { href: "/generate", title: "Write from text", desc: "No photos handy? Describe the item instead", icon: SparkIcon },
 ];
 
 export default function LandingPage() {
@@ -32,10 +34,11 @@ export default function LandingPage() {
           The Brain that learns why your listings sell — and writes better ones.
         </p>
         <p className="mt-4 max-w-xl text-sm leading-relaxed text-fog/50">
-          LevoZ grades every eBay and Depop listing against what actually sold,
-          researches real comps, and diagnoses exactly why a stuck listing
-          isn&apos;t moving. Feed it your history, let it analyze, and it writes
-          new listings shaped by what&apos;s worked before.
+          Photograph an item front and back and LevoZ identifies it, prices it
+          against comparable sales from well-rated sellers, writes the title and
+          description, and lists it to eBay once you approve. It tracks what each
+          item cost you, so it learns which items — and which sources — actually
+          make money.
         </p>
       </motion.div>
 
@@ -86,6 +89,23 @@ export default function LandingPage() {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="6" width="18" height="14" rx="2" strokeLinejoin="round" />
+      <circle cx="12" cy="13" r="3.5" />
+      <path d="M8 6l1.5-2h5L16 6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ProfitIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 17l5.5-5.5 3.5 3.5L21 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 6h6v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function ChartIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

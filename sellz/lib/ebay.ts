@@ -25,9 +25,18 @@ const API_BASE: Record<EbayEnv, string> = {
 };
 
 const SCOPES = [
+  "https://api.ebay.com/oauth/api_scope",
   "https://api.ebay.com/oauth/api_scope/sell.analytics.readonly",
   "https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly",
+  // Needed to create and publish listings from here
+  "https://api.ebay.com/oauth/api_scope/sell.inventory",
+  // Business policies + merchant location, required to publish an offer
+  "https://api.ebay.com/oauth/api_scope/sell.account.readonly",
+  // Sold-item comps; only works if the account is granted access
+  "https://api.ebay.com/oauth/api_scope/sell.marketplace.insights.readonly",
 ].join(" ");
+
+const MARKETPLACE_ID = "EBAY_US";
 
 export function getAuthorizeUrl(): string {
   requireCreds();
@@ -194,4 +203,416 @@ export async function fetchListingStats(itemId: string): Promise<EbayListingStat
   const tokens = await getValidTokens();
   const [views, sale] = await Promise.all([fetchViews(itemId, tokens), fetchSale(itemId, tokens)]);
   return { views, ...sale };
+}
+
+// ---------------------------------------------------------------------------
+// Comps: what comparable items are going for, weighted to top-rated sellers
+// ---------------------------------------------------------------------------
+
+export interface EbayComp {
+  title: string;
+  price: number;
+  condition?: string;
+  sellerFeedbackPct?: number;
+  sellerFeedbackScore?: number;
+  url?: string;
+  sold: boolean;
+}
+
+interface BrowseItemSummary {
+  title?: string;
+  price?: { value?: string };
+  condition?: string;
+  itemWebUrl?: string;
+  seller?: { feedbackPercentage?: string; feedbackScore?: number };
+}
+
+/**
+ * Active comparable listings via the Browse API, filtered to well-rated
+ * sellers. These are ASKING prices, not sold prices — labelled accordingly.
+ */
+async function browseActiveComps(query: string, tokens: EbayTokens): Promise<EbayComp[]> {
+  const params = new URLSearchParams({
+    q: query.slice(0, 100),
+    limit: "40",
+    filter: "buyingOptions:{FIXED_PRICE}",
+  });
+  const res = await fetch(
+    `${API_BASE[tokens.env]}/buy/browse/v1/item_summary/search?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${tokens.accessToken}`,
+        "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+      },
+    }
+  );
+  if (!res.ok) return [];
+  const data: { itemSummaries?: BrowseItemSummary[] } = await res.json();
+  return (data.itemSummaries ?? [])
+    .map((it) => ({
+      title: it.title ?? "",
+      price: Number(it.price?.value ?? NaN),
+      condition: it.condition,
+      sellerFeedbackPct: it.seller?.feedbackPercentage
+        ? Number(it.seller.feedbackPercentage)
+        : undefined,
+      sellerFeedbackScore: it.seller?.feedbackScore,
+      url: it.itemWebUrl,
+      sold: false,
+    }))
+    .filter((c) => isFinite(c.price) && c.price > 0);
+}
+
+interface InsightsSale {
+  title?: string;
+  lastSoldPrice?: { value?: string };
+  condition?: string;
+  itemWebUrl?: string;
+}
+
+/**
+ * Actual sold prices via Marketplace Insights. This API is restricted —
+ * most developer accounts are not granted access, in which case eBay
+ * returns 403 and we simply report no sold comps rather than failing.
+ */
+async function insightsSoldComps(query: string, tokens: EbayTokens): Promise<EbayComp[]> {
+  const params = new URLSearchParams({ q: query.slice(0, 100), limit: "40" });
+  const res = await fetch(
+    `${API_BASE[tokens.env]}/buy/marketplace_insights/v1_beta/item_sales/search?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${tokens.accessToken}`,
+        "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+      },
+    }
+  );
+  if (!res.ok) return [];
+  const data: { itemSales?: InsightsSale[] } = await res.json();
+  return (data.itemSales ?? [])
+    .map((s) => ({
+      title: s.title ?? "",
+      price: Number(s.lastSoldPrice?.value ?? NaN),
+      condition: s.condition,
+      url: s.itemWebUrl,
+      sold: true,
+    }))
+    .filter((c) => isFinite(c.price) && c.price > 0);
+}
+
+export interface CompsResult {
+  comps: EbayComp[];
+  soldDataAvailable: boolean;
+  /** Median of the strongest comps — sold if we have them, else asking */
+  suggestedPrice?: number;
+  priceLow?: number;
+  priceHigh?: number;
+  note: string;
+}
+
+function median(nums: number[]): number | undefined {
+  if (!nums.length) return undefined;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round(((s[mid - 1] + s[mid]) / 2) * 100) / 100;
+}
+
+/**
+ * Comparable-item research for a query, preferring real sold prices and
+ * otherwise falling back to asking prices from highly-rated sellers.
+ */
+export async function researchEbayComps(query: string): Promise<CompsResult> {
+  const tokens = await getValidTokens();
+  const [sold, active] = await Promise.all([
+    insightsSoldComps(query, tokens).catch(() => []),
+    browseActiveComps(query, tokens).catch(() => []),
+  ]);
+
+  const soldDataAvailable = sold.length > 0;
+
+  // Prefer sellers with strong feedback — their pricing and presentation are
+  // what actually converts, which is the whole point of comping against them.
+  const topRated = active
+    .filter((c) => (c.sellerFeedbackPct ?? 0) >= 98 && (c.sellerFeedbackScore ?? 0) >= 50)
+    .sort((a, b) => (b.sellerFeedbackScore ?? 0) - (a.sellerFeedbackScore ?? 0));
+
+  const basis = soldDataAvailable ? sold : topRated.length >= 3 ? topRated : active;
+  const prices = basis.map((c) => c.price);
+
+  return {
+    comps: [...sold, ...(topRated.length ? topRated : active)].slice(0, 25),
+    soldDataAvailable,
+    suggestedPrice: median(prices),
+    priceLow: prices.length ? Math.min(...prices) : undefined,
+    priceHigh: prices.length ? Math.max(...prices) : undefined,
+    note: soldDataAvailable
+      ? `Based on ${sold.length} actual sold ${sold.length === 1 ? "item" : "items"} on eBay.`
+      : topRated.length >= 3
+        ? `eBay didn't return sold-price data for this account, so this is based on ${topRated.length} active listings from sellers with 98%+ feedback — these are asking prices, not confirmed sales.`
+        : active.length
+          ? `Only ${active.length} comparable active ${active.length === 1 ? "listing" : "listings"} found, and no sold-price access. Treat this as a weak signal.`
+          : "No comparable eBay listings found for this search.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Publishing: create and list an item on eBay via the Inventory API
+// ---------------------------------------------------------------------------
+
+export interface PublishReadiness {
+  ready: boolean;
+  hasPaymentPolicy: boolean;
+  hasFulfillmentPolicy: boolean;
+  hasReturnPolicy: boolean;
+  hasLocation: boolean;
+  missing: string[];
+}
+
+async function ebayGet<T>(pathname: string, tokens: EbayTokens): Promise<T | null> {
+  const res = await fetch(`${API_BASE[tokens.env]}${pathname}`, {
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+/**
+ * eBay refuses to publish an offer unless the seller has payment, return and
+ * fulfillment business policies plus an inventory location. Check up front so
+ * we can tell the seller exactly what to set up instead of failing at publish.
+ */
+export async function checkPublishReadiness(): Promise<PublishReadiness> {
+  const tokens = await getValidTokens();
+  const q = `?marketplace_id=${MARKETPLACE_ID}`;
+
+  const [payment, fulfillment, returnPol, locations] = await Promise.all([
+    ebayGet<{ paymentPolicies?: unknown[] }>(`/sell/account/v1/payment_policy${q}`, tokens),
+    ebayGet<{ fulfillmentPolicies?: unknown[] }>(`/sell/account/v1/fulfillment_policy${q}`, tokens),
+    ebayGet<{ returnPolicies?: unknown[] }>(`/sell/account/v1/return_policy${q}`, tokens),
+    ebayGet<{ locations?: unknown[] }>(`/sell/inventory/v1/location`, tokens),
+  ]);
+
+  const hasPaymentPolicy = Boolean(payment?.paymentPolicies?.length);
+  const hasFulfillmentPolicy = Boolean(fulfillment?.fulfillmentPolicies?.length);
+  const hasReturnPolicy = Boolean(returnPol?.returnPolicies?.length);
+  const hasLocation = Boolean(locations?.locations?.length);
+
+  const missing: string[] = [];
+  if (!hasPaymentPolicy) missing.push("payment policy");
+  if (!hasFulfillmentPolicy) missing.push("shipping (fulfillment) policy");
+  if (!hasReturnPolicy) missing.push("return policy");
+  if (!hasLocation) missing.push("inventory location");
+
+  return {
+    ready: missing.length === 0,
+    hasPaymentPolicy,
+    hasFulfillmentPolicy,
+    hasReturnPolicy,
+    hasLocation,
+    missing,
+  };
+}
+
+interface PolicyIds {
+  paymentPolicyId: string;
+  fulfillmentPolicyId: string;
+  returnPolicyId: string;
+  merchantLocationKey: string;
+}
+
+async function resolvePolicies(tokens: EbayTokens): Promise<PolicyIds> {
+  const q = `?marketplace_id=${MARKETPLACE_ID}`;
+  const [payment, fulfillment, returnPol, locations] = await Promise.all([
+    ebayGet<{ paymentPolicies?: { paymentPolicyId: string }[] }>(
+      `/sell/account/v1/payment_policy${q}`,
+      tokens
+    ),
+    ebayGet<{ fulfillmentPolicies?: { fulfillmentPolicyId: string }[] }>(
+      `/sell/account/v1/fulfillment_policy${q}`,
+      tokens
+    ),
+    ebayGet<{ returnPolicies?: { returnPolicyId: string }[] }>(
+      `/sell/account/v1/return_policy${q}`,
+      tokens
+    ),
+    ebayGet<{ locations?: { merchantLocationKey: string }[] }>(
+      `/sell/inventory/v1/location`,
+      tokens
+    ),
+  ]);
+
+  const paymentPolicyId = payment?.paymentPolicies?.[0]?.paymentPolicyId;
+  const fulfillmentPolicyId = fulfillment?.fulfillmentPolicies?.[0]?.fulfillmentPolicyId;
+  const returnPolicyId = returnPol?.returnPolicies?.[0]?.returnPolicyId;
+  const merchantLocationKey = locations?.locations?.[0]?.merchantLocationKey;
+
+  if (!paymentPolicyId || !fulfillmentPolicyId || !returnPolicyId || !merchantLocationKey) {
+    const readiness = await checkPublishReadiness();
+    throw new Error(
+      `eBay needs these set up on your seller account before it can publish: ${readiness.missing.join(", ")}. Set them in My eBay > Account > Business Policies.`
+    );
+  }
+  return { paymentPolicyId, fulfillmentPolicyId, returnPolicyId, merchantLocationKey };
+}
+
+/** Ask eBay which category best fits this title. */
+async function suggestCategoryId(title: string, tokens: EbayTokens): Promise<string | null> {
+  const tree = await ebayGet<{ categoryTreeId?: string }>(
+    `/commerce/taxonomy/v1/get_default_category_tree_id?marketplace_id=${MARKETPLACE_ID}`,
+    tokens
+  );
+  if (!tree?.categoryTreeId) return null;
+  const suggestions = await ebayGet<{
+    categorySuggestions?: { category?: { categoryId?: string } }[];
+  }>(
+    `/commerce/taxonomy/v1/category_tree/${tree.categoryTreeId}/get_category_suggestions?q=${encodeURIComponent(title.slice(0, 80))}`,
+    tokens
+  );
+  return suggestions?.categorySuggestions?.[0]?.category?.categoryId ?? null;
+}
+
+/** Map our free-text condition onto an eBay condition enum. */
+function ebayCondition(condition: string): string {
+  const c = condition.toLowerCase();
+  if (c.includes("new with tag") || c.includes("nwt") || c.includes("deadstock")) return "NEW";
+  if (c.includes("new without") || c.includes("nwot")) return "NEW_OTHER";
+  if (c.includes("like new") || c.includes("excellent")) return "LIKE_NEW";
+  if (c.includes("very good")) return "VERY_GOOD";
+  if (c.includes("good")) return "GOOD";
+  if (c.includes("acceptable") || c.includes("fair") || c.includes("poor")) return "ACCEPTABLE";
+  return "USED_EXCELLENT";
+}
+
+async function ebaySend(
+  method: "POST" | "PUT",
+  pathname: string,
+  body: unknown,
+  tokens: EbayTokens
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; text: string }> {
+  const res = await fetch(`${API_BASE[tokens.env]}${pathname}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      "Content-Type": "application/json",
+      "Content-Language": "en-US",
+      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json: Record<string, unknown> = {};
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    /* non-JSON body */
+  }
+  return { ok: res.ok, status: res.status, json, text };
+}
+
+/** Pull a readable message out of eBay's error envelope. */
+function ebayError(step: string, r: { status: number; json: Record<string, unknown>; text: string }) {
+  const errors = (r.json?.errors ?? []) as { message?: string; longMessage?: string }[];
+  const detail =
+    errors.map((e) => e.longMessage || e.message).filter(Boolean).join("; ") ||
+    r.text.slice(0, 300) ||
+    `HTTP ${r.status}`;
+  return new Error(`${step} failed: ${detail}`);
+}
+
+export interface PublishInput {
+  sku: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  imageUrls: string[];
+  quantity?: number;
+}
+
+export interface PublishResult {
+  listingId: string;
+  offerId: string;
+  sku: string;
+  url: string;
+}
+
+/**
+ * Create and publish a real, buyable eBay listing. Inventory item -> offer ->
+ * publish. Anything already existing under this SKU is replaced.
+ */
+export async function publishToEbay(input: PublishInput): Promise<PublishResult> {
+  const tokens = await getValidTokens();
+  if (input.imageUrls.length === 0) {
+    throw new Error("eBay requires at least one photo URL to publish a listing");
+  }
+
+  const policies = await resolvePolicies(tokens);
+
+  // 1. Inventory item
+  const invRes = await ebaySend(
+    "PUT",
+    `/sell/inventory/v1/inventory_item/${encodeURIComponent(input.sku)}`,
+    {
+      availability: {
+        shipToLocationAvailability: { quantity: Math.max(1, input.quantity ?? 1) },
+      },
+      condition: ebayCondition(input.condition),
+      product: {
+        title: input.title.slice(0, 80),
+        description: input.description,
+        imageUrls: input.imageUrls.slice(0, 12),
+      },
+    },
+    tokens
+  );
+  if (!invRes.ok) throw ebayError("Creating the eBay inventory item", invRes);
+
+  // 2. Offer
+  const categoryId = await suggestCategoryId(input.title, tokens);
+  const offerRes = await ebaySend(
+    "POST",
+    `/sell/inventory/v1/offer`,
+    {
+      sku: input.sku,
+      marketplaceId: MARKETPLACE_ID,
+      format: "FIXED_PRICE",
+      availableQuantity: Math.max(1, input.quantity ?? 1),
+      ...(categoryId ? { categoryId } : {}),
+      listingDescription: input.description,
+      pricingSummary: { price: { value: input.price.toFixed(2), currency: "USD" } },
+      listingPolicies: {
+        paymentPolicyId: policies.paymentPolicyId,
+        fulfillmentPolicyId: policies.fulfillmentPolicyId,
+        returnPolicyId: policies.returnPolicyId,
+      },
+      merchantLocationKey: policies.merchantLocationKey,
+    },
+    tokens
+  );
+  if (!offerRes.ok) throw ebayError("Creating the eBay offer", offerRes);
+  const offerId = offerRes.json.offerId as string;
+  if (!offerId) throw new Error("eBay didn't return an offer id");
+
+  // 3. Publish — this is the point the listing goes live and becomes buyable
+  const pubRes = await ebaySend(
+    "POST",
+    `/sell/inventory/v1/offer/${offerId}/publish`,
+    {},
+    tokens
+  );
+  if (!pubRes.ok) throw ebayError("Publishing the eBay listing", pubRes);
+
+  const listingId = String(pubRes.json.listingId ?? "");
+  return {
+    listingId,
+    offerId,
+    sku: input.sku,
+    url: listingId
+      ? `https://www.${tokens.env === "sandbox" ? "sandbox." : ""}ebay.com/itm/${listingId}`
+      : "",
+  };
 }
