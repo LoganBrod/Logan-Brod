@@ -266,6 +266,40 @@ async function browseActiveComps(query: string, tokens: EbayTokens): Promise<Eba
     .filter((c) => isFinite(c.price) && c.price > 0);
 }
 
+/**
+ * Visually similar active listings, found from the item photo itself rather
+ * than from a guessed search phrase. Much stronger than text comps when we
+ * are not confident what the item is called, because eBay matches on the
+ * picture and hands back what real sellers titled the same thing.
+ */
+export async function compsByImage(base64Image: string): Promise<EbayComp[]> {
+  const tokens = await getValidTokens();
+  const res = await fetch(`${API_BASE[tokens.env]}/buy/browse/v1/item_summary/search_by_image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      "Content-Type": "application/json",
+      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+    },
+    body: JSON.stringify({ image: base64Image }),
+  });
+  if (!res.ok) return [];
+  const data: { itemSummaries?: BrowseItemSummary[] } = await res.json();
+  return (data.itemSummaries ?? [])
+    .map((it) => ({
+      title: it.title ?? "",
+      price: Number(it.price?.value ?? NaN),
+      condition: it.condition,
+      sellerFeedbackPct: it.seller?.feedbackPercentage
+        ? Number(it.seller.feedbackPercentage)
+        : undefined,
+      sellerFeedbackScore: it.seller?.feedbackScore,
+      url: it.itemWebUrl,
+      sold: false,
+    }))
+    .filter((c) => isFinite(c.price) && c.price > 0);
+}
+
 interface InsightsSale {
   title?: string;
   lastSoldPrice?: { value?: string };
@@ -319,6 +353,8 @@ async function insightsSoldComps(query: string, tokens: EbayTokens): Promise<Eba
 export interface CompsResult {
   comps: EbayComp[];
   soldDataAvailable: boolean;
+  /** How many listings eBay matched from the photo itself */
+  visualMatchCount: number;
   /** Median of the strongest comps — sold if we have them, else asking */
   suggestedPrice?: number;
   priceLow?: number;
@@ -337,37 +373,78 @@ function median(nums: number[]): number | undefined {
  * Comparable-item research for a query, preferring real sold prices and
  * otherwise falling back to asking prices from highly-rated sellers.
  */
-export async function researchEbayComps(query: string): Promise<CompsResult> {
+export async function researchEbayComps(
+  query: string,
+  base64Image?: string
+): Promise<CompsResult> {
   const tokens = await getValidTokens();
-  const [sold, active] = await Promise.all([
+  const [sold, active, visual] = await Promise.all([
     insightsSoldComps(query, tokens).catch(() => []),
     browseActiveComps(query, tokens).catch(() => []),
+    // Visual matches are the strongest signal we have when the item is hard
+    // to name, so they are gathered alongside the keyword search.
+    base64Image ? compsByImage(base64Image).catch(() => []) : Promise.resolve([]),
   ]);
 
   const soldDataAvailable = sold.length > 0;
 
+  // De-duplicate: the visual and keyword searches often return the same item.
+  const seen = new Set<string>();
+  const dedupe = (list: EbayComp[]) =>
+    list.filter((c) => {
+      const key = c.url ?? `${c.title}|${c.price}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
   // Prefer sellers with strong feedback — their pricing and presentation are
   // what actually converts, which is the whole point of comping against them.
-  const topRated = active
-    .filter((c) => (c.sellerFeedbackPct ?? 0) >= 98 && (c.sellerFeedbackScore ?? 0) >= 50)
-    .sort((a, b) => (b.sellerFeedbackScore ?? 0) - (a.sellerFeedbackScore ?? 0));
+  const wellRated = (list: EbayComp[]) =>
+    list
+      .filter((c) => (c.sellerFeedbackPct ?? 0) >= 98 && (c.sellerFeedbackScore ?? 0) >= 50)
+      .sort((a, b) => (b.sellerFeedbackScore ?? 0) - (a.sellerFeedbackScore ?? 0));
 
-  const basis = soldDataAvailable ? sold : topRated.length >= 3 ? topRated : active;
+  const visualRated = wellRated(visual);
+  const activeRated = wellRated(active);
+
+  // Priority: confirmed sales, then visual matches (they are the same object,
+  // not just the same words), then keyword matches.
+  const basis = soldDataAvailable
+    ? sold
+    : visualRated.length >= 3
+      ? visualRated
+      : visual.length >= 3
+        ? visual
+        : activeRated.length >= 3
+          ? activeRated
+          : active;
   const prices = basis.map((c) => c.price);
 
+  const ordered = [
+    ...dedupe(sold),
+    ...dedupe(visualRated.length ? visualRated : visual),
+    ...dedupe(activeRated.length ? activeRated : active),
+  ];
+
+  const usedVisual = !soldDataAvailable && visual.length >= 3;
+
   return {
-    comps: [...sold, ...(topRated.length ? topRated : active)].slice(0, 25),
+    comps: ordered.slice(0, 25),
     soldDataAvailable,
+    visualMatchCount: visual.length,
     suggestedPrice: median(prices),
     priceLow: prices.length ? Math.min(...prices) : undefined,
     priceHigh: prices.length ? Math.max(...prices) : undefined,
     note: soldDataAvailable
       ? `Based on ${sold.length} actual sold ${sold.length === 1 ? "item" : "items"} on eBay.`
-      : topRated.length >= 3
-        ? `Asking prices, not confirmed sales: based on ${topRated.length} active listings from sellers with 98%+ feedback. eBay's sold-price API is a Limited Release that this account does not have.`
-        : active.length
-          ? `Weak signal: only ${active.length} comparable active ${active.length === 1 ? "listing" : "listings"} found, and no access to sold prices.`
-          : "No comparable eBay listings found for this search.",
+      : usedVisual
+        ? `Asking prices, not confirmed sales: matched ${visual.length} visually similar listings from your photo. eBay's sold-price API is a Limited Release this account does not have.`
+        : activeRated.length >= 3
+          ? `Asking prices, not confirmed sales: based on ${activeRated.length} active listings from sellers with 98%+ feedback.`
+          : active.length || visual.length
+            ? `Weak signal: only ${active.length + visual.length} comparable active listings found, and no access to sold prices.`
+            : "No comparable eBay listings found for this item.",
   };
 }
 
@@ -632,4 +709,154 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
       ? `https://www.${tokens.env === "sandbox" ? "sandbox." : ""}ebay.com/itm/${listingId}`
       : "",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Live listing sync: pull every listing on the account, not just ones made here
+// ---------------------------------------------------------------------------
+
+/**
+ * Enumerating a seller's existing listings still means the legacy Trading
+ * API. The modern Inventory API's getOffers only sees listings created
+ * through that same API, so it misses anything listed in the eBay app or web
+ * UI, which is most of what a normal seller has. Trading is XML and eBay has
+ * been trimming it, so it is kept behind this one function to swap later.
+ */
+const TRADING_ENDPOINT: Record<EbayEnv, string> = {
+  production: "https://api.ebay.com/ws/api.dll",
+  sandbox: "https://api.sandbox.ebay.com/ws/api.dll",
+};
+
+export interface EbayLiveListing {
+  itemId: string;
+  title: string;
+  price: number;
+  quantity: number;
+  quantitySold: number;
+  listedAt?: string;
+  endsAt?: string;
+  soldAt?: string;
+  soldPrice?: number;
+  watchers?: number;
+  status: "active" | "sold" | "ended";
+  imageUrl?: string;
+  url?: string;
+}
+
+async function tradingCall(
+  callName: string,
+  innerXml: string,
+  tokens: EbayTokens
+): Promise<Record<string, unknown>> {
+  const body = `<?xml version="1.0" encoding="utf-8"?>
+<${callName}Request xmlns="urn:ebay:apis:eBLBaseComponents">
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  ${innerXml}
+</${callName}Request>`;
+
+  const res = await fetch(TRADING_ENDPOINT[tokens.env], {
+    method: "POST",
+    headers: {
+      "X-EBAY-API-CALL-NAME": callName,
+      "X-EBAY-API-SITEID": "0",
+      "X-EBAY-API-COMPATIBILITY-LEVEL": "1193",
+      "X-EBAY-API-IAF-TOKEN": tokens.accessToken,
+      "Content-Type": "text/xml",
+    },
+    body,
+  });
+  const text = await res.text();
+
+  const { XMLParser } = await import("fast-xml-parser");
+  const parsed = new XMLParser({ ignoreAttributes: true, parseTagValue: true }).parse(text) as
+    Record<string, Record<string, unknown>>;
+  const root = parsed[`${callName}Response`];
+  if (!root) throw new Error(`eBay returned an unreadable ${callName} response`);
+
+  if (root.Ack === "Failure") {
+    const errs = root.Errors;
+    const first = Array.isArray(errs) ? errs[0] : errs;
+    const msg =
+      (first as Record<string, string> | undefined)?.LongMessage ??
+      (first as Record<string, string> | undefined)?.ShortMessage ??
+      "Unknown Trading API error";
+    throw new Error(`eBay ${callName} failed: ${msg}`);
+  }
+  return root;
+}
+
+function asArray<T>(v: T | T[] | undefined): T[] {
+  if (v === undefined || v === null) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+interface TradingItem {
+  ItemID?: string | number;
+  Title?: string;
+  QuantityAvailable?: number;
+  Quantity?: number;
+  ListingDetails?: { StartTime?: string; EndTime?: string; ViewItemURL?: string };
+  SellingStatus?: {
+    CurrentPrice?: number;
+    QuantitySold?: number;
+  };
+  BuyItNowPrice?: number;
+  StartPrice?: number;
+  PictureDetails?: { GalleryURL?: string };
+  WatchCount?: number;
+  TransactionPrice?: number;
+}
+
+function mapTradingItem(it: TradingItem, status: EbayLiveListing["status"]): EbayLiveListing {
+  const price =
+    Number(it.SellingStatus?.CurrentPrice ?? it.BuyItNowPrice ?? it.StartPrice ?? 0) || 0;
+  const sold = Number(it.SellingStatus?.QuantitySold ?? 0);
+  return {
+    itemId: String(it.ItemID ?? ""),
+    title: String(it.Title ?? ""),
+    price,
+    quantity: Number(it.QuantityAvailable ?? it.Quantity ?? 0),
+    quantitySold: sold,
+    listedAt: it.ListingDetails?.StartTime,
+    endsAt: it.ListingDetails?.EndTime,
+    soldAt: status === "sold" ? it.ListingDetails?.EndTime : undefined,
+    soldPrice: status === "sold" ? price : undefined,
+    // Watch count only comes back on some calls; left undefined rather than
+    // defaulted to 0 so "unknown" is not mistaken for "nobody is watching".
+    watchers: it.WatchCount !== undefined ? Number(it.WatchCount) : undefined,
+    status,
+    imageUrl: it.PictureDetails?.GalleryURL,
+    url: it.ListingDetails?.ViewItemURL,
+  };
+}
+
+/**
+ * Every active, sold and unsold listing on the connected account.
+ * Paged at 200 per list, which covers a normal reseller's inventory.
+ */
+export async function fetchAllEbayListings(): Promise<EbayLiveListing[]> {
+  const tokens = await getValidTokens();
+  const page = `<Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination>`;
+  const root = await tradingCall(
+    "GetMyeBaySelling",
+    `<ActiveList><Include>true</Include>${page}</ActiveList>
+     <SoldList><Include>true</Include>${page}</SoldList>
+     <UnsoldList><Include>true</Include>${page}</UnsoldList>
+     <DetailLevel>ReturnAll</DetailLevel>`,
+    tokens
+  );
+
+  const pick = (key: string) =>
+    asArray(
+      ((root[key] as Record<string, unknown> | undefined)?.ItemArray as
+        | { Item?: TradingItem | TradingItem[] }
+        | undefined)?.Item
+    );
+
+  return [
+    ...pick("ActiveList").map((i) => mapTradingItem(i, "active")),
+    ...pick("SoldList").map((i) => mapTradingItem(i, "sold")),
+    ...pick("UnsoldList").map((i) => mapTradingItem(i, "ended")),
+  ].filter((l) => l.itemId);
 }

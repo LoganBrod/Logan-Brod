@@ -41,15 +41,20 @@ export async function POST(req: NextRequest) {
     const firstPass = await generateFromPhotos(images, notes);
 
     // Comps, if eBay is connected. Never fatal — a comp failure shouldn't
-    // block the seller from getting a draft.
+    // block the seller from getting a draft. The front photo is sent too, so
+    // eBay can match on the picture rather than only on our guessed wording.
     let comps: CompsResult | null = null;
     if (await getEbayTokens()) {
       comps = await researchEbayComps(
-        [firstPass.brand, firstPass.identified, firstPass.size].filter(Boolean).join(" ")
+        [firstPass.brand, firstPass.identified, firstPass.size].filter(Boolean).join(" "),
+        images[0]?.base64
       ).catch(() => null);
     }
 
-    // Second pass: re-price and re-word against the comps we found
+    // Second pass: re-identify, re-price and re-word against what came back.
+    // The comp titles matter as much as the prices here: they are how real
+    // sellers name this exact object, which sharpens a shaky identification
+    // far more than asking the model to look harder at the same photo.
     let final = firstPass;
     if (comps && comps.comps.length > 0) {
       const compLines = comps.comps
@@ -60,10 +65,16 @@ export async function POST(req: NextRequest) {
             (c.sellerFeedbackPct ? ` (seller ${c.sellerFeedbackPct}% feedback)` : "")
         )
         .join("\n");
+
+      const visualNote =
+        comps.visualMatchCount > 0
+          ? `eBay matched ${comps.visualMatchCount} of these from the photo itself, so the wording in those titles is strong evidence for what this item actually is. If they consistently disagree with your first identification, trust them and correct it.`
+          : "These came from a keyword search, so treat the titles as weaker evidence of identity than the photo.";
+
       final = await generateFromPhotos(
         images,
         notes,
-        `Comparable items on eBay right now:\n${compLines}\n\n${comps.note}${
+        `Comparable items on eBay right now:\n${compLines}\n\n${visualNote}\n\n${comps.note}${
           comps.suggestedPrice ? ` Median of these: $${comps.suggestedPrice}.` : ""
         }\nPrice this item against those comps and the seller's own playbook.`
       );
@@ -121,6 +132,7 @@ export async function POST(req: NextRequest) {
         ? {
             note: comps.note,
             soldDataAvailable: comps.soldDataAvailable,
+            visualMatchCount: comps.visualMatchCount,
             suggestedPrice: comps.suggestedPrice,
             priceLow: comps.priceLow,
             priceHigh: comps.priceHigh,

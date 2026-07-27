@@ -45,7 +45,17 @@ Connecting an eBay Developer app lets the Brain page pull each listing's views a
    ```
 4. On the Brain page, click **Connect eBay account**, log in, and grant access. Then on any eBay listing, paste its item ID (from the listing's URL) into the Outcome tab and hit **Sync from eBay**.
 
-Notes on what this can and can't do: views come from eBay's Analytics API, sold price/date from the Fulfillment (orders) API. Watcher count isn't pulled automatically (eBay doesn't expose it cleanly through these APIs) and stays manual. The order lookup only checks your most recent 50 orders, so it may miss a very old sale.
+### Syncing your live listings
+
+**Dashboard → Sync from eBay** pulls every listing on the connected account (active, sold, and unsold) and reconciles them into the local store, matching on eBay item id so repeat syncs update rather than duplicate. Anything you added locally (cost basis, Brain score, comps, diagnosis) is preserved.
+
+This uses the legacy Trading API `GetMyeBaySelling`, because the modern Inventory API's `getOffers` only sees listings created through that same API and would miss anything you listed in the eBay app or web UI. eBay has been trimming Trading API fields, so it is isolated in one function (`fetchAllEbayListings`) to make it swappable. Currently paged at 200 per list.
+
+Notes on what this can and can't do: views come from eBay's Analytics API, sold price/date from the Fulfillment (orders) API. The single-listing "Sync from eBay" on a card checks only your most recent 50 orders, so it may miss a very old sale; the dashboard sync does not have that limit. Watch count comes back on some Trading responses and not others, and is left untouched rather than zeroed when eBay omits it.
+
+### Comps from the photo
+
+When eBay is connected, comps research sends the item photo to eBay's `searchByImage` alongside the keyword search, so matches come from the picture rather than only from a guessed phrase. Those results are then fed back into the identification pass: the titles other sellers used for visually identical items are much stronger evidence of what something is than asking the model to squint at the same photo again. The review screen shows how many comps were matched visually.
 
 ### Publishing listings to eBay
 

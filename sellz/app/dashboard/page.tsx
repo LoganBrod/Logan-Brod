@@ -43,11 +43,43 @@ function daysBetween(a?: string, b?: string): number | null {
 export default function Dashboard() {
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
+  const [ebayConnected, setEbayConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  function loadListings() {
+    return fetch("/api/listings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setListings)
+      .catch(() => setListings([]));
+  }
 
   useEffect(() => {
-    fetch("/api/listings").then((r) => r.json()).then(setListings).catch(() => setListings([]));
+    loadListings();
     fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
+    fetch("/api/ebay/status")
+      .then((r) => r.json())
+      .then((s) => setEbayConnected(Boolean(s.connected)))
+      .catch(() => {});
   }, []);
+
+  async function syncFromEbay() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/ebay/sync-listings", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
+      await loadListings();
+      setSyncMsg(
+        `Synced ${data.fetched} listings from eBay: ${data.created} new, ${data.updated} updated.`
+      );
+    } catch (err) {
+      setSyncMsg(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const stats = useMemo(() => {
     if (!listings) return null;
@@ -77,10 +109,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Dashboard"
-        subtitle="Live view of what's selling right now."
-      />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PageHeader title="Dashboard" subtitle="Live view of what's selling right now." />
+        {ebayConnected && (
+          <button
+            onClick={syncFromEbay}
+            disabled={syncing}
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+          >
+            {syncing ? "Syncing from eBay…" : "Sync from eBay"}
+          </button>
+        )}
+      </div>
+      {syncMsg && (
+        <p className="rounded-xl bg-brand/10 px-4 py-2.5 text-sm text-brand-dim">{syncMsg}</p>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

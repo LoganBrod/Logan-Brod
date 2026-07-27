@@ -26,6 +26,7 @@ interface CompItem {
 interface CompsSummary {
   note: string;
   soldDataAvailable: boolean;
+  visualMatchCount?: number;
   suggestedPrice?: number;
   priceLow?: number;
   priceHigh?: number;
@@ -360,9 +361,16 @@ function ReviewStep({
 
       {comps && (
         <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
-          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
-            What comparable items go for
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+              What comparable items go for
+            </h2>
+            {(comps.visualMatchCount ?? 0) > 0 && (
+              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-dim">
+                {comps.visualMatchCount} matched from your photo
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-fog/70">{comps.note}</p>
           {comps.priceLow !== undefined && (
             <p className="mt-1 font-semibold text-brand">
