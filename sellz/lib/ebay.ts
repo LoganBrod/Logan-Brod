@@ -613,15 +613,104 @@ async function suggestCategoryId(title: string, tokens: EbayTokens): Promise<str
 }
 
 /** Map our free-text condition onto an eBay condition enum. */
-function ebayCondition(condition: string): string {
+/**
+ * eBay condition IDs and the ConditionEnum name each maps to. Only these
+ * names are valid — bare "GOOD", "VERY_GOOD", "ACCEPTABLE" and "USED" are
+ * not members of the enum, and sending one makes eBay fail the inventory
+ * item with an opaque "Core Inventory Service internal error".
+ */
+const CONDITION_BY_ID: Record<string, string> = {
+  "1000": "NEW",
+  "1500": "NEW_OTHER",
+  "1750": "NEW_WITH_DEFECTS",
+  "2000": "CERTIFIED_REFURBISHED",
+  "2010": "EXCELLENT_REFURBISHED",
+  "2020": "VERY_GOOD_REFURBISHED",
+  "2030": "GOOD_REFURBISHED",
+  "2500": "SELLER_REFURBISHED",
+  // For trading cards eBay labels 2750 "Graded" and 4000 "Ungraded".
+  "2750": "LIKE_NEW",
+  "3000": "USED_EXCELLENT",
+  "4000": "USED_VERY_GOOD",
+  "5000": "USED_GOOD",
+  "6000": "USED_ACCEPTABLE",
+  "7000": "FOR_PARTS_OR_NOT_WORKING",
+};
+
+/**
+ * Our free-text condition -> the condition ID we'd most like to use.
+ *
+ * Item specifics take priority when they settle the question: in the trading
+ * card categories 2750 means "Graded" and 4000 means "Ungraded", so a Grade
+ * specific is decisive. Without this, wording like "near mint" would pick
+ * 2750 and advertise a raw card as professionally graded.
+ */
+export function preferredConditionId(
+  condition: string,
+  itemSpecifics?: { name: string; value: string }[]
+): string {
+  const grade = itemSpecifics?.find((s) => /grade/i.test(s.name))?.value?.toLowerCase();
+  if (grade) {
+    if (/\bungraded\b|\braw\b|\bnone\b/.test(grade)) return "4000";
+    if (/\bgraded\b|psa|bgs|sgc|cgc|\b\d(\.\d)?\b/.test(grade)) return "2750";
+  }
+
   const c = condition.toLowerCase();
-  if (c.includes("new with tag") || c.includes("nwt") || c.includes("deadstock")) return "NEW";
-  if (c.includes("new without") || c.includes("nwot")) return "NEW_OTHER";
-  if (c.includes("like new") || c.includes("excellent")) return "LIKE_NEW";
-  if (c.includes("very good")) return "VERY_GOOD";
-  if (c.includes("good")) return "GOOD";
-  if (c.includes("acceptable") || c.includes("fair") || c.includes("poor")) return "ACCEPTABLE";
-  return "USED_EXCELLENT";
+  if (/\bungraded\b/.test(c)) return "4000";
+  if (/\bgraded\b/.test(c)) return "2750";
+  if (c.includes("new with tag") || c.includes("nwt") || c.includes("deadstock")) return "1000";
+  if (c.includes("brand new") || /^new\b/.test(c)) return "1000";
+  if (c.includes("new without") || c.includes("nwot")) return "1500";
+  if (c.includes("like new") || c.includes("mint")) return "2750";
+  if (c.includes("excellent")) return "3000";
+  if (c.includes("very good")) return "4000";
+  if (c.includes("acceptable") || c.includes("fair") || c.includes("poor")) return "6000";
+  if (c.includes("good")) return "5000";
+  return "3000";
+}
+
+/**
+ * Conditions the category actually permits. Categories are restrictive —
+ * trading cards, for instance, only accept Graded (2750) and Ungraded
+ * (4000) — and sending a disallowed one is another route to the same
+ * opaque internal error. An empty result means "unknown, don't constrain".
+ */
+async function allowedConditionIds(categoryId: string, tokens: EbayTokens): Promise<string[]> {
+  const data = await ebayGet<{
+    itemConditionPolicies?: { itemConditions?: { conditionId?: string }[] }[];
+  }>(
+    `/sell/metadata/v1/marketplace/${MARKETPLACE_ID}/get_item_condition_policies?filter=categoryIds:{${categoryId}}`,
+    tokens
+  );
+  const ids = (data?.itemConditionPolicies ?? [])
+    .flatMap((p) => p.itemConditions ?? [])
+    .map((c) => c.conditionId)
+    .filter((id): id is string => Boolean(id));
+  return Array.from(new Set(ids));
+}
+
+/** Pick the closest permitted condition to what we wanted. */
+export function nearestAllowedCondition(preferredId: string, allowed: string[]): string {
+  if (allowed.length === 0 || allowed.includes(preferredId)) {
+    return CONDITION_BY_ID[preferredId] ?? "USED_EXCELLENT";
+  }
+
+  let candidates = allowed.filter((id) => CONDITION_BY_ID[id]);
+
+  // In trading card categories 2750 is "Graded" — a claim that the card was
+  // professionally slabbed, not simply a better condition tier. Nearest-by-
+  // number would hand it to any high-quality item ("brand new" is numerically
+  // closest to it), advertising raw cards as graded. Only ever use it when
+  // grading was actually established.
+  if (preferredId !== "2750" && candidates.length > 1) {
+    candidates = candidates.filter((id) => id !== "2750");
+  }
+
+  const want = Number(preferredId);
+  const closest = [...candidates].sort(
+    (a, b) => Math.abs(Number(a) - want) - Math.abs(Number(b) - want)
+  )[0];
+  return closest ? CONDITION_BY_ID[closest] : "USED_EXCELLENT";
 }
 
 type EbayReply = { ok: boolean; status: number; json: Record<string, unknown>; text: string };
@@ -692,6 +781,13 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
 
   const policies = await resolvePolicies(tokens);
 
+  // Category first: it decides which conditions are even legal, and sending
+  // one the category rejects fails the inventory item with an opaque error.
+  const categoryId = await suggestCategoryId(input.title, tokens);
+  const wanted = preferredConditionId(input.condition, input.itemSpecifics);
+  const allowed = categoryId ? await allowedConditionIds(categoryId, tokens).catch(() => []) : [];
+  const condition = nearestAllowedCondition(wanted, allowed);
+
   // 1. Inventory item
   const invRes = await ebaySend(
     "PUT",
@@ -700,7 +796,7 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
       availability: {
         shipToLocationAvailability: { quantity: Math.max(1, input.quantity ?? 1) },
       },
-      condition: ebayCondition(input.condition),
+      condition,
       product: {
         title: input.title.slice(0, 80),
         description: input.description,
@@ -720,7 +816,6 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
   if (!invRes.ok) throw ebayError("Creating the eBay inventory item", invRes);
 
   // 2. Offer
-  const categoryId = await suggestCategoryId(input.title, tokens);
   const offerRes = await ebaySend(
     "POST",
     `/sell/inventory/v1/offer`,
