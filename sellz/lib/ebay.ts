@@ -669,31 +669,53 @@ export function preferredConditionId(
   return "3000";
 }
 
+/** One selectable value of a condition descriptor, e.g. "Near Mint or Better". */
+export interface EbayConditionDescriptorValue {
+  conditionDescriptorValueId?: string;
+  conditionDescriptorValueName?: string;
+}
+
 /**
- * Conditions the category actually permits. Categories are restrictive —
- * trading cards, for instance, only accept Graded (2750) and Ungraded
- * (4000) — and sending a disallowed one is another route to the same
- * opaque internal error. An empty result means "unknown, don't constrain".
+ * A condition descriptor: a structured follow-up question a category attaches
+ * to a condition, e.g. "Card Condition" (40001) under Ungraded. Descriptors
+ * with a closed value set are the required ones; free-text descriptors
+ * (Certification Number) arrive with no values and are optional.
  */
-async function allowedConditionIds(categoryId: string, tokens: EbayTokens): Promise<string[]> {
+export interface EbayConditionDescriptor {
+  conditionDescriptorId?: string;
+  conditionDescriptorName?: string;
+  conditionDescriptorValues?: EbayConditionDescriptorValue[];
+}
+
+export interface EbayItemCondition {
+  conditionId?: string;
+  conditionDescription?: string;
+  conditionDescriptors?: EbayConditionDescriptor[];
+}
+
+/**
+ * Conditions the category actually permits, with their condition descriptors.
+ * Categories are restrictive — trading cards, for instance, only accept Graded
+ * (2750) and Ungraded (4000) — and sending a disallowed one is another route
+ * to the same opaque internal error. An empty result means "unknown, don't
+ * constrain".
+ */
+async function fetchItemConditions(
+  categoryId: string,
+  tokens: EbayTokens
+): Promise<EbayItemCondition[]> {
   const data = await ebayGet<{
-    itemConditionPolicies?: { itemConditions?: { conditionId?: string }[] }[];
+    itemConditionPolicies?: { itemConditions?: EbayItemCondition[] }[];
   }>(
     `/sell/metadata/v1/marketplace/${MARKETPLACE_ID}/get_item_condition_policies?filter=categoryIds:{${categoryId}}`,
     tokens
   );
-  const ids = (data?.itemConditionPolicies ?? [])
-    .flatMap((p) => p.itemConditions ?? [])
-    .map((c) => c.conditionId)
-    .filter((id): id is string => Boolean(id));
-  return Array.from(new Set(ids));
+  return (data?.itemConditionPolicies ?? []).flatMap((p) => p.itemConditions ?? []);
 }
 
-/** Pick the closest permitted condition to what we wanted. */
-export function nearestAllowedCondition(preferredId: string, allowed: string[]): string {
-  if (allowed.length === 0 || allowed.includes(preferredId)) {
-    return CONDITION_BY_ID[preferredId] ?? "USED_EXCELLENT";
-  }
+/** Pick the closest permitted condition id to what we wanted. */
+export function nearestAllowedConditionId(preferredId: string, allowed: string[]): string {
+  if (allowed.length === 0 || allowed.includes(preferredId)) return preferredId;
 
   let candidates = allowed.filter((id) => CONDITION_BY_ID[id]);
 
@@ -710,7 +732,93 @@ export function nearestAllowedCondition(preferredId: string, allowed: string[]):
   const closest = [...candidates].sort(
     (a, b) => Math.abs(Number(a) - want) - Math.abs(Number(b) - want)
   )[0];
-  return closest ? CONDITION_BY_ID[closest] : "USED_EXCELLENT";
+  return closest ?? preferredId;
+}
+
+/** Pick the closest permitted condition to what we wanted, as a ConditionEnum. */
+export function nearestAllowedCondition(preferredId: string, allowed: string[]): string {
+  return CONDITION_BY_ID[nearestAllowedConditionId(preferredId, allowed)] ?? "USED_EXCELLENT";
+}
+
+/**
+ * Fill in the condition descriptors a category demands for the chosen
+ * condition. These are NOT item specifics: eBay promoted them to a top-level
+ * `conditionDescriptors` field on the inventory item, and omitting one fails
+ * the publish with e.g. "Card Condition (40001) is a required field".
+ *
+ * Descriptors that offer a closed set of values are the required ones, so
+ * those are the ones answered here; free-text descriptors (a grader's
+ * certification number) carry no values and are left alone.
+ *
+ * Values are only ever chosen from evidence. A grader and grade are specific,
+ * checkable claims about an item, so when the category asks for them and the
+ * seller hasn't supplied them, this refuses rather than inventing a plausible
+ * "PSA 10" — see the throw at the bottom.
+ */
+export function buildConditionDescriptors(
+  descriptors: EbayConditionDescriptor[],
+  conditionText: string,
+  itemSpecifics: { name: string; value: string }[] = []
+): { name: string; values: string[] }[] {
+  const out: { name: string; values: string[] }[] = [];
+  const unanswered: string[] = [];
+  const haystack = [conditionText, ...itemSpecifics.map((s) => `${s.name} ${s.value}`)]
+    .join(" ")
+    .toLowerCase();
+
+  for (const d of descriptors) {
+    const id = d.conditionDescriptorId;
+    const values = (d.conditionDescriptorValues ?? []).filter(
+      (v) => v.conditionDescriptorValueId && v.conditionDescriptorValueName
+    );
+    if (!id || values.length === 0) continue;
+
+    // eBay's value names carry qualifiers a seller rarely types: someone who
+    // wrote "near mint" means "Near Mint or Better", so match the stem too.
+    const stem = (name: string) =>
+      name
+        .toLowerCase()
+        .replace(/\s+or\s+(better|higher|above)$/, "")
+        .trim();
+    let picked =
+      values.find((v) => haystack.includes(v.conditionDescriptorValueName!.toLowerCase())) ??
+      values.find((v) => haystack.includes(stem(v.conditionDescriptorValueName!)));
+
+    // A grade ("10", "9.5") is a bare number, so substring-matching it against
+    // the whole haystack would hit any stray digit. Match it against the
+    // seller's Grade specific alone, and only as a whole token.
+    if (!picked && /grade/i.test(d.conditionDescriptorName ?? "")) {
+      const stated = itemSpecifics.find((s) => /^grade$/i.test(s.name.trim()))?.value?.trim();
+      if (stated) {
+        picked = values.find(
+          (v) => v.conditionDescriptorValueName!.toLowerCase() === stated.toLowerCase()
+        );
+      }
+    }
+
+    if (!picked) {
+      // eBay lists these best-first. With no evidence either way, claiming the
+      // top tier ("Near Mint or Better") is the one guess that costs the buyer
+      // if it's wrong, so step down one.
+      const isGradingClaim = /grader|grade|certification/i.test(d.conditionDescriptorName ?? "");
+      if (isGradingClaim) {
+        unanswered.push(d.conditionDescriptorName || id);
+        continue;
+      }
+      picked = values[1] ?? values[0];
+    }
+
+    out.push({ name: id, values: [picked.conditionDescriptorValueId!] });
+  }
+
+  if (unanswered.length) {
+    throw new Error(
+      `eBay needs ${unanswered.join(" and ")} for a graded item, and guessing would ` +
+        `misdescribe the card. Add ${unanswered.length > 1 ? "them" : "it"} under "Item specifics" ` +
+        `(e.g. Professional Grader: PSA, Grade: 10), or set the condition to Ungraded if the card isn't slabbed.`
+    );
+  }
+  return out;
 }
 
 type EbayReply = { ok: boolean; status: number; json: Record<string, unknown>; text: string };
@@ -785,8 +893,23 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
   // one the category rejects fails the inventory item with an opaque error.
   const categoryId = await suggestCategoryId(input.title, tokens);
   const wanted = preferredConditionId(input.condition, input.itemSpecifics);
-  const allowed = categoryId ? await allowedConditionIds(categoryId, tokens).catch(() => []) : [];
-  const condition = nearestAllowedCondition(wanted, allowed);
+  const itemConditions = categoryId
+    ? await fetchItemConditions(categoryId, tokens).catch(() => [])
+    : [];
+  const allowed = itemConditions
+    .map((c) => c.conditionId)
+    .filter((id): id is string => Boolean(id));
+  const conditionId = nearestAllowedConditionId(wanted, allowed);
+  const condition = CONDITION_BY_ID[conditionId] ?? "USED_EXCELLENT";
+
+  // Condition descriptors are required alongside the condition itself in some
+  // categories (trading cards ask "Card Condition" under Ungraded), and live
+  // at the top level of the inventory item rather than in product.aspects.
+  const conditionDescriptors = buildConditionDescriptors(
+    itemConditions.find((c) => c.conditionId === conditionId)?.conditionDescriptors ?? [],
+    input.condition,
+    input.itemSpecifics
+  );
 
   // Category-required aspects (e.g. Trading Cards' "Card Condition") fail the
   // whole publish if missing, so they're resolved here rather than trusting
@@ -808,6 +931,7 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
         shipToLocationAvailability: { quantity: Math.max(1, input.quantity ?? 1) },
       },
       condition,
+      ...(conditionDescriptors.length ? { conditionDescriptors } : {}),
       product: {
         title: input.title.slice(0, 80),
         description: input.description,
