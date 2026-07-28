@@ -166,8 +166,163 @@ function IntegrationsPanel() {
             ))}
         </div>
         )}
+
+        {status?.connected && <InventoryLocationPanel />}
       </section>
     </Reveal>
+  );
+}
+
+interface LocationSummary {
+  merchantLocationKey: string;
+  name?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+/**
+ * eBay refuses to publish an offer without an inventory location, and unlike
+ * business policies there is no page on eBay to create one — it exists only
+ * through the API. So it has to be creatable from here.
+ */
+function InventoryLocationPanel() {
+  const toast = useToast();
+  const [locations, setLocations] = useState<LocationSummary[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    country: "US",
+    postalCode: "",
+    city: "",
+    stateOrProvince: "",
+    name: "Home",
+  });
+
+  function load() {
+    fetch("/api/ebay/location", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setLocations(d.locations ?? []))
+      .catch(() => setLocations([]));
+  }
+
+  useEffect(load, []);
+
+  async function create() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ebay/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't create the location");
+      toast.push("Inventory location created");
+      setOpen(false);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't create the location");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const has = (locations?.length ?? 0) > 0;
+
+  return (
+    <div className="mt-3 rounded-xl bg-ink p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-fog">Inventory location</p>
+          {locations === null ? (
+            <p className="mt-0.5 text-xs text-fog/40">Checking…</p>
+          ) : has ? (
+            <p className="mt-0.5 text-xs text-brand">
+              {locations!
+                .map((l) => [l.name, l.postalCode, l.country].filter(Boolean).join(" · "))
+                .join(", ")}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-fog/40">
+              Required before eBay will publish. There is no page on eBay for this, so create it
+              here.
+            </p>
+          )}
+        </div>
+        {locations !== null && !has && (
+          <button
+            onClick={() => setOpen(!open)}
+            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim"
+          >
+            {open ? "Cancel" : "Add location"}
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 space-y-3 text-sm">
+              <p className="text-xs text-fog/40">
+                eBay needs either a postal code or a city and state, plus the country. A street
+                address isn&apos;t required — this is just where stock ships from.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-fog/50">Country (2 letters)</span>
+                  <input
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value.toUpperCase() })}
+                    maxLength={2}
+                    className={field}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-fog/50">Postal / ZIP code</span>
+                  <input
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                    placeholder="e.g. 55401"
+                    className={field}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-fog/50">City (if no postal code)</span>
+                  <input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    className={field}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-fog/50">State / province</span>
+                  <input
+                    value={form.stateOrProvince}
+                    onChange={(e) => setForm({ ...form, stateOrProvince: e.target.value })}
+                    className={field}
+                  />
+                </label>
+              </div>
+              {error && <p className="text-xs text-red-400">{error}</p>}
+              <button
+                onClick={create}
+                disabled={busy}
+                className="rounded-lg bg-brand px-5 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+              >
+                {busy ? "Creating…" : "Create location"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

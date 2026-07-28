@@ -1129,3 +1129,112 @@ export async function relistItem(offerId: string, newPrice: number): Promise<Rel
       : "",
   };
 }
+
+// ---------------------------------------------------------------------------
+// Inventory location
+// ---------------------------------------------------------------------------
+
+export interface InventoryLocationInput {
+  /** Two-letter country code, e.g. "US" */
+  country: string;
+  postalCode?: string;
+  city?: string;
+  stateOrProvince?: string;
+  addressLine1?: string;
+  name?: string;
+}
+
+export interface InventoryLocationSummary {
+  merchantLocationKey: string;
+  name?: string;
+  postalCode?: string;
+  country?: string;
+  status?: string;
+}
+
+/** The key we create ours under, so repeat calls update rather than duplicate. */
+const DEFAULT_LOCATION_KEY = "levoz-default";
+
+export async function listInventoryLocations(): Promise<InventoryLocationSummary[]> {
+  const tokens = await getValidTokens();
+  const data = await ebayGet<{
+    locations?: {
+      merchantLocationKey: string;
+      name?: string;
+      merchantLocationStatus?: string;
+      location?: { address?: { postalCode?: string; country?: string } };
+    }[];
+  }>(`/sell/inventory/v1/location`, tokens);
+
+  return (data?.locations ?? []).map((l) => ({
+    merchantLocationKey: l.merchantLocationKey,
+    name: l.name,
+    status: l.merchantLocationStatus,
+    postalCode: l.location?.address?.postalCode,
+    country: l.location?.address?.country,
+  }));
+}
+
+/**
+ * Create the inventory location eBay requires before it will publish an offer.
+ *
+ * There is no seller-facing page for this on eBay — unlike business policies,
+ * inventory locations exist only through the API, which is why the app has to
+ * offer it directly. eBay accepts either postal code + country, or city +
+ * state + country; a full street address is not needed for a warehouse.
+ */
+export async function createInventoryLocation(
+  input: InventoryLocationInput
+): Promise<InventoryLocationSummary> {
+  const tokens = await getValidTokens();
+
+  const country = input.country.trim().toUpperCase();
+  if (country.length !== 2) {
+    throw new Error("Country must be a two-letter code, e.g. US or GB");
+  }
+  const hasPostal = Boolean(input.postalCode?.trim());
+  const hasCityState = Boolean(input.city?.trim() && input.stateOrProvince?.trim());
+  if (!hasPostal && !hasCityState) {
+    throw new Error("Give either a postal code, or a city and state, along with the country");
+  }
+
+  const address: Record<string, string> = { country };
+  if (input.addressLine1?.trim()) address.addressLine1 = input.addressLine1.trim();
+  if (input.city?.trim()) address.city = input.city.trim();
+  if (input.stateOrProvince?.trim()) address.stateOrProvince = input.stateOrProvince.trim();
+  if (input.postalCode?.trim()) address.postalCode = input.postalCode.trim();
+
+  const res = await ebaySend(
+    "POST",
+    `/sell/inventory/v1/location/${encodeURIComponent(DEFAULT_LOCATION_KEY)}`,
+    {
+      location: { address },
+      name: input.name?.trim() || "Default location",
+      locationTypes: ["WAREHOUSE"],
+      merchantLocationStatus: "ENABLED",
+    },
+    tokens
+  );
+
+  // 204 is the success case here; a duplicate key means it already exists,
+  // which is fine — the goal is that a usable location is present.
+  const alreadyExists =
+    res.status === 409 ||
+    JSON.stringify(res.json).includes("already exists") ||
+    res.text.includes("already exists");
+
+  if (!res.ok && !alreadyExists) {
+    throw ebayError("Creating the eBay inventory location", res);
+  }
+
+  const locations = await listInventoryLocations();
+  const mine = locations.find((l) => l.merchantLocationKey === DEFAULT_LOCATION_KEY);
+  return (
+    mine ?? {
+      merchantLocationKey: DEFAULT_LOCATION_KEY,
+      name: input.name || "Default location",
+      postalCode: input.postalCode,
+      country,
+    }
+  );
+}
