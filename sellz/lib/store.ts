@@ -141,6 +141,21 @@ export interface Listing {
   lastRelistedAt?: string;
   /** Scheduled publish time — listing goes live at this ISO timestamp */
   scheduledPublishAt?: string;
+  /**
+   * What the item sold for new and why buyers want it. Stored because the
+   * analysis pipeline is split across requests (serverless functions time
+   * out well before comps + retail + a refine pass can run together), so
+   * each stage has to persist its result for the next one to build on.
+   */
+  retail?: {
+    productName: string;
+    retailPrice: number;
+    retailPriceNote: string;
+    releaseEra: string;
+    desirability: string;
+    sellingPoints: string[];
+    at: string;
+  };
   createdAt: string;
 }
 
@@ -260,6 +275,12 @@ export interface EbayTokens {
   /** ISO timestamp the access token expires at */
   accessTokenExpiresAt: string;
   connectedAt: string;
+  /**
+   * Scopes granted at consent. A refresh token can only request the scopes
+   * it was issued with, so refreshes must replay these rather than whatever
+   * the code currently wants.
+   */
+  grantedScopes?: string;
 }
 
 interface Store {

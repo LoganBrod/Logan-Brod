@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PageHeader from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
+import { fetchJson } from "@/lib/fetchJson";
 
 interface Analysis {
   identified: string;
@@ -78,6 +80,7 @@ export default function NewListingPage() {
   ]);
   const [notes, setNotes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -118,27 +121,93 @@ export default function NewListingPage() {
     ]);
   }
 
+  /**
+   * The pipeline runs as four separate requests. Together they take minutes;
+   * a serverless function is cut off after ~26s, so doing it in one call
+   * failed outright. Each stage lands independently and updates the screen,
+   * which also means the seller sees progress instead of one long spinner.
+   */
   async function analyze() {
     setAnalyzing(true);
     setError(null);
+    setStage("Identifying the item…");
     try {
-      const res = await fetch("/api/analyze-photos", {
+      const first = await fetchJson<{
+        listing: Draft;
+        analysis: Analysis;
+        itemSpecifics: ItemSpecificUI[];
+        query: string;
+        ebayConnected: boolean;
+      }>("/api/analyze-photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ photoIds, notes }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Analysis failed");
-      setDraft(data.listing);
-      setAnalysis(data.analysis);
-      setComps(data.comps);
-      setRetail(data.retail ?? null);
-      setSpecifics(data.itemSpecifics ?? []);
-      toast.push("Draft ready. Review it before listing");
+
+      const id = first.listing.id;
+      setDraft(first.listing);
+      setAnalysis(first.analysis);
+      setSpecifics(first.itemSpecifics ?? []);
+      setAnalyzing(false);
+      toast.push("Draft ready — refining it now");
+
+      // Everything below is enrichment: failures leave a usable draft behind.
+      let compsData: (CompsSummary & { compLines?: unknown[] }) | null = null;
+      if (first.ebayConnected) {
+        setStage("Checking comparable eBay sales…");
+        compsData = await fetchJson<CompsSummary & { compLines?: unknown[] }>(
+          `/api/listings/${id}/ebay-comps`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: first.query }),
+          }
+        ).catch(() => null);
+        if (compsData) setComps(compsData);
+      }
+
+      setStage("Looking up what it sold for new…");
+      const retailData = await fetchJson<RetailInfo | null>(`/api/listings/${id}/retail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: first.query,
+          compTitles: (compsData?.top ?? []).map((c) => c.title).slice(0, 8),
+        }),
+      }).catch(() => null);
+      if (retailData) setRetail(retailData);
+
+      if (compsData || retailData) {
+        setStage("Refining the listing against what it found…");
+        const refined = await fetchJson<{
+          listing: Draft;
+          refined: boolean;
+          analysis?: Analysis;
+          itemSpecifics?: ItemSpecificUI[];
+        }>(`/api/listings/${id}/refine`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            notes,
+            compLines: compsData?.compLines ?? [],
+            visualMatchCount: compsData?.visualMatchCount ?? 0,
+            compsNote: compsData?.note ?? "",
+            suggestedPrice: compsData?.suggestedPrice,
+          }),
+        }).catch(() => null);
+
+        if (refined?.refined) {
+          setDraft(refined.listing);
+          if (refined.analysis) setAnalysis(refined.analysis);
+          if (refined.itemSpecifics?.length) setSpecifics(refined.itemSpecifics);
+          toast.push("Listing refined against comps");
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
       setAnalyzing(false);
+      setStage(null);
     }
   }
 
@@ -152,6 +221,7 @@ export default function NewListingPage() {
         retail={retail}
         specifics={specifics}
         setSpecifics={setSpecifics}
+        stage={stage}
         onDone={() => router.push("/listings")}
         onRestart={() => {
           setDraft(null);
@@ -293,6 +363,7 @@ function ReviewStep({
   retail,
   specifics,
   setSpecifics,
+  stage,
   onDone,
   onRestart,
 }: {
@@ -303,6 +374,7 @@ function ReviewStep({
   retail: RetailInfo | null;
   specifics: ItemSpecificUI[];
   setSpecifics: (s: ItemSpecificUI[]) => void;
+  stage: string | null;
   onDone: () => void;
   onRestart: () => void;
 }) {
@@ -310,14 +382,20 @@ function ReviewStep({
   const [publishing, setPublishing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [readiness, setReadiness] = useState<{ ready: boolean; missing: string[] } | null>(null);
+  const [readiness, setReadiness] = useState<{
+    ready: boolean;
+    message?: string;
+    reason?: string;
+    missing?: string[];
+  } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
 
   useEffect(() => {
-    fetch("/api/ebay/readiness")
-      .then((r) => r.json())
+    fetchJson<{ ready: boolean; message?: string; reason?: string; missing?: string[] }>(
+      "/api/ebay/readiness"
+    )
       .then(setReadiness)
       .catch(() => {});
   }, []);
@@ -391,6 +469,17 @@ function ReviewStep({
   return (
     <div className="space-y-6">
       <PageHeader title="Review before listing" subtitle="Everything here is editable." />
+
+      {stage && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-brand"
+        >
+          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+          {stage}
+        </motion.div>
+      )}
 
       {analysis && (
         <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
@@ -612,10 +701,14 @@ function ReviewStep({
       </section>
 
       {readiness && !readiness.ready && (
-        <p className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
-          eBay cannot publish yet. Missing: {readiness.missing.join(", ")}. Set these up in My
-          eBay → Account → Business Policies, then come back.
-        </p>
+        <div className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
+          <p>{readiness.message ?? "eBay cannot publish yet."}</p>
+          {readiness.reason === "needs_reconnect" && (
+            <Link href="/brain" className="mt-1 inline-block font-semibold underline">
+              Go to the Brain page to reconnect &rarr;
+            </Link>
+          )}
+        </div>
       )}
       {error && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>}
 
@@ -656,7 +749,7 @@ function ReviewStep({
             <button
               onClick={() => setConfirming(true)}
               disabled={readiness ? !readiness.ready : false}
-              title={readiness && !readiness.ready ? readiness.missing.join(", ") : undefined}
+              title={readiness && !readiness.ready ? readiness.message : undefined}
               className="rounded-xl bg-brand px-6 py-3 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
             >
               Approve &amp; list on eBay

@@ -63,6 +63,23 @@ interface TokenResponse {
   expires_in: number;
   refresh_token?: string;
   token_type: string;
+  /** Space-separated scopes eBay actually granted */
+  scope?: string;
+}
+
+/** Scopes required before the app can create and publish listings. */
+const PUBLISH_SCOPES = [
+  "https://api.ebay.com/oauth/api_scope/sell.inventory",
+  "https://api.ebay.com/oauth/api_scope/sell.account.readonly",
+];
+
+/**
+ * Publish scopes a stored connection is missing. Empty for connections made
+ * before we recorded scopes — we can't know, so we don't guess.
+ */
+export function missingPublishScopes(granted?: string): string[] {
+  if (!granted) return [];
+  return PUBLISH_SCOPES.filter((s) => !granted.includes(s));
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<void> {
@@ -93,25 +110,42 @@ export async function exchangeCodeForTokens(code: string): Promise<void> {
     refreshToken: data.refresh_token,
     accessTokenExpiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
     connectedAt: new Date().toISOString(),
+    // Recorded so refreshes replay exactly this, and so we can tell when a
+    // connection predates a newly-required scope.
+    grantedScopes: data.scope ?? SCOPES,
   });
 }
 
 async function refreshAccessToken(tokens: EbayTokens): Promise<EbayTokens> {
   requireCreds();
+  // A refresh token can only ever request the scopes it was granted at
+  // consent. Sending the current SCOPES list means every connection made
+  // before a scope was added fails with invalid_scope, which takes down all
+  // eBay calls rather than just the new feature. Replay what was granted;
+  // for connections predating this field, omit scope so eBay returns the
+  // original grant.
+  const form: Record<string, string> = {
+    grant_type: "refresh_token",
+    refresh_token: tokens.refreshToken,
+  };
+  if (tokens.grantedScopes) form.scope = tokens.grantedScopes;
+
   const res = await fetch(`${API_BASE[tokens.env]}/identity/v1/oauth2/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: basicAuthHeader(),
     },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: tokens.refreshToken,
-      scope: SCOPES,
-    }).toString(),
+    body: new URLSearchParams(form).toString(),
   });
   if (!res.ok) {
-    throw new Error(`eBay token refresh failed (${res.status}): ${await res.text()}`);
+    const text = await res.text();
+    if (text.includes("invalid_scope")) {
+      throw new Error(
+        "This eBay connection was authorised with fewer permissions than the app now needs. Disconnect eBay on the Brain page and connect again to re-authorise."
+      );
+    }
+    throw new Error(`eBay token refresh failed (${res.status}): ${text}`);
   }
   const data: TokenResponse = await res.json();
   const updated: EbayTokens = {
