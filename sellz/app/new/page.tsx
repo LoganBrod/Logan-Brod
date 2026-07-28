@@ -53,6 +53,7 @@ interface Draft {
   condition: string;
   tags: string[];
   photos?: string[];
+  packageWeightOz?: number;
 }
 
 interface ItemSpecificUI {
@@ -399,6 +400,21 @@ function ReviewStep({
       .catch(() => {});
   }, []);
 
+  // Show the saved default in the box rather than applying it invisibly at
+  // publish time, so the seller can see and correct it for this item.
+  useEffect(() => {
+    if (draft.packageWeightOz != null) return;
+    fetchJson<{ defaultPackageWeightOz?: number }>("/api/settings")
+      .then((s) => {
+        if (s.defaultPackageWeightOz) {
+          setDraft({ ...draft, packageWeightOz: s.defaultPackageWeightOz });
+        }
+      })
+      .catch(() => {});
+    // Only ever prefills an empty box, so it must not re-run on every edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function saveEdits() {
     setSaving(true);
     await fetch(`/api/listings/${draft.id}`, {
@@ -409,6 +425,7 @@ function ReviewStep({
         description: draft.description,
         price: draft.price,
         condition: draft.condition,
+        packageWeightOz: draft.packageWeightOz,
       }),
     });
     setSaving(false);
@@ -697,6 +714,38 @@ function ReviewStep({
         >
           + Add specific
         </button>
+      </section>
+
+      <section className="rounded-2xl border border-ink-border bg-ink-card p-5">
+        <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-fog/40">
+          Shipping weight
+        </h3>
+        <p className="mb-3 text-xs text-fog/50">
+          Weigh it packed — item, mailer and padding together. eBay quotes the buyer&apos;s
+          postage from this, and won&apos;t list without it. Round up if unsure.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            value={draft.packageWeightOz ?? ""}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                packageWeightOz: e.target.value === "" ? undefined : Number(e.target.value),
+              })
+            }
+            placeholder="e.g. 3"
+            className={field + " max-w-[120px]"}
+          />
+          <span className="text-sm text-fog/60">oz</span>
+          {draft.packageWeightOz != null && draft.packageWeightOz > 0 && (
+            <span className="text-xs text-fog/40">
+              ≈ {(draft.packageWeightOz / 16).toFixed(2)} lb
+            </span>
+          )}
+        </div>
       </section>
 
       {readiness && !readiness.ready && (

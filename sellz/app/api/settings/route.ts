@@ -66,6 +66,10 @@ export async function PUT(req: NextRequest) {
       body.defaultRelistDays === undefined
         ? undefined
         : num(body.defaultRelistDays, 1, 90, 10),
+    defaultPackageWeightOz:
+      body.defaultPackageWeightOz === undefined
+        ? undefined
+        : num(body.defaultPackageWeightOz, 0.1, 4000, 3),
   });
   return NextResponse.json({
     ...updated,

@@ -32,6 +32,9 @@ export async function PATCH(
   if (typeof body.description === "string") edits.description = body.description.slice(0, 4000);
   if (typeof body.condition === "string") edits.condition = body.condition.trim().slice(0, 200);
   if (isFinite(Number(body.price)) && Number(body.price) >= 0) edits.price = Number(body.price);
+  if (isFinite(Number(body.packageWeightOz)) && Number(body.packageWeightOz) > 0) {
+    edits.packageWeightOz = Number(body.packageWeightOz);
+  }
   if (Object.keys(edits).length) await updateListing(listing.id, edits);
   if (typeof body.manualComps === "string") {
     await updateListing(listing.id, {

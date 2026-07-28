@@ -442,6 +442,7 @@ interface AutomationState {
   autoApplyRules: AutoApplyRules;
   relistEnabled: boolean;
   defaultRelistDays: number;
+  defaultPackageWeightOz: number | "";
 }
 
 const DEFAULT_RULES: AutoApplyRules = {
@@ -494,6 +495,7 @@ function AutomationPanel() {
           autoApplyRules: { ...DEFAULT_RULES, ...(d.autoApplyRules ?? {}) },
           relistEnabled: Boolean(d.relistEnabled),
           defaultRelistDays: d.defaultRelistDays ?? 10,
+          defaultPackageWeightOz: d.defaultPackageWeightOz ?? "",
         })
       )
       .catch((err) =>
@@ -641,6 +643,32 @@ function AutomationPanel() {
                 </div>
               </div>
             )}
+
+            <div className="space-y-2 rounded-xl border border-ink-border bg-ink p-4">
+              <label className="block max-w-[12rem] space-y-1 text-sm">
+                <span className="text-fog/50">Default shipping weight (oz)</span>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={s.defaultPackageWeightOz}
+                  onChange={(e) =>
+                    setS({
+                      ...s,
+                      defaultPackageWeightOz:
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                  placeholder="e.g. 3"
+                  className={`${field} bg-ink-card`}
+                />
+              </label>
+              <p className="text-xs leading-relaxed text-fog/40">
+                eBay won&apos;t publish a listing without a packed weight. This one fills in
+                the box for every new listing so you only correct it when an item is unusual —
+                it is a starting point, not a substitute for weighing.
+              </p>
+            </div>
 
             <div className="space-y-3 rounded-xl border border-ink-border bg-ink p-4">
               <Toggle

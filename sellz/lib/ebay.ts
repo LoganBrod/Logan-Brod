@@ -868,6 +868,9 @@ export interface PublishInput {
   quantity?: number;
   /** Structured item specifics mapped to eBay aspect names */
   itemSpecifics?: { name: string; value: string }[];
+  /** Packed shipping weight in ounces — eBay won't publish without it. */
+  packageWeightOz?: number;
+  packageDimensionsIn?: { length: number; width: number; height: number };
 }
 
 export interface PublishResult {
@@ -932,6 +935,18 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
       },
       condition,
       ...(conditionDescriptors.length ? { conditionDescriptors } : {}),
+      // Calculated-shipping fulfillment policies price postage from this, so
+      // eBay rejects the publish outright when it's absent.
+      ...(input.packageWeightOz
+        ? {
+            packageWeightAndSize: {
+              weight: { value: input.packageWeightOz, unit: "OUNCE" },
+              ...(input.packageDimensionsIn
+                ? { dimensions: { ...input.packageDimensionsIn, unit: "INCH" } }
+                : {}),
+            },
+          }
+        : {}),
       product: {
         title: input.title.slice(0, 80),
         description: input.description,

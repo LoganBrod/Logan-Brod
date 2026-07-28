@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getListing, updateListing } from "@/lib/store";
+import { getListing, updateListing, getSellerSettings } from "@/lib/store";
 import { publishToEbay } from "@/lib/ebay";
 import { photoUrl } from "@/lib/photos";
 
@@ -30,6 +30,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Set a price above $0 before listing" }, { status: 400 });
   }
 
+  // eBay's own complaint here is "invalid shipping package details", which
+  // doesn't tell the seller which field to fill in or where.
+  const settings = await getSellerSettings();
+  const packageWeightOz = listing.packageWeightOz ?? settings.defaultPackageWeightOz;
+  if (!packageWeightOz || packageWeightOz <= 0) {
+    return NextResponse.json(
+      {
+        error:
+          "eBay needs the shipping weight before it can list this. Enter the packed weight " +
+          "(item plus mailer and padding) in the Shipping weight box, or set a default in Settings.",
+      },
+      { status: 400 }
+    );
+  }
+
   // eBay fetches images by URL, so they must be absolute and publicly reachable.
   const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
   const imageUrls = listing.photos.map((p) => photoUrl(p, origin));
@@ -43,6 +58,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       condition: listing.condition,
       imageUrls,
       itemSpecifics: listing.itemSpecifics?.map((s) => ({ name: s.name, value: s.value })),
+      packageWeightOz,
+      packageDimensionsIn: listing.packageDimensionsIn,
     });
 
     await updateListing(listing.id, {

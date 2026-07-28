@@ -133,6 +133,15 @@ export interface Listing {
   ebayAspects?: EbayAspect[];
   /** eBay category ID resolved during listing creation */
   ebayCategoryId?: string;
+  /**
+   * Weight and size of the item once packed for shipping. eBay refuses to
+   * publish without a weight when the fulfillment policy prices postage by
+   * calculated shipping, and the buyer is quoted from these numbers, so they
+   * describe the packed parcel — mailer and padding included — not the bare
+   * item. Dimensions are optional; weight is what eBay insists on.
+   */
+  packageWeightOz?: number;
+  packageDimensionsIn?: { length: number; width: number; height: number };
   /** History of auto-relist cycles on eBay */
   relistHistory?: RelistRecord[];
   /** Override relist cadence for this listing (null = use global default) */
@@ -215,6 +224,12 @@ export interface SellerSettings {
   automationLevel: "manual" | "semi" | "auto";
   /** Fine-grained rules for semi-auto mode */
   autoApplyRules?: AutoApplyRules;
+  /**
+   * Fallback packed weight in ounces, used when a listing doesn't carry its
+   * own. Most sellers ship a narrow range of similar items, so setting this
+   * once beats retyping it per listing.
+   */
+  defaultPackageWeightOz?: number;
   /** Global default relist cadence in days (e.g. 10) */
   defaultRelistDays?: number;
   /** Whether auto-relist cycling is enabled */
