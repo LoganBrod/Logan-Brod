@@ -127,6 +127,11 @@ export interface Listing {
    * withdraws by offer id, so without this we cannot end the old listing.
    */
   ebayOfferId?: string;
+  /**
+   * eBay's ListingType for a synced listing (FixedPriceItem, Chinese, ...).
+   * Decides which Trading revise call is legal for it.
+   */
+  ebayListingType?: string;
   /** Structured item specifics (brand, size, color, etc.) for eBay aspects */
   itemSpecifics?: ItemSpecific[];
   /** Cached eBay category aspects — what fields eBay expects for this category */

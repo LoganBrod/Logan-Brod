@@ -60,21 +60,33 @@ export default function Dashboard() {
     fetch("/api/evolve").then((r) => r.json()).then(setPlaybook).catch(() => {});
     fetch("/api/ebay/status")
       .then((r) => r.json())
-      .then((s) => setEbayConnected(Boolean(s.connected)))
+      .then((s) => {
+        const connected = Boolean(s.connected);
+        setEbayConnected(connected);
+        // Pull the account's real listings in on arrival, so the dashboard
+        // shows what is actually on eBay — including items listed from the
+        // eBay app — instead of only what was created here. The button stays
+        // for forcing a refresh mid-session.
+        if (connected) syncFromEbay({ silent: true });
+      })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function syncFromEbay() {
+  async function syncFromEbay({ silent }: { silent?: boolean } = {}) {
     setSyncing(true);
-    setSyncMsg(null);
+    if (!silent) setSyncMsg(null);
     try {
       const res = await fetch("/api/ebay/sync-listings", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       await loadListings();
-      setSyncMsg(
-        `Synced ${data.fetched} listings from eBay: ${data.created} new, ${data.updated} updated.`
-      );
+      // On the automatic pass, only speak up when something actually changed.
+      if (!silent || data.created || data.updated) {
+        setSyncMsg(
+          `Synced ${data.fetched} listings from eBay: ${data.created} new, ${data.updated} updated.`
+        );
+      }
     } catch (err) {
       setSyncMsg(err instanceof Error ? err.message : "Sync failed");
     } finally {
@@ -114,7 +126,7 @@ export default function Dashboard() {
         <PageHeader title="Dashboard" subtitle="Live view of what's selling right now." />
         {ebayConnected && (
           <button
-            onClick={syncFromEbay}
+            onClick={() => syncFromEbay()}
             disabled={syncing}
             className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
           >

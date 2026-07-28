@@ -20,8 +20,16 @@ export async function PATCH(
   const listing = await getListing(params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
-  if (["draft", "active", "sold", "stale", "ended"].includes(body.status)) {
+  // "scheduled" belongs here too: leaving it out silently dropped the status
+  // change, so scheduling a listing left it sitting as a draft and the
+  // publish cron — which only looks for "scheduled" — never picked it up.
+  if (["draft", "active", "sold", "stale", "ended", "scheduled"].includes(body.status)) {
     await updateListing(listing.id, { status: body.status });
+  }
+  if (typeof body.scheduledPublishAt === "string" && !isNaN(Date.parse(body.scheduledPublishAt))) {
+    await updateListing(listing.id, {
+      scheduledPublishAt: new Date(body.scheduledPublishAt).toISOString(),
+    });
   }
   if (typeof body.ebayItemId === "string") {
     await updateListing(listing.id, { ebayItemId: body.ebayItemId.trim().slice(0, 40) });

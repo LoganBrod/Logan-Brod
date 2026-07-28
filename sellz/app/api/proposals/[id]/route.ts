@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   };
 
   try {
-    await reviseEbayListing(listing.ebayItemId, changes);
+    await reviseEbayListing(listing.ebayItemId, changes, listing.ebayListingType);
   } catch (err) {
     const message = err instanceof Error ? err.message : "eBay rejected the change";
     await updateProposal(proposal.id, { status: "failed", error: message });

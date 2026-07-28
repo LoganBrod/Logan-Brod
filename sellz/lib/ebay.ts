@@ -1016,8 +1016,12 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
  * been trimming it, so it is kept behind this one function to swap later.
  */
 const TRADING_ENDPOINT: Record<EbayEnv, string> = {
-  production: "https://api.ebay.com/ws/api.dll",
-  sandbox: "https://api.sandbox.ebay.com/ws/api.dll",
+  production: process.env.EBAY_API_BASE_OVERRIDE
+    ? `${process.env.EBAY_API_BASE_OVERRIDE}/ws/api.dll`
+    : "https://api.ebay.com/ws/api.dll",
+  sandbox: process.env.EBAY_API_BASE_OVERRIDE
+    ? `${process.env.EBAY_API_BASE_OVERRIDE}/ws/api.dll`
+    : "https://api.sandbox.ebay.com/ws/api.dll",
 };
 
 export interface EbayLiveListing {
@@ -1034,6 +1038,8 @@ export interface EbayLiveListing {
   status: "active" | "sold" | "ended";
   imageUrl?: string;
   url?: string;
+  /** eBay's ListingType, e.g. FixedPriceItem or Chinese (auction). */
+  listingType?: string;
 }
 
 async function tradingCall(
@@ -1099,6 +1105,7 @@ interface TradingItem {
   PictureDetails?: { GalleryURL?: string };
   WatchCount?: number;
   TransactionPrice?: number;
+  ListingType?: string;
 }
 
 function mapTradingItem(it: TradingItem, status: EbayLiveListing["status"]): EbayLiveListing {
@@ -1121,6 +1128,7 @@ function mapTradingItem(it: TradingItem, status: EbayLiveListing["status"]): Eba
     status,
     imageUrl: it.PictureDetails?.GalleryURL,
     url: it.ListingDetails?.ViewItemURL,
+    listingType: it.ListingType ? String(it.ListingType) : undefined,
   };
 }
 
@@ -1168,7 +1176,8 @@ export async function fetchAllEbayListings(): Promise<EbayLiveListing[]> {
  */
 export async function reviseEbayListing(
   itemId: string,
-  changes: { price?: number; title?: string; description?: string }
+  changes: { price?: number; title?: string; description?: string },
+  listingType?: string
 ): Promise<void> {
   const tokens = await getValidTokens();
   const parts: string[] = [`<ItemID>${itemId}</ItemID>`];
@@ -1180,7 +1189,14 @@ export async function reviseEbayListing(
 
   if (parts.length === 1) throw new Error("Nothing to revise on this listing");
 
-  await tradingCall("ReviseItem", `<Item>${parts.join("")}</Item>`, tokens);
+  // ReviseItem is the auction-style call; eBay wants ReviseFixedPriceItem for
+  // fixed-price listings and rejects ReviseItem outright on multi-variation
+  // ones. Everything published from here is FIXED_PRICE, and synced listings
+  // record their real type, so only a known auction takes the other path.
+  const isAuction = /chinese|auction/i.test(listingType ?? "");
+  const call = isAuction ? "ReviseItem" : "ReviseFixedPriceItem";
+
+  await tradingCall(call, `<Item>${parts.join("")}</Item>`, tokens);
 }
 
 // ---------------------------------------------------------------------------

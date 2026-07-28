@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listListings, updateListing } from "@/lib/store";
+import { listListings, updateListing, getSellerSettings } from "@/lib/store";
 import { publishToEbay } from "@/lib/ebay";
 import { getPhoto } from "@/lib/photos";
 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   const results: { listingId: string; ok: boolean; error?: string }[] = [];
+  const settings = await getSellerSettings();
 
   for (const listing of scheduled) {
     try {
@@ -45,8 +46,14 @@ export async function POST(req: NextRequest) {
       for (const photoId of listing.photos ?? []) {
         const photo = await getPhoto(photoId);
         if (photo) {
-          // Photos are served via the API route
-          const base = process.env.URL || process.env.DEPLOY_URL || "http://localhost:3000";
+          // Photos are served via the API route. PUBLIC_SITE_URL first, to
+          // match the interactive publish path — the two disagreeing means a
+          // scheduled listing points its images at a different host.
+          const base =
+            process.env.PUBLIC_SITE_URL ||
+            process.env.URL ||
+            process.env.DEPLOY_URL ||
+            "http://localhost:3000";
           imageUrls.push(`${base}/api/photos/${photoId}`);
         }
       }
@@ -72,6 +79,10 @@ export async function POST(req: NextRequest) {
           name: s.name,
           value: s.value,
         })),
+        // Without this eBay rejects the publish on calculated shipping, and
+        // there is no one watching a cron run to read the error.
+        packageWeightOz: listing.packageWeightOz ?? settings.defaultPackageWeightOz,
+        packageDimensionsIn: listing.packageDimensionsIn,
       });
 
       await updateListing(listing.id, {

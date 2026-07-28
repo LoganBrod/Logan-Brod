@@ -52,6 +52,7 @@ export async function POST() {
         title: l.title || prior.title,
         price: l.price || prior.price,
         status: l.status === "ended" ? "ended" : l.status,
+        ebayListingType: l.listingType ?? prior.ebayListingType,
         outcome,
       });
       updated++;
@@ -69,6 +70,7 @@ export async function POST() {
         status: l.status === "ended" ? "ended" : l.status,
         source: "imported",
         ebayItemId: l.itemId,
+        ebayListingType: l.listingType,
         experimentId: "control",
         outcome,
         createdAt: l.listedAt ?? new Date().toISOString(),
