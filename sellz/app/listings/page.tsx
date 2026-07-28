@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ScoreRing from "@/components/ScoreRing";
+import ScoreBar from "@/components/ScoreBar";
 import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
 import ListingPreview from "@/components/ListingPreview";
@@ -379,7 +379,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       <div className="flex items-center justify-between gap-2 text-sm">
         <span className="min-w-0 truncate font-semibold text-fog">{l.title}</span>
         <span className="flex shrink-0 items-center gap-2">
-          {l.brainScore && <ScoreRing score={l.brainScore.score} size={36} reason={l.brainScore.reason} />}
+          {l.brainScore && <ScoreBar compact score={l.brainScore.score} reason={l.brainScore.reason} />}
           <select
             value={l.status}
             onChange={(e) =>

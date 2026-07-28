@@ -33,6 +33,15 @@ interface CompsSummary {
   top: CompItem[];
 }
 
+interface RetailInfo {
+  productName: string;
+  retailPrice: number;
+  retailPriceNote: string;
+  releaseEra: string;
+  desirability: string;
+  sellingPoints: string[];
+}
+
 interface Draft {
   id: string;
   title: string;
@@ -68,6 +77,7 @@ export default function NewListingPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [comps, setComps] = useState<CompsSummary | null>(null);
+  const [retail, setRetail] = useState<RetailInfo | null>(null);
 
   const photoIds = slots.map((s) => s.id).filter((v): v is string => Boolean(v));
 
@@ -115,6 +125,7 @@ export default function NewListingPage() {
       setDraft(data.listing);
       setAnalysis(data.analysis);
       setComps(data.comps);
+      setRetail(data.retail ?? null);
       toast.push("Draft ready. Review it before listing");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
@@ -130,11 +141,13 @@ export default function NewListingPage() {
         setDraft={setDraft}
         analysis={analysis}
         comps={comps}
+        retail={retail}
         onDone={() => router.push("/listings")}
         onRestart={() => {
           setDraft(null);
           setAnalysis(null);
           setComps(null);
+          setRetail(null);
           setSlots([
             { label: "Front", id: null, preview: null, uploading: false },
             { label: "Back", id: null, preview: null, uploading: false },
@@ -266,6 +279,7 @@ function ReviewStep({
   setDraft,
   analysis,
   comps,
+  retail,
   onDone,
   onRestart,
 }: {
@@ -273,6 +287,7 @@ function ReviewStep({
   setDraft: (d: Draft) => void;
   analysis: Analysis | null;
   comps: CompsSummary | null;
+  retail: RetailInfo | null;
   onDone: () => void;
   onRestart: () => void;
 }) {
@@ -355,6 +370,39 @@ function ReviewStep({
             <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-400">
               Couldn&apos;t tell from the photos: {analysis.uncertainties}
             </p>
+          )}
+        </section>
+      )}
+
+      {retail && (
+        <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
+          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">
+            Retail and demand
+          </h2>
+          <p className="mt-1 font-semibold text-fog">
+            {retail.productName}
+            {retail.releaseEra && <span className="text-fog/45"> · {retail.releaseEra}</span>}
+          </p>
+          <p className="mt-1 text-sm text-fog/60">
+            {retail.retailPrice > 0 ? (
+              <>
+                <span className="font-semibold text-brand">${retail.retailPrice} new</span>{" "}
+                <span className="text-fog/45">({retail.retailPriceNote})</span>
+              </>
+            ) : (
+              retail.retailPriceNote
+            )}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-fog/60">{retail.desirability}</p>
+          {retail.sellingPoints.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {retail.sellingPoints.map((s, i) => (
+                <li key={i} className="flex gap-2 text-xs text-fog/60">
+                  <span className="text-brand">+</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       )}

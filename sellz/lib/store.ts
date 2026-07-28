@@ -128,6 +128,35 @@ export const DEFAULT_SELLER: SellerSettings = {
   style: "honest, detailed, no fluff",
 };
 
+export type ProposalKind = "reprice" | "retitle" | "rewrite" | "relist" | "hold";
+export type ProposalStatus = "pending" | "approved" | "dismissed" | "applied" | "failed";
+
+/**
+ * A single suggested change to a live listing, produced by the background
+ * research pass. Nothing is ever applied to eBay without the seller
+ * approving it, which is why status starts at "pending".
+ */
+export interface Proposal {
+  id: string;
+  listingId: string;
+  kind: ProposalKind;
+  /** One line the seller reads before deciding */
+  summary: string;
+  /** Why, in terms of the evidence that produced it */
+  rationale: string;
+  currentPrice?: number;
+  proposedPrice?: number;
+  currentTitle?: string;
+  proposedTitle?: string;
+  proposedDescription?: string;
+  /** 0-100 confidence from the Brain */
+  confidence: number;
+  status: ProposalStatus;
+  error?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export interface EbayTokens {
   env: "sandbox" | "production";
   accessToken: string;
@@ -143,6 +172,8 @@ interface Store {
   playbook?: Playbook;
   seedListings?: SeedListing[];
   ebay?: EbayTokens;
+  proposals?: Proposal[];
+  lastResearchAt?: string;
 }
 
 async function read(): Promise<Store> {
@@ -227,6 +258,47 @@ export async function deleteSeedListing(id: string) {
   const store = await read();
   store.seedListings = (store.seedListings ?? []).filter((s) => s.id !== id);
   await write(store);
+}
+
+export async function listProposals(): Promise<Proposal[]> {
+  return (await read()).proposals ?? [];
+}
+
+export async function getProposal(id: string): Promise<Proposal | undefined> {
+  return (await read()).proposals?.find((p) => p.id === id);
+}
+
+/**
+ * Replaces any still-pending proposal for the same listing and kind, so a
+ * repeated research pass refreshes advice rather than stacking duplicates.
+ * Decided proposals are kept as history.
+ */
+export async function upsertProposal(proposal: Proposal) {
+  const store = await read();
+  const kept = (store.proposals ?? []).filter(
+    (p) =>
+      !(p.listingId === proposal.listingId && p.kind === proposal.kind && p.status === "pending")
+  );
+  store.proposals = [proposal, ...kept].slice(0, 300);
+  await write(store);
+}
+
+export async function updateProposal(id: string, patch: Partial<Proposal>) {
+  const store = await read();
+  const p = store.proposals?.find((x) => x.id === id);
+  if (!p) return;
+  Object.assign(p, patch);
+  await write(store);
+}
+
+export async function setLastResearchAt(iso: string) {
+  const store = await read();
+  store.lastResearchAt = iso;
+  await write(store);
+}
+
+export async function getLastResearchAt(): Promise<string | undefined> {
+  return (await read()).lastResearchAt;
 }
 
 export async function getEbayTokens(): Promise<EbayTokens | undefined> {

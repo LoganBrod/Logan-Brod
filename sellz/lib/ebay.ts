@@ -860,3 +860,32 @@ export async function fetchAllEbayListings(): Promise<EbayLiveListing[]> {
     ...pick("UnsoldList").map((i) => mapTradingItem(i, "ended")),
   ].filter((l) => l.itemId);
 }
+
+// ---------------------------------------------------------------------------
+// Revising a live listing in place
+// ---------------------------------------------------------------------------
+
+/**
+ * Change the price and/or title of a listing that is already live.
+ *
+ * Deliberately a revise rather than an end-and-relist: revising keeps the
+ * watchers and question history attached to the listing, avoids insertion
+ * fees, and stays clear of eBay's search-manipulation rules, which treat
+ * repeatedly recycling listings to reset their exposure as abuse.
+ */
+export async function reviseEbayListing(
+  itemId: string,
+  changes: { price?: number; title?: string; description?: string }
+): Promise<void> {
+  const tokens = await getValidTokens();
+  const parts: string[] = [`<ItemID>${itemId}</ItemID>`];
+  if (changes.title) parts.push(`<Title><![CDATA[${changes.title.slice(0, 80)}]]></Title>`);
+  if (changes.description)
+    parts.push(`<Description><![CDATA[${changes.description}]]></Description>`);
+  if (changes.price !== undefined && changes.price > 0)
+    parts.push(`<StartPrice>${changes.price.toFixed(2)}</StartPrice>`);
+
+  if (parts.length === 1) throw new Error("Nothing to revise on this listing");
+
+  await tradingCall("ReviseItem", `<Item>${parts.join("")}</Item>`, tokens);
+}

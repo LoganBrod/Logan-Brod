@@ -549,3 +549,155 @@ export async function experimentInstruction(experimentId?: string): Promise<stri
   if (!experimentId || experimentId === "control") return undefined;
   return (await getPlaybook())?.experiments?.find((e) => e.id === experimentId)?.instruction;
 }
+
+// ---------------------------------------------------------------------------
+// Proposals: what to change about a listing that is already live
+// ---------------------------------------------------------------------------
+
+const ProposalSchema = z.object({
+  kind: z
+    .enum(["reprice", "retitle", "rewrite", "relist", "hold"])
+    .describe(
+      "reprice = price is the blocker; retitle = buyers cannot find it; rewrite = description kills trust; relist = listing is stale and exhausted its exposure; hold = leave it alone, not enough evidence or it is performing fine"
+    ),
+  summary: z.string().describe("One short line the seller reads before deciding, plain language"),
+  rationale: z
+    .string()
+    .describe(
+      "Why, referencing the actual numbers: days live, views, watchers, and where the price sits against comps"
+    ),
+  proposedPrice: z
+    .number()
+    .describe("Suggested new price in dollars. Same as current price when kind is not reprice"),
+  proposedTitle: z
+    .string()
+    .describe("Suggested new title, <=80 chars. Empty string when kind is not retitle"),
+  proposedDescription: z
+    .string()
+    .describe("Suggested new description. Empty string when kind is not rewrite"),
+  confidence: z
+    .number()
+    .describe("0-100. Be strict: low when traffic is too thin to conclude anything"),
+});
+
+export type ProposalDraft = z.infer<typeof ProposalSchema>;
+
+const PROPOSE_PROMPT = `You review listings that are already live on eBay and decide whether to change anything.
+
+Judge against the evidence, not vibes:
+- Views with no watchers usually means the price is wrong, not the title.
+- Almost no views usually means the title is not matching what buyers search.
+- Watchers but no sale often means the price is close but slightly high, so a small cut or accepting offers moves it.
+- A listing only a day or two old has not gathered enough signal. Say "hold" and be honest that it is too early.
+
+Be conservative. A wrong price cut costs the seller real money, and churning a listing that is simply young is worse than doing nothing. Only propose "relist" when a listing has been live a long time with poor traffic, since relisting loses accumulated watchers and can incur fees.
+
+Comparable prices you are given are asking prices unless explicitly marked SOLD. Asking prices skew high because unsold listings sit at optimistic numbers forever, so do not price to match them; price below them unless the item is clearly better.`;
+
+/** Decide what, if anything, should change about a live listing. */
+export async function proposeListingChange(
+  listingId: string,
+  compsContext: string,
+  daysLive: number
+): Promise<ProposalDraft | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  const listing = await getListing(listingId);
+  if (!listing) return null;
+
+  const playbook = await getPlaybook();
+  const system =
+    PROPOSE_PROMPT +
+    (await sellerContext()) +
+    (playbook
+      ? `\n\nSeller playbook, learned from their real sales:\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
+      : "");
+
+  const o = listing.outcome;
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 2000,
+    thinking: { type: "adaptive" },
+    system,
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Live listing, ${daysLive} day${daysLive === 1 ? "" : "s"} on site:`,
+          listingRow(listing),
+          o
+            ? `Traffic so far: ${o.views} views, ${o.watchers} watchers, ${o.offers} offers.`
+            : "No traffic data recorded yet.",
+          compsContext || "No comparable listings were found for this item.",
+        ].join("\n"),
+      },
+    ],
+    output_config: { format: zodOutputFormat(ProposalSchema) },
+  });
+
+  if (!response.parsed_output) return null;
+  return response.parsed_output;
+}
+
+// ---------------------------------------------------------------------------
+// Retail research: what the item cost new, and what it is actually called
+// ---------------------------------------------------------------------------
+
+const RetailSchema = z.object({
+  productName: z.string().describe("The specific product name, as the maker would call it"),
+  retailPrice: z
+    .number()
+    .describe("Original retail price in dollars, 0 if it genuinely cannot be established"),
+  retailPriceNote: z
+    .string()
+    .describe("Where that figure came from, or plainly that it could not be found"),
+  releaseEra: z.string().describe("Roughly when it was sold new, empty string if unknown"),
+  desirability: z
+    .string()
+    .describe("2-3 sentences on collector or resale demand and what drives it for this item"),
+  sellingPoints: z
+    .array(z.string())
+    .describe("Up to 4 specific facts worth putting in a listing, e.g. materials, provenance"),
+});
+
+export type RetailResearch = z.infer<typeof RetailSchema>;
+
+const RETAIL_PROMPT = `You research what a second-hand item originally sold for at retail and why buyers want it. Search the web for the specific product. Report the original retail price only when you can actually establish it, and say plainly when you cannot rather than estimating a number that looks authoritative. Never invent prices, release dates, or provenance.`;
+
+/**
+ * Retail-side context for an item: what it cost new, what it is really
+ * called, and why anyone wants it. Complements eBay comps, which only ever
+ * show the resale side.
+ */
+export async function researchRetail(
+  itemDescription: string,
+  compTitles: string[]
+): Promise<RetailResearch> {
+  requireKey();
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 3000,
+    thinking: { type: "adaptive" },
+    system: RETAIL_PROMPT,
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Item: ${itemDescription}`,
+          compTitles.length
+            ? `eBay matched these visually similar listings, which is strong evidence of what it is:\n${compTitles.slice(0, 8).map((t) => `- ${t}`).join("\n")}`
+            : "",
+          "What did this sell for new, and why do buyers want it?",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      },
+    ],
+    output_config: { format: zodOutputFormat(RetailSchema) },
+  });
+
+  if (!response.parsed_output) throw new Error("Retail research returned no structured output");
+  return { ...response.parsed_output, sellingPoints: response.parsed_output.sellingPoints.slice(0, 4) };
+}

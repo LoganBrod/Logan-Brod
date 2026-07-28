@@ -19,18 +19,21 @@
 }
 
 .dark {
-  --color-ink: 22 29 31;
-  --color-ink-deep: 17 23 25;
-  --color-ink-card: 33 44 47;
-  --color-ink-border: 49 62 66;
-  --color-fog: 209 217 218;
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.12);
-  --shadow-pop: 0 30px 60px -18px rgba(0, 0, 0, 0.65), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
-  --scrollbar-track: 27 36 38;
-  --scrollbar-thumb: 49 62 66;
-  --skeleton-a: rgba(255, 255, 255, 0.03);
-  --skeleton-b: rgba(255, 255, 255, 0.07);
+  /* Solid black surface. Cards lift off it with a slightly raised grey
+     rather than a tint, so the palette stays neutral and the teal accent
+     is the only colour doing work. */
+  --color-ink: 0 0 0;
+  --color-ink-deep: 8 8 9;
+  --color-ink-card: 18 18 20;
+  --color-ink-border: 42 42 46;
+  --color-fog: 237 238 240;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 30px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.14);
+  --shadow-pop: 0 30px 60px -18px rgba(0, 0, 0, 0.9), 0 8px 20px -8px rgba(0, 0, 0, 0.7);
+  --scrollbar-track: 8 8 9;
+  --scrollbar-thumb: 48 48 52;
+  --skeleton-a: rgba(255, 255, 255, 0.04);
+  --skeleton-b: rgba(255, 255, 255, 0.09);
 }
 
 body {

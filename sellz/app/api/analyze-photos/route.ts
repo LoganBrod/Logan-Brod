@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getPhoto } from "@/lib/photos";
-import { generateFromPhotos, scoreListing, pickExperiment } from "@/lib/brain";
+import { generateFromPhotos, scoreListing, pickExperiment, researchRetail } from "@/lib/brain";
 import { researchEbayComps, type CompsResult } from "@/lib/ebay";
 import { addListing, getEbayTokens, type Listing } from "@/lib/store";
 
@@ -51,6 +51,18 @@ export async function POST(req: NextRequest) {
       ).catch(() => null);
     }
 
+    // Retail side: what it cost new and why buyers want it. eBay comps only
+    // ever show resale, so this is the other half of the picture and gives
+    // the seller something concrete to put in the description.
+    const visualTitles = (comps?.comps ?? [])
+      .slice(0, 8)
+      .map((c) => c.title)
+      .filter(Boolean);
+    const retail = await researchRetail(
+      [firstPass.brand, firstPass.identified, firstPass.size].filter(Boolean).join(" "),
+      visualTitles
+    ).catch(() => null);
+
     // Second pass: re-identify, re-price and re-word against what came back.
     // The comp titles matter as much as the prices here: they are how real
     // sellers name this exact object, which sharpens a shaky identification
@@ -71,12 +83,23 @@ export async function POST(req: NextRequest) {
           ? `eBay matched ${comps.visualMatchCount} of these from the photo itself, so the wording in those titles is strong evidence for what this item actually is. If they consistently disagree with your first identification, trust them and correct it.`
           : "These came from a keyword search, so treat the titles as weaker evidence of identity than the photo.";
 
+      const retailNote =
+        retail && retail.retailPrice > 0
+          ? `\n\nRetail side: this appears to be "${retail.productName}", originally around $${retail.retailPrice} (${retail.retailPriceNote}). ${retail.desirability}${
+              retail.sellingPoints.length
+                ? ` Worth mentioning in the description: ${retail.sellingPoints.join("; ")}.`
+                : ""
+            }`
+          : retail
+            ? `\n\nRetail side: likely "${retail.productName}". ${retail.retailPriceNote} ${retail.desirability}`
+            : "";
+
       final = await generateFromPhotos(
         images,
         notes,
         `Comparable items on eBay right now:\n${compLines}\n\n${visualNote}\n\n${comps.note}${
           comps.suggestedPrice ? ` Median of these: $${comps.suggestedPrice}.` : ""
-        }\nPrice this item against those comps and the seller's own playbook.`
+        }${retailNote}\nPrice this item against those comps and the seller's own playbook.`
       );
     }
 
@@ -128,6 +151,7 @@ export async function POST(req: NextRequest) {
         confidence: final.confidence,
         uncertainties: final.uncertainties,
       },
+      retail,
       comps: comps
         ? {
             note: comps.note,
