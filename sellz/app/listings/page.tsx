@@ -40,6 +40,8 @@ interface Listing {
   brainScore?: { score: number; reason: string };
   ebayItemId?: string;
   photos?: string[];
+  /** eBay-hosted images on listings synced from the account */
+  imageUrls?: string[];
   publishedAt?: string;
   cost?: {
     purchasePrice?: number;

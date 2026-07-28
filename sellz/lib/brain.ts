@@ -45,7 +45,11 @@ function listingRow(l: Listing, rank?: number): string {
     `category="${l.category}" condition="${l.condition}"`,
     l.tags.length ? `tags=${l.tags.join(",")}` : "",
     `desc="${l.description.slice(0, 150).replace(/\n/g, " ")}"`,
-    l.photosNote ? `photos="${l.photosNote.slice(0, 100).replace(/\n/g, " ")}"` : "",
+    // Photo count first, and always stated. It used to send only photosNote,
+    // which is empty on listings synced from eBay — so every one of them
+    // looked like it had no photos and got told to add some it already has.
+    `photo_count=${l.photos?.length || l.imageUrls?.length || 0}`,
+    l.photosNote ? `photo_notes="${l.photosNote.slice(0, 100).replace(/\n/g, " ")}"` : "",
     l.comps?.summary ? `comps="${l.comps.summary.slice(0, 100).replace(/\n/g, " ")}"` : "",
     l.itemSpecifics?.length
       ? `specifics=${l.itemSpecifics.map((s) => `${s.name}=${s.value}`).join(",")}`

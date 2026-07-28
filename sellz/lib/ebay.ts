@@ -1040,6 +1040,8 @@ export interface EbayLiveListing {
   url?: string;
   /** eBay's ListingType, e.g. FixedPriceItem or Chinese (auction). */
   listingType?: string;
+  /** Every picture eBay holds for the listing, gallery image first. */
+  imageUrls?: string[];
 }
 
 async function tradingCall(
@@ -1102,7 +1104,7 @@ interface TradingItem {
   };
   BuyItNowPrice?: number;
   StartPrice?: number;
-  PictureDetails?: { GalleryURL?: string };
+  PictureDetails?: { GalleryURL?: string; PictureURL?: string | string[] };
   WatchCount?: number;
   TransactionPrice?: number;
   ListingType?: string;
@@ -1127,6 +1129,16 @@ function mapTradingItem(it: TradingItem, status: EbayLiveListing["status"]): Eba
     watchers: it.WatchCount !== undefined ? Number(it.WatchCount) : undefined,
     status,
     imageUrl: it.PictureDetails?.GalleryURL,
+    // Gallery image first, then the rest, de-duplicated: eBay repeats the
+    // gallery shot inside PictureURL, and a doubled first image reads as a
+    // photo the seller does not actually have.
+    imageUrls: Array.from(
+      new Set(
+        [it.PictureDetails?.GalleryURL, ...asArray(it.PictureDetails?.PictureURL)].filter(
+          (u): u is string => Boolean(u)
+        )
+      )
+    ),
     url: it.ListingDetails?.ViewItemURL,
     listingType: it.ListingType ? String(it.ListingType) : undefined,
   };

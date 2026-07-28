@@ -117,6 +117,12 @@ export interface Listing {
   ebayItemId?: string;
   /** Stored photo ids (front, back, extras) served from /api/photos/[id] */
   photos?: string[];
+  /**
+   * Images hosted by eBay, for listings synced from the account rather than
+   * created here. Kept separate from `photos`: those are ids we serve from
+   * our own store, these are absolute URLs we do not own.
+   */
+  imageUrls?: string[];
   /** Set once we've published this listing to eBay from here */
   publishedAt?: string;
   /** SKU we generated when publishing via the eBay Inventory API */

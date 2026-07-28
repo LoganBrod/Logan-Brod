@@ -11,36 +11,48 @@ interface PreviewListing {
   photosNote: string;
   /** Stored photo ids, if the seller uploaded real photos */
   photos?: string[];
+  /** Absolute image URLs for listings synced from eBay */
+  imageUrls?: string[];
 }
 
-function photoCount(note: string): number {
-  const m = note.match(/(\d+)/);
-  const n = m ? parseInt(m[1], 10) : 4;
-  return Math.min(Math.max(n, 1), 12);
-}
+function PhotoThumb({ photos, imageUrls }: { photos?: string[]; imageUrls?: string[] }) {
+  // Photos uploaded here are served from our own store by id; listings synced
+  // from eBay carry absolute URLs instead. Either is a real image.
+  const src = photos?.length
+    ? `/api/photos/${photos[0]}`
+    : imageUrls?.length
+      ? imageUrls[0]
+      : null;
+  const count = photos?.length || imageUrls?.length || 0;
 
-function PhotoThumb({ photosNote, photos }: { photosNote: string; photos?: string[] }) {
-  // Real uploaded photos when we have them, placeholder otherwise
-  if (photos && photos.length > 0) {
+  if (src) {
     return (
-      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-        {/* Contain rather than cover so the whole item stays visible */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/api/photos/${photos[0]}`}
-          alt=""
-          className="max-h-full max-w-full object-contain"
-          loading="lazy"
-        />
-        {photos.length > 1 && (
+      // The badge hangs outside the thumb, so the rounded clipping lives on an
+      // inner wrapper — putting overflow-hidden on this outer box cut the
+      // badge in half.
+      <div className="relative h-20 w-20 shrink-0">
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+          {/* Contain rather than cover so the whole item stays visible */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt=""
+            className="max-h-full max-w-full object-contain"
+            loading="lazy"
+          />
+        </div>
+        {count > 1 && (
           <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 shadow-sm">
-            {photos.length} pics
+            {count} pics
           </span>
         )}
       </div>
     );
   }
-  const count = photoCount(photosNote);
+
+  // No image. The old placeholder guessed a count out of the photos note and
+  // fell back to "4 pics", so a listing with no photos at all advertised four
+  // — say plainly that there are none instead of inventing a number.
   return (
     <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
@@ -49,7 +61,7 @@ function PhotoThumb({ photosNote, photos }: { photosNote: string; photos?: strin
         <path d="M21 15l-5-5-4 4-3-3-6 6" />
       </svg>
       <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 shadow-sm">
-        {count} pics
+        no pics
       </span>
     </div>
   );
@@ -65,7 +77,7 @@ export default function ListingPreview({ l }: { l: PreviewListing }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
       <div className="flex gap-3">
-        <PhotoThumb photosNote={l.photosNote} photos={l.photos} />
+        <PhotoThumb photos={l.photos} imageUrls={l.imageUrls} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-dim">
