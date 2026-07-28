@@ -788,6 +788,17 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
   const allowed = categoryId ? await allowedConditionIds(categoryId, tokens).catch(() => []) : [];
   const condition = nearestAllowedCondition(wanted, allowed);
 
+  // Category-required aspects (e.g. Trading Cards' "Card Condition") fail the
+  // whole publish if missing, so they're resolved here rather than trusting
+  // whatever specifics the AI happened to extract.
+  const categoryAspects = categoryId ? await fetchCategoryAspects(categoryId).catch(() => []) : [];
+  const aspects = buildInventoryAspects(
+    (input.itemSpecifics ?? []).map((s) => ({ ...s, source: "inferred" as const })),
+    categoryAspects,
+    input.condition,
+    wanted
+  );
+
   // 1. Inventory item
   const invRes = await ebaySend(
     "PUT",
@@ -802,13 +813,7 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
         description: input.description,
         imageUrls: input.imageUrls.slice(0, 12),
         // Item specifics -> eBay product aspects. Cassini ranks these heavily.
-        ...(input.itemSpecifics?.length
-          ? {
-              aspects: Object.fromEntries(
-                input.itemSpecifics.map((s) => [s.name, [s.value]])
-              ),
-            }
-          : {}),
+        ...(Object.keys(aspects).length ? { aspects } : {}),
       },
     },
     tokens
@@ -1132,6 +1137,80 @@ export function mapSpecificsToAspects(
   }
 
   return mapped;
+}
+
+/**
+ * Build the full aspects payload for an inventory item: our extracted
+ * specifics (renamed onto eBay's real aspect names where they match), plus a
+ * best-effort value for any REQUIRED category aspect we didn't extract —
+ * publish fails outright if one of those is missing (e.g. Trading Cards'
+ * "Card Condition"). Required aspects with a Graded/Ungraded-style pair of
+ * example values are resolved from the same graded-vs-raw signal that picks
+ * the ConditionEnum; everything else is matched against the general
+ * condition text, falling back to the category's first real example so
+ * publish isn't blocked on a field we have no signal for.
+ */
+export function buildInventoryAspects(
+  extracted: ItemSpecific[],
+  categoryAspects: EbayAspect[],
+  conditionText: string,
+  preferredConditionId: string
+): Record<string, string[]> {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // Same aspect-name lookup as mapSpecificsToAspects, built locally so we can
+  // tell exactly which raw specifics it consumed (their normalized name may
+  // differ from the canonical aspect name it resolved to, e.g. "Colour" ->
+  // "Color" — comparing normalized *output* names would miss that and let
+  // the raw specific leak through as a duplicate key).
+  const synonyms: Record<string, string[]> = {
+    color: ["colour", "colors", "colours"],
+    size: ["sz", "sizing"],
+    material: ["fabric", "materials"],
+    style: ["type", "styles"],
+    pattern: ["print", "design"],
+    sleevelength: ["sleeve", "sleeves"],
+    brand: ["make", "manufacturer"],
+  };
+  const aspectMap = new Map<string, string>();
+  for (const a of categoryAspects) {
+    const key = normalize(a.name);
+    aspectMap.set(key, a.name);
+    for (const [canonical, syns] of Object.entries(synonyms)) {
+      if (key === canonical) for (const syn of syns) aspectMap.set(syn, a.name);
+    }
+  }
+
+  const result = new Map<string, string>();
+  for (const spec of extracted) {
+    const ebayName = aspectMap.get(normalize(spec.name));
+    const key = ebayName ?? spec.name;
+    if (!result.has(key)) result.set(key, spec.value);
+  }
+
+  const isGraded = preferredConditionId === "2750";
+  const conditionLower = conditionText.toLowerCase();
+  for (const aspect of categoryAspects) {
+    if (!aspect.required || result.has(aspect.name)) continue;
+    const examples = aspect.examples ?? [];
+    let value: string | undefined;
+
+    const gradedExample = examples.find((e) => /graded/i.test(e) && !/ungraded/i.test(e));
+    const ungradedExample = examples.find((e) => /ungraded/i.test(e));
+    if (gradedExample && ungradedExample) {
+      value = isGraded ? gradedExample : ungradedExample;
+    }
+    if (!value) {
+      value = examples.find((e) => conditionLower.includes(e.toLowerCase()));
+    }
+    if (!value && examples.length) {
+      value = examples.find((e) => !/not specified|does not apply/i.test(e)) ?? examples[0];
+    }
+
+    if (value) result.set(aspect.name, value);
+  }
+
+  return Object.fromEntries(Array.from(result.entries()).map(([k, v]) => [k, [v]]));
 }
 
 // ---------------------------------------------------------------------------
