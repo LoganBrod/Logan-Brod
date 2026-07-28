@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { getStore } from "@netlify/blobs";
 import { DATA_DIR, ensureDirs } from "./paths";
+import { openStore, useBlobs } from "./blobStore";
 
 /**
  * Item photos. Same storage split as lib/db.ts: Netlify Blobs when deployed,
@@ -9,20 +9,11 @@ import { DATA_DIR, ensureDirs } from "./paths";
  * /api/photos/[id] so they have public HTTPS URLs — eBay fetches images by
  * URL when publishing a listing, so they can't live only on disk.
  */
-const useBlobs = Boolean(
-  process.env.SITE_ID || process.env.NETLIFY_SITE_ID || process.env.NETLIFY_BLOBS_CONTEXT
-);
-
 const PHOTO_STORE_NAME = "levoz-photos";
 const PHOTO_DIR = path.join(DATA_DIR, "photos");
 
 function blobStore() {
-  const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
-  const token = process.env.NETLIFY_BLOBS_TOKEN;
-  if (siteID && token) {
-    return getStore({ name: PHOTO_STORE_NAME, consistency: "strong", siteID, token });
-  }
-  return getStore({ name: PHOTO_STORE_NAME, consistency: "strong" });
+  return openStore(PHOTO_STORE_NAME);
 }
 
 export interface StoredPhoto {
