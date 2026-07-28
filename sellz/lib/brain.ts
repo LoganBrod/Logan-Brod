@@ -47,6 +47,9 @@ function listingRow(l: Listing, rank?: number): string {
     `desc="${l.description.slice(0, 150).replace(/\n/g, " ")}"`,
     l.photosNote ? `photos="${l.photosNote.slice(0, 100).replace(/\n/g, " ")}"` : "",
     l.comps?.summary ? `comps="${l.comps.summary.slice(0, 100).replace(/\n/g, " ")}"` : "",
+    l.itemSpecifics?.length
+      ? `specifics=${l.itemSpecifics.map((s) => `${s.name}=${s.value}`).join(",")}`
+      : "",
   ]
     .filter(Boolean)
     .join(" | ");
@@ -224,16 +227,47 @@ export async function researchComps(listingId: string): Promise<Comps> {
 }
 
 // ---------------------------------------------------------------------------
-// Score: grade a listing before it goes up
+// Score: grade a listing with a per-dimension breakdown
 // ---------------------------------------------------------------------------
 
-const ScoreSchema = z.object({
-  score: z.number().describe("Predicted sell-ability 0-100 relative to this seller's listings"),
-  reason: z.string().describe("One-sentence justification"),
-  fix: z.string().describe("The single highest-impact change to improve it, one sentence"),
+const ScoreBreakdownSchema = z.object({
+  overall: z.number().describe("Predicted sell-ability 0-100 relative to this seller's listings"),
+  breakdown: z
+    .array(
+      z.object({
+        dimension: z
+          .enum([
+            "title_keywords",
+            "item_specifics",
+            "price_vs_comps",
+            "description_trust",
+            "condition_clarity",
+            "photo_coverage",
+            "category_fit",
+          ])
+          .describe("Which listing quality dimension this covers"),
+        score: z.number().describe("0-100 for this dimension"),
+        detail: z.string().describe("One sentence: what's strong or what to fix"),
+      })
+    )
+    .describe("Score for each of the 7 quality dimensions"),
+  topFix: z.string().describe("The single highest-impact change to improve it, one sentence"),
 });
 
-const SCORE_PROMPT = `You are the performance brain of a marketplace selling tool. Rate how likely a listing is to sell at its ask within a reasonable time, 0-100 (50 = typical for this seller). Judge title searchability, price vs comps, description trust, condition clarity, photo plan. If a playbook is provided, weigh it heavily — it's learned from their real sales. If comps are provided, weigh price against them hard. If the listing is part of an experiment, it deliberately deviates in that one way; don't penalize the deviation being tested. Be a tough, honest judge.`;
+const SCORE_PROMPT = `You are the performance brain of a marketplace selling tool. Rate how likely a listing is to sell at its ask within a reasonable time, scoring it across 7 dimensions (0-100 each, 50 = typical for this seller).
+
+Dimensions to score:
+1. **title_keywords**: Would a buyer's search terms find this? Brand, model, size, color, key attribute. eBay titles ≤80 chars, no filler.
+2. **item_specifics**: Are structured item specifics (brand, size, color, material, style) filled in? eBay ranks listings with complete specifics dramatically higher in search and filtered results.
+3. **price_vs_comps**: Is the price competitive against comparable listings? Price at or slightly below similar items from well-rated sellers.
+4. **description_trust**: Does the description build buyer trust? Materials, measurements, flaws stated plainly.
+5. **condition_clarity**: Is condition stated honestly and specifically? Vague "good condition" scores lower than specific flaw disclosure.
+6. **photo_coverage**: Are there enough photos from enough angles? eBay allows 12 free photos — more photos = more trust.
+7. **category_fit**: Is the item in the right category? Wrong category = invisible to filtered searches.
+
+The overall score is the weighted average leaning toward the weakest dimensions — one terrible dimension drags the listing down more than one great dimension lifts it.
+
+If a playbook is provided, weigh it heavily — it's learned from their real sales. If comps are provided, weigh price against them hard. If the listing is part of an experiment, it deliberately deviates in that one way; don't penalize the deviation being tested. Be a tough, honest judge.`;
 
 export async function scoreListing(listingId: string): Promise<BrainScore | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
@@ -253,29 +287,40 @@ export async function scoreListing(listingId: string): Promise<BrainScore | null
     ? `\nComps: ${listing.comps.summary} Range $${listing.comps.priceLow}-$${listing.comps.priceHigh}. ${listing.comps.demandNotes}${listing.comps.manualNotes ? ` Seller notes: ${listing.comps.manualNotes}` : ""}`
     : listing.comps === undefined && "";
 
+  const specificsText = listing.itemSpecifics?.length
+    ? `\nItem specifics filled: ${listing.itemSpecifics.map((s) => `${s.name}=${s.value}`).join(", ")}`
+    : "\nNo item specifics filled.";
+
   const client = new Anthropic();
   const response = await client.messages.parse({
     model: "claude-opus-4-8",
-    max_tokens: 1024,
+    max_tokens: 2000,
     thinking: { type: "adaptive" },
     system,
     messages: [
       {
         role: "user",
-        content: `Listing to rate:\n${listingRow(listing)}${compsText || ""}${
+        content: `Listing to rate:\n${listingRow(listing)}${compsText || ""}${specificsText}${
           experiment
             ? `\nExperiment variant: ${experiment.hypothesis} (instruction: "${experiment.instruction}")`
             : ""
         }`,
       },
     ],
-    output_config: { format: zodOutputFormat(ScoreSchema) },
+    output_config: { format: zodOutputFormat(ScoreBreakdownSchema) },
   });
 
   if (!response.parsed_output) return null;
+  const out = response.parsed_output;
+  const overall = Math.max(0, Math.min(100, Math.round(out.overall)));
+  const breakdown = out.breakdown.map((d) => ({
+    ...d,
+    score: Math.max(0, Math.min(100, Math.round(d.score))),
+  }));
   const brainScore: BrainScore = {
-    score: Math.max(0, Math.min(100, Math.round(response.parsed_output.score))),
-    reason: `${response.parsed_output.reason} Fix: ${response.parsed_output.fix}`,
+    score: overall,
+    reason: `Fix: ${out.topFix}`,
+    breakdown,
     at: new Date().toISOString(),
   };
   await updateListing(listingId, { brainScore });
@@ -458,6 +503,23 @@ const PhotoListingSchema = z.object({
   uncertainties: z
     .string()
     .describe("What you could NOT determine from the photos and the seller should confirm"),
+  itemSpecifics: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .describe("eBay aspect name, e.g. 'Brand', 'Size', 'Color', 'Material', 'Style', 'Pattern'"),
+        value: z.string().describe("The value visible in the photos or stated by the seller"),
+        source: z
+          .enum(["photo", "tag", "seller", "inferred"])
+          .describe(
+            "Where this fact came from: 'tag' if read from a label, 'photo' if visible in the image, 'seller' if stated in notes, 'inferred' if deduced"
+          ),
+      })
+    )
+    .describe(
+      "Every structured item specific you can extract: Brand, Size, Color, Material, Style, Pattern, Sleeve Length, Department, Type, Closure, Neckline, etc. eBay ranks listings with complete item specifics dramatically higher. Extract as many as you can from the photos and tags."
+    ),
 });
 
 export type PhotoListing = z.infer<typeof PhotoListingSchema>;
@@ -470,6 +532,11 @@ Rules that matter:
 - eBay titles are what buyers type into search: brand, model, size, colour, key attribute. <=80 characters, no filler words, no ALL CAPS.
 - The description should build trust: what it is, condition stated plainly, flaws, and what the buyer receives.
 - Set "confidence" honestly. A clear branded tag means high confidence; a generic unbranded item photographed dimly means low confidence, and you should say why in "uncertainties".
+- ITEM SPECIFICS ARE CRITICAL. eBay's search algorithm (Cassini) ranks listings with complete item specifics dramatically higher. Buyers filter search results by these fields — a listing without "Brand" filled in is invisible to anyone who filters by brand. Extract every specific you can:
+  - From tags/labels: Brand, Size, Material/Fabric, Care instructions, Country of manufacture
+  - From visual inspection: Color, Pattern, Style, Sleeve Length, Closure type, Neckline, Fit type
+  - Mark each with its source: "tag" for label text, "photo" for visible features, "inferred" for educated deductions, "seller" for seller-provided notes
+  - When unsure, use source="inferred" and note the uncertainty. An inferred specific that the seller can confirm is better than a missing one.
 
 If comparable sold items and a seller playbook are provided, price and phrase against them — they reflect what has actually sold.`;
 
@@ -526,7 +593,11 @@ export async function generateFromPhotos(
   });
 
   if (!response.parsed_output) throw new Error("Photo analysis returned no structured output");
-  return { ...response.parsed_output, tags: response.parsed_output.tags.slice(0, 8) };
+  return {
+    ...response.parsed_output,
+    tags: response.parsed_output.tags.slice(0, 8),
+    itemSpecifics: response.parsed_output.itemSpecifics.slice(0, 30),
+  };
 }
 
 /** Round-robin a listing into "control" or an active experiment arm. */

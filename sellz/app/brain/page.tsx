@@ -38,6 +38,7 @@ export default function BrainPage() {
       <Suspense fallback={null}>
         <IntegrationsPanel />
       </Suspense>
+      <AutomationPanel />
       <BrainPanel />
     </div>
   );
@@ -267,6 +268,301 @@ function SellerPanel() {
         )}
       </section>
     </Reveal>
+  );
+}
+
+type AutomationLevel = "manual" | "semi" | "auto";
+
+interface AutoApplyRules {
+  maxPriceDrop: number;
+  maxPriceDropPct: number;
+  autoRetitle: boolean;
+  autoRelist: boolean;
+  requireReviewForRewrite: boolean;
+  minConfidence: number;
+}
+
+interface AutomationState {
+  automationLevel: AutomationLevel;
+  autoApplyRules: AutoApplyRules;
+  relistEnabled: boolean;
+  defaultRelistDays: number;
+}
+
+const DEFAULT_RULES: AutoApplyRules = {
+  maxPriceDrop: 5,
+  maxPriceDropPct: 10,
+  autoRetitle: true,
+  autoRelist: true,
+  requireReviewForRewrite: true,
+  minConfidence: 60,
+};
+
+const LEVELS: { key: AutomationLevel; label: string; blurb: string }[] = [
+  {
+    key: "manual",
+    label: "Manual",
+    blurb: "Every change waits for you. Nothing reaches eBay unapproved.",
+  },
+  {
+    key: "semi",
+    label: "Semi-auto",
+    blurb: "Small, confident changes apply themselves. Everything else queues.",
+  },
+  {
+    key: "auto",
+    label: "Full auto",
+    blurb: "The Brain applies any change it is confident about, unattended.",
+  },
+];
+
+/**
+ * Controls how much the Brain is allowed to change on live eBay listings
+ * without being asked. These settings spend real money, so the panel states
+ * plainly what each level does rather than leaning on the labels.
+ */
+function AutomationPanel() {
+  const toast = useToast();
+  const [s, setS] = useState<AutomationState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Couldn't load settings (HTTP ${r.status})`);
+        return r.json();
+      })
+      .then((d) =>
+        setS({
+          automationLevel: d.automationLevel ?? "manual",
+          autoApplyRules: { ...DEFAULT_RULES, ...(d.autoApplyRules ?? {}) },
+          relistEnabled: Boolean(d.relistEnabled),
+          defaultRelistDays: d.defaultRelistDays ?? 10,
+        })
+      )
+      .catch((err) =>
+        setLoadError(err instanceof Error ? err.message : "Couldn't load automation settings")
+      );
+  }, []);
+
+  async function save() {
+    if (!s) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(s),
+      });
+      if (!res.ok) throw new Error(`Save failed (HTTP ${res.status})`);
+      toast.push("Automation settings saved");
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Save failed", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const rules = s?.autoApplyRules ?? DEFAULT_RULES;
+  const setRules = (patch: Partial<AutoApplyRules>) =>
+    s && setS({ ...s, autoApplyRules: { ...s.autoApplyRules, ...patch } });
+
+  return (
+    <Reveal index={3}>
+      <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
+        <h2 className="text-lg font-extrabold text-fog">Automation</h2>
+        <p className="mt-1 text-sm text-fog/60">
+          How much the Brain can change on your live listings without asking.
+        </p>
+
+        {loadError && (
+          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            {loadError}
+          </p>
+        )}
+        {!s && !loadError && <p className="mt-4 text-xs text-fog/40">Loading…</p>}
+
+        {s && (
+          <div className="mt-4 space-y-5">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {LEVELS.map((l) => {
+                const active = s.automationLevel === l.key;
+                return (
+                  <button
+                    key={l.key}
+                    onClick={() => setS({ ...s, automationLevel: l.key })}
+                    className={
+                      "rounded-xl border p-3 text-left transition " +
+                      (active
+                        ? "border-brand bg-brand/10"
+                        : "border-ink-border bg-ink hover:border-brand/40")
+                    }
+                  >
+                    <span
+                      className={
+                        "block text-sm font-bold " + (active ? "text-brand" : "text-fog")
+                      }
+                    >
+                      {l.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-fog/50">
+                      {l.blurb}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {s.automationLevel === "auto" && (
+              <p className="rounded-lg bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+                Full auto ignores the limits below. Any change the Brain scores above its
+                confidence threshold goes straight to your live listings, including large price
+                moves and full rewrites. Semi-auto is the safer default.
+              </p>
+            )}
+
+            {s.automationLevel === "semi" && (
+              <div className="space-y-3 rounded-xl border border-ink-border bg-ink p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                  Limits for automatic changes
+                </h3>
+                <div className="grid gap-3 text-sm sm:grid-cols-3">
+                  <label className="space-y-1">
+                    <span className="text-fog/50">Max price change ($)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      value={rules.maxPriceDrop}
+                      onChange={(e) => setRules({ maxPriceDrop: Number(e.target.value) })}
+                      className={`${field} bg-ink-card`}
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-fog/50">Max price change (%)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.maxPriceDropPct}
+                      onChange={(e) => setRules({ maxPriceDropPct: Number(e.target.value) })}
+                      className={`${field} bg-ink-card`}
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-fog/50">Min confidence</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rules.minConfidence}
+                      onChange={(e) => setRules({ minConfidence: Number(e.target.value) })}
+                      className={`${field} bg-ink-card`}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-fog/40">
+                  Both caps must pass, and they apply to raises as well as drops. Anything larger
+                  waits for your approval.
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  <Toggle
+                    checked={rules.autoRetitle}
+                    onChange={(v) => setRules({ autoRetitle: v })}
+                    label="Apply new titles automatically"
+                  />
+                  <Toggle
+                    checked={rules.requireReviewForRewrite}
+                    onChange={(v) => setRules({ requireReviewForRewrite: v })}
+                    label="Always review full description rewrites"
+                  />
+                  <Toggle
+                    checked={rules.autoRelist}
+                    onChange={(v) => setRules({ autoRelist: v })}
+                    label="Apply relist proposals automatically"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 rounded-xl border border-ink-border bg-ink p-4">
+              <Toggle
+                checked={s.relistEnabled}
+                onChange={(v) => setS({ ...s, relistEnabled: v })}
+                label="Cycle stale listings on a schedule"
+              />
+              {s.relistEnabled && (
+                <>
+                  <label className="block max-w-[12rem] space-y-1 text-sm">
+                    <span className="text-fog/50">Relist after (days)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={s.defaultRelistDays}
+                      onChange={(e) =>
+                        setS({ ...s, defaultRelistDays: Number(e.target.value) })
+                      }
+                      className={`${field} bg-ink-card`}
+                    />
+                  </label>
+                  <p className="text-xs leading-relaxed text-fog/40">
+                    Relisting ends the listing and puts it back up fresh, which{" "}
+                    <span className="text-fog/60">loses its watchers</span> and can cost an
+                    insertion fee once you are past your free allotment. Cycling the same item
+                    repeatedly can also fall foul of eBay&apos;s search-manipulation rules, so
+                    keep the interval generous. Only listings published through LevoZ can be
+                    cycled — anything listed in the eBay app has no offer to withdraw.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={save}
+              disabled={saving}
+              className="rounded-lg bg-brand px-6 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim active:scale-95 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        )}
+      </section>
+    </Reveal>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center gap-3 text-left text-sm"
+    >
+      <span
+        className={
+          "relative h-5 w-9 shrink-0 rounded-full transition-colors " +
+          (checked ? "bg-brand" : "bg-ink-border")
+        }
+      >
+        <span
+          className={
+            "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform " +
+            (checked ? "translate-x-[1.125rem]" : "translate-x-0.5")
+          }
+        />
+      </span>
+      <span className="text-fog/70">{label}</span>
+    </button>
   );
 }
 

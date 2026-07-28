@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import {
   getEbayTokens,
+  getSellerSettings,
   listListings,
   listProposals,
   setLastResearchAt,
+  updateListing,
   upsertProposal,
+  DEFAULT_AUTO_RULES,
   type Listing,
   type Proposal,
+  type ProposalStatus,
 } from "@/lib/store";
-import { researchEbayComps } from "@/lib/ebay";
+import { researchEbayComps, reviseEbayListing } from "@/lib/ebay";
 import { proposeListingChange } from "@/lib/brain";
 import { getPhoto } from "@/lib/photos";
 
@@ -63,7 +67,12 @@ export async function POST(req: NextRequest) {
     .filter((l) => !pendingFor.has(l.id))
     .slice(0, 15);
 
-  const results: { listingId: string; kind: string }[] = [];
+  const results: { listingId: string; kind: string; autoApplied?: boolean }[] = [];
+
+  // Read once, not once per listing — on Blobs every read is a round trip.
+  const settings = await getSellerSettings();
+  const autoLevel = settings.automationLevel ?? "manual";
+  const rules = settings.autoApplyRules ?? DEFAULT_AUTO_RULES;
 
   for (const listing of candidates) {
     try {
@@ -111,8 +120,64 @@ export async function POST(req: NextRequest) {
         status: "pending",
         createdAt: new Date().toISOString(),
       };
+
+      // ---- Automation level check ----
+      let finalStatus: ProposalStatus = "pending";
+
+      if (autoLevel !== "manual" && listing.ebayItemId) {
+        const shouldAutoApply = checkAutoApplyRules(
+          draft,
+          listing,
+          rules,
+          autoLevel === "auto"
+        );
+
+        if (shouldAutoApply) {
+          try {
+            const changes: { price?: number; title?: string; description?: string } = {};
+            if (draft.kind === "reprice" && draft.proposedPrice > 0) {
+              changes.price = draft.proposedPrice;
+            }
+            if (draft.kind === "retitle" && draft.proposedTitle?.trim()) {
+              changes.title = draft.proposedTitle.trim();
+            }
+            if (draft.kind === "rewrite" && draft.proposedDescription?.trim()) {
+              changes.title = draft.proposedTitle?.trim() || undefined;
+              changes.description = draft.proposedDescription.trim();
+            }
+
+            if (Object.keys(changes).length > 0) {
+              // eBay first. The local copy is only updated once eBay has
+              // actually accepted the change, so the app never shows a price
+              // the live listing does not have.
+              await reviseEbayListing(listing.ebayItemId, changes);
+              await updateListing(listing.id, {
+                ...(changes.price ? { price: changes.price } : {}),
+                ...(changes.title ? { title: changes.title } : {}),
+                ...(changes.description ? { description: changes.description } : {}),
+              });
+              finalStatus = "auto-applied";
+            }
+          } catch (err) {
+            // Auto-apply failed — fall back to manual review, and keep the
+            // reason so the seller sees why rather than an unexplained
+            // proposal sitting in the queue.
+            finalStatus = "pending";
+            proposal.error =
+              err instanceof Error
+                ? `Couldn't apply automatically: ${err.message}`
+                : "Couldn't apply automatically";
+          }
+        }
+      }
+
+      proposal.status = finalStatus;
       await upsertProposal(proposal);
-      results.push({ listingId: listing.id, kind: draft.kind });
+      results.push({
+        listingId: listing.id,
+        kind: draft.kind,
+        autoApplied: finalStatus === "auto-applied",
+      });
     } catch {
       // One bad listing should never abort the whole pass.
       results.push({ listingId: listing.id, kind: "error" });
@@ -124,6 +189,47 @@ export async function POST(req: NextRequest) {
     ok: true,
     considered: candidates.length,
     proposed: results.filter((r) => !["hold", "none", "error"].includes(r.kind)).length,
+    autoApplied: results.filter((r) => r.autoApplied).length,
     results,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Automation rules helper
+// ---------------------------------------------------------------------------
+
+function checkAutoApplyRules(
+  draft: { kind: string; proposedPrice: number; confidence: number; proposedDescription?: string },
+  listing: Listing,
+  rules: { maxPriceDrop: number; maxPriceDropPct: number; autoRetitle: boolean; autoRelist: boolean; requireReviewForRewrite: boolean; minConfidence: number },
+  isFullAuto: boolean
+): boolean {
+  // Confidence check applies to all modes
+  if (draft.confidence < rules.minConfidence) return false;
+
+  if (draft.kind === "reprice") {
+    if (isFullAuto) return true;
+    // Caps apply in both directions. A raise is not inherently safe — it can
+    // stall a listing that was close to selling — and an uncapped one is
+    // exactly the surprise these limits exist to prevent.
+    const delta = Math.abs(listing.price - draft.proposedPrice);
+    const deltaPct = listing.price > 0 ? (delta / listing.price) * 100 : 100;
+    return delta <= rules.maxPriceDrop && deltaPct <= rules.maxPriceDropPct;
+  }
+
+  if (draft.kind === "retitle") {
+    return rules.autoRetitle || isFullAuto;
+  }
+
+  if (draft.kind === "rewrite") {
+    // Full rewrites are risky — require review unless full auto
+    if (rules.requireReviewForRewrite && !isFullAuto) return false;
+    return isFullAuto;
+  }
+
+  if (draft.kind === "relist") {
+    return rules.autoRelist || isFullAuto;
+  }
+
+  return false;
 }

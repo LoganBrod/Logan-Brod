@@ -42,12 +42,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       price: listing.price,
       condition: listing.condition,
       imageUrls,
+      itemSpecifics: listing.itemSpecifics?.map((s) => ({ name: s.name, value: s.value })),
     });
 
     await updateListing(listing.id, {
       status: "active",
       ebayItemId: result.listingId || undefined,
       ebaySku: result.sku,
+      // Needed to end this listing again later; relist acts on the offer id.
+      ebayOfferId: result.offerId || undefined,
       publishedAt: new Date().toISOString(),
       outcome: {
         views: listing.outcome?.views ?? 0,

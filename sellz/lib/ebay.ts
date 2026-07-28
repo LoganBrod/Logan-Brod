@@ -1,4 +1,5 @@
 import { getEbayTokens, setEbayTokens, type EbayTokens } from "./store";
+import type { ItemSpecific, EbayAspect } from "./store";
 
 type EbayEnv = "sandbox" | "production";
 
@@ -625,6 +626,8 @@ export interface PublishInput {
   condition: string;
   imageUrls: string[];
   quantity?: number;
+  /** Structured item specifics mapped to eBay aspect names */
+  itemSpecifics?: { name: string; value: string }[];
 }
 
 export interface PublishResult {
@@ -659,6 +662,14 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
         title: input.title.slice(0, 80),
         description: input.description,
         imageUrls: input.imageUrls.slice(0, 12),
+        // Item specifics -> eBay product aspects. Cassini ranks these heavily.
+        ...(input.itemSpecifics?.length
+          ? {
+              aspects: Object.fromEntries(
+                input.itemSpecifics.map((s) => [s.name, [s.value]])
+              ),
+            }
+          : {}),
       },
     },
     tokens
@@ -888,4 +899,199 @@ export async function reviseEbayListing(
   if (parts.length === 1) throw new Error("Nothing to revise on this listing");
 
   await tradingCall("ReviseItem", `<Item>${parts.join("")}</Item>`, tokens);
+}
+
+// ---------------------------------------------------------------------------
+// Taxonomy: fetch required/recommended item specifics for an eBay category
+// ---------------------------------------------------------------------------
+
+interface TaxonomyAspect {
+  localizedAspectName?: string;
+  aspectConstraint?: {
+    aspectRequired?: boolean;
+    aspectUsage?: string;
+  };
+  aspectValues?: { localizedValue?: string }[];
+}
+
+/**
+ * Fetch the item specifics (aspects) eBay expects for a given category.
+ * Returns required and recommended fields with example values so the AI
+ * knows what to extract from photos.
+ */
+export async function fetchCategoryAspects(categoryId: string): Promise<EbayAspect[]> {
+  const tokens = await getValidTokens();
+  // Get the default category tree for the US marketplace
+  const tree = await ebayGet<{ categoryTreeId?: string }>(
+    `/commerce/taxonomy/v1/get_default_category_tree_id?marketplace_id=${MARKETPLACE_ID}`,
+    tokens
+  );
+  if (!tree?.categoryTreeId) return [];
+
+  const data = await ebayGet<{ aspects?: TaxonomyAspect[] }>(
+    `/commerce/taxonomy/v1/category_tree/${tree.categoryTreeId}/get_item_aspects_for_category?category_id=${categoryId}`,
+    tokens
+  );
+  if (!data?.aspects) return [];
+
+  return data.aspects
+    .filter((a) => a.localizedAspectName)
+    .map((a) => ({
+      name: a.localizedAspectName!,
+      required: a.aspectConstraint?.aspectRequired === true ||
+        a.aspectConstraint?.aspectUsage === "RECOMMENDED",
+      examples: a.aspectValues
+        ?.map((v) => v.localizedValue)
+        .filter((v): v is string => Boolean(v))
+        .slice(0, 5),
+    }))
+    .slice(0, 40);
+}
+
+/**
+ * Fuzzy-match extracted item specifics against eBay's expected aspect names
+ * for the category. Handles common variations like "Colour" → "Color".
+ */
+export function mapSpecificsToAspects(
+  extracted: ItemSpecific[],
+  aspects: EbayAspect[]
+): { name: string; value: string }[] {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // Common synonyms for eBay aspect names
+  const synonyms: Record<string, string[]> = {
+    color: ["colour", "colors", "colours"],
+    size: ["sz", "sizing"],
+    material: ["fabric", "materials"],
+    style: ["type", "styles"],
+    pattern: ["print", "design"],
+    sleevelength: ["sleeve", "sleeves"],
+    brand: ["make", "manufacturer"],
+  };
+
+  const aspectMap = new Map<string, string>();
+  for (const a of aspects) {
+    const key = normalize(a.name);
+    aspectMap.set(key, a.name);
+    // Register synonyms pointing to this aspect
+    for (const [canonical, syns] of Object.entries(synonyms)) {
+      if (key === canonical) {
+        for (const syn of syns) aspectMap.set(syn, a.name);
+      }
+    }
+  }
+
+  const mapped: { name: string; value: string }[] = [];
+  const used = new Set<string>();
+
+  for (const spec of extracted) {
+    const key = normalize(spec.name);
+    const ebayName = aspectMap.get(key);
+    if (ebayName && !used.has(ebayName)) {
+      mapped.push({ name: ebayName, value: spec.value });
+      used.add(ebayName);
+    }
+  }
+
+  return mapped;
+}
+
+// ---------------------------------------------------------------------------
+// Relist: end and re-create a listing for a freshness boost
+// ---------------------------------------------------------------------------
+
+export interface RelistResult {
+  newListingId: string;
+  offerId: string;
+  url: string;
+}
+
+/** The subset of an Inventory API offer we need to round-trip on update. */
+interface EbayOffer {
+  offerId?: string;
+  status?: string;
+  availableQuantity?: number;
+  categoryId?: string;
+  listingDescription?: string;
+  listingDuration?: string;
+  merchantLocationKey?: string;
+  listingPolicies?: Record<string, unknown>;
+  tax?: Record<string, unknown>;
+  listing?: { listingId?: string; listingStatus?: string };
+}
+
+/**
+ * End a live listing and republish it at a new price, for a freshness boost
+ * in eBay search.
+ *
+ * This works on the *offer* id, not the item id. They are different
+ * identifiers: the item id names the public listing, the offer id is the
+ * handle the Inventory API acts on. Passing an item id here reaches no offer
+ * at all, and the failure mode is nasty — withdraw does nothing, publish
+ * creates a *second* live listing for the same physical item, and the seller
+ * can sell it twice. So the old offer is read and confirmed ended before
+ * anything new is published.
+ *
+ * The same offer is reused rather than a new one created, because eBay allows
+ * only one offer per SKU per marketplace.
+ */
+export async function relistItem(offerId: string, newPrice: number): Promise<RelistResult> {
+  const tokens = await getValidTokens();
+  const id = encodeURIComponent(offerId);
+
+  // 1. Read the current offer. A miss here means the id is wrong (very often
+  //    an item id passed by mistake), and continuing would duplicate the
+  //    listing rather than replace it.
+  const current = await ebayGet<EbayOffer>(`/sell/inventory/v1/offer/${id}`, tokens);
+  if (!current) {
+    throw new Error(
+      `eBay has no offer ${offerId} on this account. Relisting needs the Inventory API offer id, ` +
+        `which is only recorded for listings published through LevoZ.`
+    );
+  }
+
+  // 2. Withdraw, which ends the live listing. If it is already down there is
+  //    nothing to withdraw; any other failure is fatal, because republishing
+  //    over a listing that is still live leaves two buyable copies.
+  const isLive =
+    current.status === "PUBLISHED" || current.listing?.listingStatus === "ACTIVE";
+  if (isLive) {
+    const withdrawRes = await ebaySend("POST", `/sell/inventory/v1/offer/${id}/withdraw`, {}, tokens);
+    if (!withdrawRes.ok) {
+      throw ebayError("Ending the old listing before relisting", withdrawRes);
+    }
+  }
+
+  // 3. Update the price. PUT replaces the whole offer, so every field we want
+  //    to keep is sent back explicitly — category, policies and description
+  //    stay exactly as the seller had them.
+  const putRes = await ebaySend(
+    "PUT",
+    `/sell/inventory/v1/offer/${id}`,
+    {
+      availableQuantity: current.availableQuantity ?? 1,
+      ...(current.categoryId ? { categoryId: current.categoryId } : {}),
+      ...(current.listingDescription ? { listingDescription: current.listingDescription } : {}),
+      ...(current.listingDuration ? { listingDuration: current.listingDuration } : {}),
+      ...(current.merchantLocationKey ? { merchantLocationKey: current.merchantLocationKey } : {}),
+      ...(current.listingPolicies ? { listingPolicies: current.listingPolicies } : {}),
+      ...(current.tax ? { tax: current.tax } : {}),
+      pricingSummary: { price: { value: newPrice.toFixed(2), currency: "USD" } },
+    },
+    tokens
+  );
+  if (!putRes.ok) throw ebayError("Updating the offer price for relist", putRes);
+
+  // 4. Publish it back up as a fresh listing.
+  const pubRes = await ebaySend("POST", `/sell/inventory/v1/offer/${id}/publish`, {}, tokens);
+  if (!pubRes.ok) throw ebayError("Publishing the relisted listing", pubRes);
+
+  const newListingId = String(pubRes.json.listingId ?? "");
+  return {
+    newListingId,
+    offerId,
+    url: newListingId
+      ? `https://www.${tokens.env === "sandbox" ? "sandbox." : ""}ebay.com/itm/${newListingId}`
+      : "",
+  };
 }

@@ -1,7 +1,7 @@
 import { readRaw, writeRaw } from "./db";
 
 export type Platform = "ebay" | "depop" | "other";
-export type ListingStatus = "draft" | "active" | "sold" | "stale" | "ended";
+export type ListingStatus = "draft" | "active" | "sold" | "stale" | "ended" | "scheduled";
 
 export interface ListingOutcome {
   views: number;
@@ -37,9 +37,50 @@ export interface Comps {
   at: string;
 }
 
+/** A single dimension of the listing quality breakdown. */
+export interface ScoreDimension {
+  dimension:
+    | "title_keywords"
+    | "item_specifics"
+    | "price_vs_comps"
+    | "description_trust"
+    | "condition_clarity"
+    | "photo_coverage"
+    | "category_fit";
+  score: number;
+  detail: string;
+}
+
 export interface BrainScore {
   score: number;
   reason: string;
+  /** Per-dimension breakdown; absent on old scores before this feature. */
+  breakdown?: ScoreDimension[];
+  at: string;
+}
+
+/** A structured item specific extracted from photos or seller input. */
+export interface ItemSpecific {
+  name: string;
+  value: string;
+  /** Where the fact came from: photo, tag, seller note, or AI inference. */
+  source: "photo" | "tag" | "seller" | "inferred";
+}
+
+/** An eBay category aspect (required or recommended field). */
+export interface EbayAspect {
+  name: string;
+  required: boolean;
+  /** Example values eBay suggests for this aspect. */
+  examples?: string[];
+}
+
+/** A record of an auto-relist cycle on eBay. */
+export interface RelistRecord {
+  oldItemId: string;
+  newItemId: string;
+  oldPrice: number;
+  newPrice: number;
   at: string;
 }
 
@@ -80,6 +121,26 @@ export interface Listing {
   publishedAt?: string;
   /** SKU we generated when publishing via the eBay Inventory API */
   ebaySku?: string;
+  /**
+   * Inventory API offer id. Distinct from ebayItemId: the item id identifies
+   * the public listing, the offer id is what the Inventory API acts on. Relist
+   * withdraws by offer id, so without this we cannot end the old listing.
+   */
+  ebayOfferId?: string;
+  /** Structured item specifics (brand, size, color, etc.) for eBay aspects */
+  itemSpecifics?: ItemSpecific[];
+  /** Cached eBay category aspects — what fields eBay expects for this category */
+  ebayAspects?: EbayAspect[];
+  /** eBay category ID resolved during listing creation */
+  ebayCategoryId?: string;
+  /** History of auto-relist cycles on eBay */
+  relistHistory?: RelistRecord[];
+  /** Override relist cadence for this listing (null = use global default) */
+  relistCadenceDays?: number;
+  /** When this listing was last relisted */
+  lastRelistedAt?: string;
+  /** Scheduled publish time — listing goes live at this ISO timestamp */
+  scheduledPublishAt?: string;
   createdAt: string;
 }
 
@@ -110,6 +171,22 @@ export interface SeedListing {
   addedAt: string;
 }
 
+/** Rules for which proposals the Brain can auto-apply without seller approval. */
+export interface AutoApplyRules {
+  /** Auto-apply reprices up to this dollar amount */
+  maxPriceDrop: number;
+  /** Auto-apply reprices up to this percentage drop */
+  maxPriceDropPct: number;
+  /** Auto-apply retitle proposals */
+  autoRetitle: boolean;
+  /** Auto-apply relist proposals */
+  autoRelist: boolean;
+  /** Always hold full rewrites for manual review */
+  requireReviewForRewrite: boolean;
+  /** Only auto-apply proposals above this confidence (0-100) */
+  minConfidence: number;
+}
+
 export interface SellerSettings {
   /** What you sell */
   niche: string;
@@ -119,17 +196,36 @@ export interface SellerSettings {
   shipping: string;
   /** Shop voice/style */
   style: string;
+  /** How much autonomy the Brain has over live listings */
+  automationLevel: "manual" | "semi" | "auto";
+  /** Fine-grained rules for semi-auto mode */
+  autoApplyRules?: AutoApplyRules;
+  /** Global default relist cadence in days (e.g. 10) */
+  defaultRelistDays?: number;
+  /** Whether auto-relist cycling is enabled */
+  relistEnabled: boolean;
 }
+
+export const DEFAULT_AUTO_RULES: AutoApplyRules = {
+  maxPriceDrop: 5,
+  maxPriceDropPct: 10,
+  autoRetitle: true,
+  autoRelist: true,
+  requireReviewForRewrite: true,
+  minConfidence: 60,
+};
 
 export const DEFAULT_SELLER: SellerSettings = {
   niche: "",
   platforms: "eBay, Depop",
   shipping: "",
   style: "honest, detailed, no fluff",
+  automationLevel: "manual",
+  relistEnabled: false,
 };
 
 export type ProposalKind = "reprice" | "retitle" | "rewrite" | "relist" | "hold";
-export type ProposalStatus = "pending" | "approved" | "dismissed" | "applied" | "failed";
+export type ProposalStatus = "pending" | "approved" | "dismissed" | "applied" | "auto-applied" | "failed";
 
 /**
  * A single suggested change to a live listing, produced by the background

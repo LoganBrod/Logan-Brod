@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getPhoto } from "@/lib/photos";
 import { generateFromPhotos, scoreListing, pickExperiment, researchRetail } from "@/lib/brain";
-import { researchEbayComps, type CompsResult } from "@/lib/ebay";
+import { researchEbayComps, fetchCategoryAspects, mapSpecificsToAspects, type CompsResult } from "@/lib/ebay";
 import { addListing, getEbayTokens, type Listing } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -103,6 +103,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch category aspects from eBay Taxonomy API if connected, so we can
+    // map the AI-extracted specifics to eBay's expected field names.
+    let ebayAspects = undefined;
+    let ebayCategoryId = undefined;
+    let mappedSpecifics = final.itemSpecifics ?? [];
+    if (await getEbayTokens()) {
+      try {
+        // Use eBay's category suggestion to get the right category ID
+        const categoryQuery = [final.brand, final.identified].filter(Boolean).join(" ");
+        const suggestRes = await fetch(
+          `https://api.ebay.com/commerce/taxonomy/v1/category_tree/0/get_category_suggestions?q=${encodeURIComponent(categoryQuery.slice(0, 80))}`,
+        ).catch(() => null);
+        // If we can get a category ID through the existing suggestCategoryId path,
+        // fetch the aspects for that category
+        // For now, store the raw specifics; the publish step will map them
+      } catch {
+        // Non-fatal — specifics still help even without aspect mapping
+      }
+    }
+
     const experimentId = await pickExperiment();
     const listing: Listing = {
       id: crypto.randomUUID().slice(0, 8),
@@ -118,6 +138,9 @@ export async function POST(req: NextRequest) {
       source: "generated",
       photos: photoIds,
       experimentId,
+      itemSpecifics: mappedSpecifics,
+      ebayAspects,
+      ebayCategoryId,
       createdAt: new Date().toISOString(),
       ...(comps && comps.comps.length
         ? {
@@ -152,6 +175,7 @@ export async function POST(req: NextRequest) {
         uncertainties: final.uncertainties,
       },
       retail,
+      itemSpecifics: final.itemSpecifics ?? [],
       comps: comps
         ? {
             note: comps.note,

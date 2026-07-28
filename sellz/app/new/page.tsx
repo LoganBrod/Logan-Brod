@@ -53,6 +53,12 @@ interface Draft {
   photos?: string[];
 }
 
+interface ItemSpecificUI {
+  name: string;
+  value: string;
+  source: string;
+}
+
 interface Slot {
   label: string;
   id: string | null;
@@ -78,6 +84,7 @@ export default function NewListingPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [comps, setComps] = useState<CompsSummary | null>(null);
   const [retail, setRetail] = useState<RetailInfo | null>(null);
+  const [specifics, setSpecifics] = useState<ItemSpecificUI[]>([]);
 
   const photoIds = slots.map((s) => s.id).filter((v): v is string => Boolean(v));
 
@@ -126,6 +133,7 @@ export default function NewListingPage() {
       setAnalysis(data.analysis);
       setComps(data.comps);
       setRetail(data.retail ?? null);
+      setSpecifics(data.itemSpecifics ?? []);
       toast.push("Draft ready. Review it before listing");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
@@ -142,12 +150,15 @@ export default function NewListingPage() {
         analysis={analysis}
         comps={comps}
         retail={retail}
+        specifics={specifics}
+        setSpecifics={setSpecifics}
         onDone={() => router.push("/listings")}
         onRestart={() => {
           setDraft(null);
           setAnalysis(null);
           setComps(null);
           setRetail(null);
+          setSpecifics([]);
           setSlots([
             { label: "Front", id: null, preview: null, uploading: false },
             { label: "Back", id: null, preview: null, uploading: false },
@@ -280,6 +291,8 @@ function ReviewStep({
   analysis,
   comps,
   retail,
+  specifics,
+  setSpecifics,
   onDone,
   onRestart,
 }: {
@@ -288,6 +301,8 @@ function ReviewStep({
   analysis: Analysis | null;
   comps: CompsSummary | null;
   retail: RetailInfo | null;
+  specifics: ItemSpecificUI[];
+  setSpecifics: (s: ItemSpecificUI[]) => void;
   onDone: () => void;
   onRestart: () => void;
 }) {
@@ -297,6 +312,8 @@ function ReviewStep({
   const [error, setError] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<{ ready: boolean; missing: string[] } | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState("");
 
   useEffect(() => {
     fetch("/api/ebay/readiness")
@@ -338,6 +355,38 @@ function ReviewStep({
       setConfirming(false);
     }
   }
+
+  async function schedulePublish() {
+    if (!scheduleTime) return;
+    setPublishing(true);
+    setError(null);
+    try {
+      await saveEdits();
+      const isoTime = new Date(scheduleTime).toISOString();
+      await fetch(`/api/listings/${draft.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "scheduled",
+          scheduledPublishAt: isoTime,
+        }),
+      });
+      toast.push(`Scheduled for ${new Date(scheduleTime).toLocaleString()}`);
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Scheduling failed");
+    } finally {
+      setPublishing(false);
+      setScheduling(false);
+    }
+  }
+
+  const filledCount = specifics.length;
+  const specSourceColor = (s: string) => {
+    if (s === "tag" || s === "photo") return "bg-brand/15 text-brand";
+    if (s === "seller") return "bg-blue-500/15 text-blue-400";
+    return "bg-amber-400/15 text-amber-400";
+  };
 
   return (
     <div className="space-y-6">
@@ -498,6 +547,70 @@ function ReviewStep({
         </div>
       </section>
 
+      {/* Item Specifics Editor */}
+      <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">
+            Item Specifics
+          </h2>
+          <span className="text-xs font-semibold text-brand">
+            {filledCount} filled
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-fog/40">
+          eBay ranks listings with complete specifics dramatically higher in search.
+          Fill in as many as possible.
+        </p>
+        <div className="mt-3 space-y-2">
+          {specifics.map((spec, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={spec.name}
+                onChange={(e) => {
+                  const updated = [...specifics];
+                  updated[i] = { ...spec, name: e.target.value };
+                  setSpecifics(updated);
+                }}
+                placeholder="Aspect name"
+                className={field + " max-w-[140px] text-xs"}
+              />
+              <input
+                value={spec.value}
+                onChange={(e) => {
+                  const updated = [...specifics];
+                  updated[i] = { ...spec, value: e.target.value };
+                  setSpecifics(updated);
+                }}
+                placeholder="Value"
+                className={field + " flex-1 text-xs"}
+              />
+              <span
+                className={
+                  "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold " +
+                  specSourceColor(spec.source)
+                }
+              >
+                {spec.source}
+              </span>
+              <button
+                onClick={() => setSpecifics(specifics.filter((_, j) => j !== i))}
+                className="text-fog/30 hover:text-red-400"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() =>
+            setSpecifics([...specifics, { name: "", value: "", source: "seller" }])
+          }
+          className="mt-2 text-xs font-semibold text-brand hover:underline"
+        >
+          + Add specific
+        </button>
+      </section>
+
       {readiness && !readiness.ready && (
         <p className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
           eBay cannot publish yet. Missing: {readiness.missing.join(", ")}. Set these up in My
@@ -549,6 +662,13 @@ function ReviewStep({
               Approve &amp; list on eBay
             </button>
             <button
+              onClick={() => setScheduling(!scheduling)}
+              disabled={readiness ? !readiness.ready : false}
+              className="rounded-xl border border-brand/30 px-5 py-3 font-semibold text-brand transition hover:bg-brand/10 disabled:opacity-40"
+            >
+              Schedule for later
+            </button>
+            <button
               onClick={saveEdits}
               disabled={saving}
               className="rounded-xl bg-ink-border px-5 py-3 font-semibold text-fog transition hover:bg-ink-border/70 disabled:opacity-50"
@@ -564,6 +684,56 @@ function ReviewStep({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Schedule picker */}
+      {scheduling && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-brand/30 bg-ink-card p-5 shadow-card"
+        >
+          <p className="font-bold text-fog">Schedule this listing</p>
+          <p className="mt-1 text-sm text-fog/60">
+            The listing will go live at your chosen time. Best times: Sunday 7-9pm, weekday evenings.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { label: "Tonight 8pm", hours: (() => { const d = new Date(); d.setHours(20,0,0,0); if (d <= new Date()) d.setDate(d.getDate()+1); return d; })() },
+              { label: "Sunday 7pm", hours: (() => { const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); d.setHours(19,0,0,0); return d; })() },
+              { label: "Tomorrow 10am", hours: (() => { const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0); return d; })() },
+            ].map(({ label, hours }) => (
+              <button
+                key={label}
+                onClick={() => setScheduleTime(hours.toISOString().slice(0, 16))}
+                className="rounded-lg border border-ink-border px-3 py-1.5 text-xs font-semibold text-fog/70 hover:border-brand/40 hover:text-brand transition"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <input
+              type="datetime-local"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              className={field + " max-w-xs text-sm"}
+            />
+            <button
+              onClick={schedulePublish}
+              disabled={!scheduleTime || publishing}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+            >
+              {publishing ? "Scheduling…" : "Schedule"}
+            </button>
+            <button
+              onClick={() => setScheduling(false)}
+              className="rounded-lg bg-ink-border px-4 py-2 text-sm font-semibold text-fog"
+            >
+              Cancel
+            </button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -25,7 +25,7 @@ interface Proposal {
   currentTitle?: string;
   proposedTitle?: string;
   confidence: number;
-  status: "pending" | "approved" | "dismissed" | "applied" | "failed";
+  status: "pending" | "approved" | "dismissed" | "applied" | "auto-applied" | "failed";
   error?: string;
   createdAt: string;
   listing: ProposalListing | null;
@@ -67,11 +67,13 @@ export default function ProposalsFeed({ ebayConnected }: { ebayConnected: boolea
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Research failed");
       await load();
-      toast.push(
-        data.proposed > 0
+      const autoApplied = data.autoApplied ?? 0;
+      const msg = autoApplied > 0
+        ? `${data.proposed} proposals — ${autoApplied} auto-applied, ${data.proposed - autoApplied} awaiting review`
+        : data.proposed > 0
           ? `${data.proposed} proposal${data.proposed === 1 ? "" : "s"} from ${data.considered} listings`
-          : `Checked ${data.considered} listings, nothing worth changing yet`
-      );
+          : `Checked ${data.considered} listings, nothing worth changing yet`;
+      toast.push(msg);
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Research failed", "error");
     } finally {
@@ -100,7 +102,10 @@ export default function ProposalsFeed({ ebayConnected }: { ebayConnected: boolea
   }
 
   const pending = (proposals ?? []).filter((p) => p.status === "pending");
-  const recent = (proposals ?? []).filter((p) => p.status !== "pending").slice(0, 4);
+  const autoApplied = (proposals ?? []).filter((p) => p.status === "auto-applied");
+  // Auto-applied changes are shown, not just counted: they went live without
+  // being asked about, so seeing what changed matters more than the tally.
+  const recent = (proposals ?? []).filter((p) => p.status !== "pending").slice(0, 6);
 
   if (!ebayConnected) return null;
 
@@ -115,6 +120,8 @@ export default function ProposalsFeed({ ebayConnected }: { ebayConnected: boolea
               : "Not run yet"}
             {pending.length > 0 &&
               ` · ${pending.length} proposal${pending.length === 1 ? "" : "s"} awaiting your approval`}
+            {autoApplied.length > 0 &&
+              ` · ${autoApplied.length} auto-applied`}
           </p>
         </div>
         <button
@@ -194,12 +201,14 @@ function ProposalRow({
               "rounded-full px-3 py-1.5 text-xs font-semibold " +
               (p.status === "applied"
                 ? "bg-brand/12 text-brand-dim"
-                : p.status === "failed"
-                  ? "bg-red-500/12 text-red-400"
-                  : "bg-ink-deep text-fog/40")
+                : p.status === "auto-applied"
+                  ? "bg-amber-400/12 text-amber-300"
+                  : p.status === "failed"
+                    ? "bg-red-500/12 text-red-400"
+                    : "bg-ink-deep text-fog/40")
             }
           >
-            {p.status}
+            {p.status === "auto-applied" ? "applied automatically" : p.status}
           </span>
         ) : (
           <>
