@@ -1174,6 +1174,132 @@ export async function fetchAllEbayListings(): Promise<EbayLiveListing[]> {
   ].filter((l) => l.itemId);
 }
 
+/** Everything GetItem tells us about one listing, ours or anyone else's. */
+export interface EbayItemDetail {
+  itemId: string;
+  title: string;
+  price: number;
+  soldPrice?: number;
+  quantitySold: number;
+  condition?: string;
+  categoryId?: string;
+  categoryName?: string;
+  description?: string;
+  imageUrls: string[];
+  itemSpecifics: { name: string; value: string }[];
+  listingType?: string;
+  sellerFeedbackPct?: number;
+  sellerFeedbackScore?: number;
+  listedAt?: string;
+  endsAt?: string;
+  url?: string;
+}
+
+interface GetItemResponseItem extends TradingItem {
+  Description?: string;
+  ConditionDisplayName?: string;
+  PrimaryCategory?: { CategoryID?: string | number; CategoryName?: string };
+  ItemSpecifics?: {
+    NameValueList?:
+      | { Name?: string; Value?: string | string[] }
+      | { Name?: string; Value?: string | string[] }[];
+  };
+  Seller?: { PositiveFeedbackPercent?: number; FeedbackScore?: number };
+}
+
+/**
+ * Full detail for a single item. GetMyeBaySelling returns only the gallery
+ * image and no specifics, so anything that needs the real photo set or the
+ * item specifics has to ask for the item itself.
+ */
+export async function fetchEbayItem(itemId: string): Promise<EbayItemDetail> {
+  const tokens = await getValidTokens();
+  const root = await tradingCall(
+    "GetItem",
+    `<ItemID>${itemId}</ItemID>
+     <DetailLevel>ReturnAll</DetailLevel>
+     <IncludeItemSpecifics>true</IncludeItemSpecifics>`,
+    tokens
+  );
+  const it = (root.Item ?? {}) as GetItemResponseItem;
+
+  const specifics = asArray(it.ItemSpecifics?.NameValueList)
+    .map((nv) => ({
+      name: String(nv?.Name ?? "").trim(),
+      // A specific can carry several values ("Colour: Red, Blue").
+      value: asArray(nv?.Value).map(String).join(", ").trim(),
+    }))
+    .filter((s) => s.name && s.value);
+
+  const price = Number(it.SellingStatus?.CurrentPrice ?? it.StartPrice ?? 0) || 0;
+  const sold = Number(it.SellingStatus?.QuantitySold ?? 0);
+
+  return {
+    itemId: String(it.ItemID ?? itemId),
+    title: String(it.Title ?? ""),
+    price,
+    soldPrice: sold > 0 ? price : undefined,
+    quantitySold: sold,
+    condition: it.ConditionDisplayName ? String(it.ConditionDisplayName) : undefined,
+    categoryId: it.PrimaryCategory?.CategoryID ? String(it.PrimaryCategory.CategoryID) : undefined,
+    categoryName: it.PrimaryCategory?.CategoryName
+      ? String(it.PrimaryCategory.CategoryName)
+      : undefined,
+    // eBay's description is HTML; strip it back to text for the Brain.
+    description: it.Description ? stripHtml(String(it.Description)) : undefined,
+    imageUrls: Array.from(
+      new Set(
+        [it.PictureDetails?.GalleryURL, ...asArray(it.PictureDetails?.PictureURL)].filter(
+          (u): u is string => Boolean(u)
+        )
+      )
+    ),
+    itemSpecifics: specifics,
+    listingType: it.ListingType ? String(it.ListingType) : undefined,
+    sellerFeedbackPct:
+      it.Seller?.PositiveFeedbackPercent !== undefined
+        ? Number(it.Seller.PositiveFeedbackPercent)
+        : undefined,
+    sellerFeedbackScore:
+      it.Seller?.FeedbackScore !== undefined ? Number(it.Seller.FeedbackScore) : undefined,
+    listedAt: it.ListingDetails?.StartTime,
+    endsAt: it.ListingDetails?.EndTime,
+    url: it.ListingDetails?.ViewItemURL,
+  };
+}
+
+/** eBay descriptions are seller-authored HTML; the Brain wants prose. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>|<\/p>|<\/div>|<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * The eBay item id inside a listing URL. Handles the /itm/123, /itm/slug/123
+ * and ?item=123 shapes, and a bare id pasted on its own.
+ */
+export function parseEbayItemId(input: string): string | null {
+  const s = input.trim();
+  if (/^\d{9,15}$/.test(s)) return s;
+  const byQuery = s.match(/[?&]item=(\d{9,15})/);
+  if (byQuery) return byQuery[1];
+  const byPath = s.match(/\/itm\/(?:[^/?#]+\/)?(\d{9,15})/);
+  if (byPath) return byPath[1];
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Revising a live listing in place
 // ---------------------------------------------------------------------------

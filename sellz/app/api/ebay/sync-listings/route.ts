@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { fetchAllEbayListings } from "@/lib/ebay";
+import { fetchAllEbayListings, fetchEbayItem } from "@/lib/ebay";
 import { addListing, getEbayTokens, listListings, updateListing, type Listing } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -29,6 +29,29 @@ export async function POST() {
 
   const existing = await listListings();
   const byItemId = new Map(existing.filter((l) => l.ebayItemId).map((l) => [l.ebayItemId!, l]));
+
+  // The bulk call only returns the gallery image, so a listing with eight
+  // photos looks like it has one. Ask for the full set per item — but that is
+  // one call each, so only for listings that still look photo-poor, capped and
+  // time-boxed so a large account can't run the function out of time. Whatever
+  // is missed is picked up on the next sync.
+  const deadline = Date.now() + 45_000;
+  const needsPhotos = live.filter((l) => (l.imageUrls?.length ?? 0) <= 1).slice(0, 60);
+  for (let i = 0; i < needsPhotos.length; i += 4) {
+    if (Date.now() > deadline) break;
+    await Promise.all(
+      needsPhotos.slice(i, i + 4).map(async (l) => {
+        try {
+          const detail = await fetchEbayItem(l.itemId);
+          if (detail.imageUrls.length > (l.imageUrls?.length ?? 0)) {
+            l.imageUrls = detail.imageUrls;
+          }
+        } catch {
+          // One item failing must not abandon the whole sync.
+        }
+      })
+    );
+  }
 
   let created = 0;
   let updated = 0;
