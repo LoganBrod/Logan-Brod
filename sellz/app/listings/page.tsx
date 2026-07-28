@@ -126,6 +126,7 @@ export default function ListingsPage() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
+              <LinkImport onDone={() => load()} />
               <ImportForm onDone={() => load()} />
             </motion.div>
           )}
@@ -158,6 +159,70 @@ export default function ListingsPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * Import by pasting eBay links. Faster and more accurate than the form below,
+ * which is kept for listings that aren't on eBay, or that are already gone.
+ */
+function LinkImport({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
+  const [urls, setUrls] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setReport(null);
+    try {
+      const res = await fetch("/api/listings/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      const failures = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
+      setReport(
+        `${data.created} imported, ${data.updated} updated` +
+          (failures.length ? ` — ${failures.length} couldn't be read: ${failures[0].error}` : "")
+      );
+      if (data.created || data.updated) {
+        setUrls("");
+        toast.push(`Imported ${data.created + data.updated} listing(s)`);
+        onDone();
+      }
+    } catch (err) {
+      setReport(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 border border-ink-border bg-ink p-4">
+      <SectionLabel>Paste eBay links</SectionLabel>
+      <p className="mt-1.5 text-xs text-fog/50">
+        One per line. Title, price, condition, photos and item specifics are read
+        off each listing, so there is nothing to type.
+      </p>
+      <textarea
+        rows={3}
+        value={urls}
+        onChange={(e) => setUrls(e.target.value)}
+        placeholder={"https://www.ebay.com/itm/123456789012\nhttps://www.ebay.com/itm/234567890123"}
+        className={field + " mt-2"}
+      />
+      {report && <p className="mt-2 text-xs text-fog/60">{report}</p>}
+      <button
+        onClick={submit}
+        disabled={busy || !urls.trim()}
+        className="mt-3 bg-brand px-5 py-2 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
+      >
+        {busy ? "Reading listings…" : "Import from links"}
+      </button>
     </div>
   );
 }
@@ -606,7 +671,7 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
                 {profit !== null && (
                   <span
                     className={
-                      "rounded-full px-2 py-0.5 text-xs font-bold " +
+                      "px-2 py-0.5 text-xs font-bold " +
                       (profit >= 0 ? "bg-brand/15 text-brand" : "bg-red-500/15 text-red-400")
                     }
                   >

@@ -67,10 +67,12 @@ export default function TopNav() {
   }, []);
 
   return (
-    <div className="sticky top-0 z-40 px-3 pt-3 sm:px-5 sm:pt-4">
+    // Edge to edge and flush with the top: the inset padding made the bar a
+    // floating island with the page visibly sliding under its corners.
+    <div className="sticky top-0 z-40 bg-ink">
       <div
         ref={navRef}
-        className="mx-auto flex max-w-6xl items-center gap-3 rounded-full border border-ink-border/70 bg-ink-card/80 px-3 py-2 shadow-card backdrop-blur-xl sm:px-4"
+        className="mx-auto flex max-w-6xl items-center gap-3 border-b border-ink-border bg-ink px-4 py-3"
       >
         <Link href="/" className="shrink-0 px-2 text-lg font-extrabold tracking-tight text-fog">
           Levo<span className="text-brand">Z</span>
@@ -86,7 +88,7 @@ export default function TopNav() {
                   onMouseEnter={() => setOpen(item.label)}
                   aria-expanded={open === item.label}
                   className={
-                    "flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors " +
+                    "flex items-center gap-1 px-3 py-1.5 text-sm font-semibold transition-colors " +
                     (item.children.some((c) => pathname.startsWith(c.href))
                       ? "text-fog"
                       : "text-fog/60 hover:text-fog")
@@ -99,19 +101,19 @@ export default function TopNav() {
                 <AnimatePresence>
                   {open === item.label && (
                     <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                      initial={{ opacity: 0, y: 2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 2 }}
+                      transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
                       onMouseLeave={() => setOpen(null)}
-                      className="absolute left-0 top-full w-80 pt-3"
+                      className="absolute left-0 top-full w-80"
                     >
-                      <div className="overflow-hidden rounded-2xl border border-ink-border bg-ink-card p-2 shadow-card">
+                      <div className="border border-ink-border bg-ink-card p-1.5">
                         {item.children.map((c) => (
                           <Link
                             key={c.href}
                             href={c.href}
-                            className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-ink-deep"
+                            className="block px-3 py-2.5 transition-colors hover:bg-ink-deep"
                           >
                             <span className="block text-sm font-semibold text-fog">{c.label}</span>
                             <span className="mt-0.5 block text-xs leading-snug text-fog/50">
@@ -129,7 +131,7 @@ export default function TopNav() {
                 key={item.label}
                 href={item.href!}
                 className={
-                  "rounded-full px-3 py-1.5 text-sm font-semibold transition-colors " +
+                  "px-3 py-1.5 text-sm font-semibold transition-colors " +
                   (pathname.startsWith(item.href!) ? "text-fog" : "text-fog/60 hover:text-fog")
                 }
               >
@@ -143,7 +145,7 @@ export default function TopNav() {
           <ThemeToggle />
           <Link
             href="/new"
-            className="hidden rounded-full bg-brand px-4 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim sm:block"
+            className="hidden bg-brand px-4 py-2 text-sm font-bold text-ink transition hover:bg-brand-dim sm:block"
           >
             Start a listing
           </Link>
@@ -151,7 +153,7 @@ export default function TopNav() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-border text-fog/70 md:hidden"
+            className="flex h-9 w-9 items-center justify-center border border-ink-border text-fog/70 md:hidden"
           >
             {mobileOpen ? <CloseIcon /> : <MenuIcon />}
           </button>
@@ -166,7 +168,7 @@ export default function TopNav() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
-            className="mx-auto mt-2 max-w-6xl overflow-hidden rounded-3xl border border-ink-border bg-ink-card p-3 shadow-card md:hidden"
+            className="mx-auto max-w-6xl overflow-hidden border-b border-ink-border bg-ink-card p-2 md:hidden"
           >
             {NAV.map((item) => (
               <div key={item.label} className="py-1">
@@ -179,7 +181,7 @@ export default function TopNav() {
                       <Link
                         key={c.href}
                         href={c.href}
-                        className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
+                        className="block px-3 py-2.5 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
                       >
                         {c.label}
                       </Link>
@@ -188,7 +190,7 @@ export default function TopNav() {
                 ) : (
                   <Link
                     href={item.href!}
-                    className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
+                    className="block px-3 py-2.5 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
                   >
                     {item.label}
                   </Link>
@@ -197,7 +199,7 @@ export default function TopNav() {
             ))}
             <Link
               href="/new"
-              className="mt-2 block rounded-full bg-brand py-2.5 text-center text-sm font-bold text-ink"
+              className="mt-2 block bg-brand py-2.5 text-center text-sm font-bold text-ink"
             >
               Start a listing
             </Link>

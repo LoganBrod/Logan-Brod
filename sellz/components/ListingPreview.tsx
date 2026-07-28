@@ -42,7 +42,7 @@ function PhotoThumb({ photos, imageUrls }: { photos?: string[]; imageUrls?: stri
           />
         </div>
         {count > 1 && (
-          <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 shadow-sm">
+          <span className="absolute -bottom-1.5 -right-1.5 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 shadow-sm">
             {count} pics
           </span>
         )}
@@ -60,7 +60,7 @@ function PhotoThumb({ photos, imageUrls }: { photos?: string[]; imageUrls?: stri
         <circle cx="8.5" cy="10" r="1.5" />
         <path d="M21 15l-5-5-4 4-3-3-6 6" />
       </svg>
-      <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 shadow-sm">
+      <span className="absolute -bottom-1.5 -right-1.5 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 shadow-sm">
         no pics
       </span>
     </div>
@@ -80,11 +80,11 @@ export default function ListingPreview({ l }: { l: PreviewListing }) {
         <PhotoThumb photos={l.photos} imageUrls={l.imageUrls} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-dim">
+            <span className="bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-dim">
               {label}
             </span>
             {l.condition && (
-              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+              <span className="shrink-0 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                 {l.condition}
               </span>
             )}
@@ -95,7 +95,7 @@ export default function ListingPreview({ l }: { l: PreviewListing }) {
         </div>
       </div>
 
-      <button className="mt-3 w-full rounded-full bg-brand py-2 text-[12px] font-bold text-ink transition hover:bg-brand-dim">
+      <button className="mt-3 w-full bg-brand py-2 text-[12px] font-bold text-ink transition hover:bg-brand-dim">
         {cta}
       </button>
 
@@ -107,7 +107,7 @@ export default function ListingPreview({ l }: { l: PreviewListing }) {
           {l.tags.map((t) => (
             <span
               key={t}
-              className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand-dim"
+              className="bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand-dim"
             >
               #{t}
             </span>

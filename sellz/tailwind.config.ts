@@ -18,6 +18,22 @@ const config: Config = {
         },
         fog: "rgb(var(--color-fog) / <alpha-value>)",
       },
+      /**
+       * Squared-off geometry. The radius names are kept so existing markup
+       * doesn't need rewriting — they just resolve to sharp values now, which
+       * is what turns the whole app square in one place. `full` is left alone
+       * because spinners, avatars and toggles are genuinely circular.
+       */
+      borderRadius: {
+        none: "0",
+        sm: "1px",
+        DEFAULT: "2px",
+        md: "2px",
+        lg: "2px",
+        xl: "3px",
+        "2xl": "3px",
+        "3xl": "4px",
+      },
       boxShadow: {
         card: "var(--shadow-card)",
         glow: "var(--shadow-glow)",

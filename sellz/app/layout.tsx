@@ -38,11 +38,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
+      {/* No drifting blurred circles behind the page any more: they tinted
+          every surface and made the whole app read as floating. The page is a
+          flat white sheet, and the banner carries the colour. */}
       <body className="min-h-screen antialiased">
-        <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute -left-40 -top-40 h-[32rem] w-[32rem] animate-blob rounded-full bg-brand/10 blur-3xl" />
-          <div className="absolute -right-32 top-1/3 h-[26rem] w-[26rem] animate-blob-slow rounded-full bg-brand/5 blur-3xl" />
-        </div>
         <ToastProvider>
           <TopNav />
           <main className="relative">

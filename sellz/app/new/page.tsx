@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PageHeader from "@/components/PageHeader";
+import StepRail, { type RailStep } from "@/components/StepRail";
 import { useToast } from "@/components/Toast";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -72,6 +73,17 @@ interface Slot {
 const field =
   "w-full rounded-lg border border-ink-border bg-ink px-3 py-2 text-fog placeholder:text-fog/30 focus:border-brand focus:outline-none transition-colors";
 
+/** The guided sequence: link the account, teach it, shoot it, list it. */
+type Phase = "connect" | "teach" | "photos";
+
+interface Setup {
+  ebayConnected: boolean;
+  ebayConfigured: boolean;
+  seedCount: number;
+  listingCount: number;
+  taught: boolean;
+}
+
 export default function NewListingPage() {
   const toast = useToast();
   const router = useRouter();
@@ -89,6 +101,51 @@ export default function NewListingPage() {
   const [comps, setComps] = useState<CompsSummary | null>(null);
   const [retail, setRetail] = useState<RetailInfo | null>(null);
   const [specifics, setSpecifics] = useState<ItemSpecificUI[]>([]);
+
+  // Where the seller is in the flow, and what they already have set up.
+  const [phase, setPhase] = useState<Phase | null>(null);
+  const [setup, setSetup] = useState<Setup | null>(null);
+
+  /**
+   * Work out the first step that still needs doing. Anything already
+   * satisfied is skipped rather than shown as a hurdle, so a returning seller
+   * lands straight on the camera.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [status, seeds, listings] = await Promise.all([
+        fetch("/api/ebay/status", { cache: "no-store" })
+          .then((r) => r.json())
+          .catch(() => ({ connected: false, configured: false })),
+        fetch("/api/seeds", { cache: "no-store" })
+          .then((r) => r.json())
+          .catch(() => []),
+        fetch("/api/listings", { cache: "no-store" })
+          .then((r) => r.json())
+          .catch(() => []),
+      ]);
+      if (cancelled) return;
+
+      const seedCount = Array.isArray(seeds) ? seeds.length : 0;
+      const listingCount = Array.isArray(listings) ? listings.length : 0;
+      // The Brain has something to go on once there are a few references or
+      // a few of the seller's own listings to learn from.
+      const taught = seedCount >= 3 || listingCount >= 3;
+      const next: Setup = {
+        ebayConnected: Boolean(status.connected),
+        ebayConfigured: Boolean(status.configured),
+        seedCount,
+        listingCount,
+        taught,
+      };
+      setSetup(next);
+      setPhase(!next.ebayConnected ? "connect" : !taught ? "teach" : "photos");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const photoIds = slots.map((s) => s.id).filter((v): v is string => Boolean(v));
 
@@ -212,9 +269,29 @@ export default function NewListingPage() {
     }
   }
 
+  const rail: RailStep[] = [
+    { key: "connect", label: "Connect eBay", done: setup?.ebayConnected },
+    { key: "teach", label: "Teach the Brain", done: setup ? setup.taught : false },
+    { key: "photos", label: "Photos" },
+    { key: "review", label: "Review & list" },
+  ];
+
+  // Held until the setup check lands, so the flow never flashes "connect eBay"
+  // at someone who connected it weeks ago.
+  if (!draft && (phase === null || setup === null)) {
+    return (
+      <div className="space-y-5">
+        <PageHeader title="New listing" subtitle="Getting your setup…" />
+        <div className="h-24 animate-pulse bg-ink-deep" />
+      </div>
+    );
+  }
+
   if (draft) {
     return (
-      <ReviewStep
+      <div className="space-y-5">
+        <StepRail steps={rail} current="review" />
+        <ReviewStep
         draft={draft}
         setDraft={setDraft}
         analysis={analysis}
@@ -235,16 +312,49 @@ export default function NewListingPage() {
             { label: "Back", id: null, preview: null, uploading: false },
           ]);
           setNotes("");
+          setPhase("photos");
         }}
-      />
+        />
+      </div>
+    );
+  }
+
+  if (phase === "connect") {
+    return (
+      <div className="space-y-5">
+        <StepRail steps={rail} current="connect" onJump={(k) => setPhase(k as Phase)} />
+        <ConnectStep
+          connected={Boolean(setup?.ebayConnected)}
+          configured={Boolean(setup?.ebayConfigured)}
+          onNext={() => setPhase("teach")}
+        />
+      </div>
+    );
+  }
+
+  if (phase === "teach") {
+    return (
+      <div className="space-y-5">
+        <StepRail steps={rail} current="teach" onJump={(k) => setPhase(k as Phase)} />
+        <TeachStep
+          seedCount={setup?.seedCount ?? 0}
+          listingCount={setup?.listingCount ?? 0}
+          ebayConnected={Boolean(setup?.ebayConnected)}
+          onSeeded={(n) =>
+            setSetup((s) => (s ? { ...s, seedCount: n, taught: n >= 3 || s.listingCount >= 3 } : s))
+          }
+          onNext={() => setPhase("photos")}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <StepRail steps={rail} current="photos" onJump={(k) => setPhase(k as Phase)} />
       <PageHeader
-        title="New listing"
-        subtitle="Photograph the item, front and back, and the Brain writes the whole listing."
+        title="Photograph the item"
+        subtitle="Front and back is enough. The Brain writes the listing from what it can see."
       />
 
       {/* Capped width: the photo slots are square, so on a wide screen an
@@ -300,6 +410,172 @@ export default function NewListingPage() {
   );
 }
 
+/** Step 1. Nothing can be published anywhere until the account is linked. */
+function ConnectStep({
+  connected,
+  configured,
+  onNext,
+}: {
+  connected: boolean;
+  configured: boolean;
+  onNext: () => void;
+}) {
+  return (
+    <div className="max-w-2xl space-y-5">
+      <PageHeader
+        title="Connect your eBay account"
+        subtitle="So listings can publish, and so pricing can look at what really sold."
+      />
+      <section className="border border-ink-border bg-ink-card p-6">
+        {connected ? (
+          <>
+            <p className="text-sm font-bold text-brand">eBay is connected</p>
+            <p className="mt-1.5 text-sm text-fog/55">
+              Your listings can publish straight from here.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm leading-relaxed text-fog/70">
+              Linking eBay lets LevoZ publish the finished listing, pull in the items
+              you already have on the site, and price against real sales rather than
+              guesswork.
+            </p>
+            {!configured && (
+              <p className="mt-3 border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-500">
+                The eBay app credentials aren&apos;t set on this deployment yet, so the
+                connect button won&apos;t work. You can still build a draft listing and
+                publish it later.
+              </p>
+            )}
+            <a
+              href="/api/ebay/connect"
+              className="mt-5 inline-block bg-brand px-6 py-3 text-sm font-bold text-ink transition hover:bg-brand-dim"
+            >
+              Connect eBay
+            </a>
+          </>
+        )}
+        <div className="mt-5 border-t border-ink-border pt-4">
+          <button
+            onClick={onNext}
+            className="text-xs font-semibold text-fog/50 transition hover:text-fog"
+          >
+            {connected ? "Next: teach the Brain →" : "Skip for now, I'll just draft →"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/** Step 2. A Brain with nothing to go on prices from general instinct. */
+function TeachStep({
+  seedCount,
+  listingCount,
+  ebayConnected,
+  onSeeded,
+  onNext,
+}: {
+  seedCount: number;
+  listingCount: number;
+  ebayConnected: boolean;
+  onSeeded: (count: number) => void;
+  onNext: () => void;
+}) {
+  const toast = useToast();
+  const [urls, setUrls] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
+
+  async function feed() {
+    setBusy(true);
+    setReport(null);
+    try {
+      const data = await fetchJson<{
+        added: number;
+        failed: number;
+        results: { ok: boolean; title?: string; error?: string }[];
+        seeds: unknown[];
+      }>("/api/seeds/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      onSeeded(Array.isArray(data.seeds) ? data.seeds.length : seedCount + data.added);
+      setUrls("");
+      const failures = data.results.filter((r) => !r.ok);
+      setReport(
+        `Added ${data.added} reference${data.added === 1 ? "" : "s"}.` +
+          (failures.length ? ` ${failures.length} couldn't be read: ${failures[0].error}` : "")
+      );
+      toast.push(`Fed the Brain ${data.added} listing${data.added === 1 ? "" : "s"}`);
+    } catch (err) {
+      setReport(err instanceof Error ? err.message : "Couldn't read those links");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <PageHeader
+        title="Teach the Brain what sells"
+        subtitle="Paste links to listings that sold well. It reads each one and learns the pattern."
+      />
+      <section className="border border-ink-border bg-ink-card p-6">
+        <div className="flex flex-wrap gap-2 text-xs font-semibold">
+          <span className="border border-ink-border px-2.5 py-1 text-fog/60">
+            {seedCount} reference{seedCount === 1 ? "" : "s"}
+          </span>
+          <span className="border border-ink-border px-2.5 py-1 text-fog/60">
+            {listingCount} of your listings
+          </span>
+        </div>
+
+        <label className="mt-5 block space-y-1 text-sm">
+          <span className="text-fog/50">
+            eBay links, one per line{" "}
+            <span className="text-fog/30">(sold listings teach it the most)</span>
+          </span>
+          <textarea
+            rows={4}
+            value={urls}
+            onChange={(e) => setUrls(e.target.value)}
+            placeholder={"https://www.ebay.com/itm/123456789012\nhttps://www.ebay.com/itm/234567890123"}
+            className={field}
+          />
+        </label>
+
+        {!ebayConnected && (
+          <p className="mt-3 text-xs text-amber-500">
+            Links are looked up through eBay, so connect the account first to use this.
+          </p>
+        )}
+        {report && <p className="mt-3 text-xs text-fog/60">{report}</p>}
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            onClick={feed}
+            disabled={busy || !urls.trim() || !ebayConnected}
+            className="bg-brand px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
+          >
+            {busy ? "Reading listings…" : "Feed the Brain"}
+          </button>
+          <button
+            onClick={onNext}
+            className="text-xs font-semibold text-fog/50 transition hover:text-fog"
+          >
+            {seedCount >= 3 || listingCount >= 3
+              ? "Next: photograph the item →"
+              : "Skip for now →"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function PhotoSlot({ slot, onFile }: { slot: Slot; onFile: (f: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -336,7 +612,7 @@ function PhotoSlot({ slot, onFile }: { slot: Slot; onFile: (f: File) => void }) 
           </span>
         )}
         {slot.id && !slot.uploading && (
-          <span className="absolute bottom-2 right-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-ink">
+          <span className="absolute bottom-2 right-2 bg-brand px-2 py-0.5 text-[10px] font-bold text-ink">
             ✓
           </span>
         )}
@@ -503,7 +779,7 @@ function ReviewStep({
             <h2 className="font-bold text-fog">{analysis.identified}</h2>
             <span
               className={
-                "rounded-full px-2 py-0.5 text-xs font-bold " +
+                "px-2 py-0.5 text-xs font-bold " +
                 (analysis.confidence >= 70
                   ? "bg-brand/15 text-brand"
                   : analysis.confidence >= 40
@@ -568,7 +844,7 @@ function ReviewStep({
               What comparable items go for
             </h2>
             {(comps.visualMatchCount ?? 0) > 0 && (
-              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-dim">
+              <span className="bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-dim">
                 {comps.visualMatchCount} matched from your photo
               </span>
             )}

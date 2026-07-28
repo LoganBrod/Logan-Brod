@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import HeroShowcase from "@/components/HeroShowcase";
+import HeroBanner from "@/components/HeroBanner";
 
 const STEPS = [
   {
@@ -46,64 +46,30 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div>
-      {/* Hero */}
-      <section className="relative overflow-hidden px-5 pb-4 pt-14 sm:pt-20">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="animate-rise text-xs font-bold uppercase tracking-[0.25em] text-brand">
-            For resellers
-          </p>
-          <h1 className="animate-rise mt-4 text-[2.6rem] font-extrabold leading-[1.03] tracking-tight text-fog sm:text-6xl">
-            Smarter listings.
-            <br />
-            Priced by what sold.
-          </h1>
-          <p className="animate-rise mx-auto mt-5 max-w-xl text-base leading-relaxed text-fog/60 sm:text-lg">
-            Photograph an item and LevoZ writes the listing, prices it against real
-            sales, and posts it to eBay once you approve.
-          </p>
-          <div className="animate-rise mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/new"
-              className="rounded-full bg-brand px-7 py-3.5 text-sm font-bold text-ink shadow-glow transition hover:bg-brand-dim"
-            >
-              Start a listing
-            </Link>
-            <Link
-              href="/analytics"
-              className="rounded-full border border-ink-border bg-ink-card px-7 py-3.5 text-sm font-semibold text-fog transition hover:border-brand/50"
-            >
-              See your numbers
-            </Link>
-          </div>
-        </div>
-
-        <div className="animate-emerge mt-4">
-          <HeroShowcase />
-        </div>
-      </section>
+      <HeroBanner />
 
       {/* Marketplaces */}
-      <section className="border-y border-ink-border/60 bg-ink-deep/30 px-5 py-8">
+      <section className="border-b border-ink-border bg-ink-deep px-5 py-4">
         <p className="text-center text-sm font-semibold text-fog/50">
           Built for eBay and Depop sellers, from one-off flips to full-time shops
         </p>
       </section>
 
       {/* How it works */}
-      <section className="px-5 py-20 sm:py-24">
+      <section className="px-5 py-14 sm:py-16">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
               Three steps, start to listed
             </h2>
             <p className="mt-3 text-base text-fog/55">
               The whole loop runs from your phone camera to a live eBay listing.
             </p>
           </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
             {STEPS.map((s, i) => (
               <Reveal key={s.n} index={i}>
-                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-7 shadow-card">
+                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-6">
                   <span className="text-sm font-extrabold text-brand">{s.n}</span>
                   <p className="mt-3 text-lg font-bold text-fog">{s.title}</p>
                   <p className="mt-2 text-sm leading-relaxed text-fog/55">{s.desc}</p>
@@ -115,10 +81,10 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="border-t border-ink-border/60 bg-ink-deep/30 px-5 py-20 sm:py-24">
+      <section className="border-t border-ink-border bg-ink-deep px-5 py-14 sm:py-16">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
               Everything the listing needs
             </h2>
             <p className="mt-3 text-base text-fog/55">
@@ -126,11 +92,11 @@ export default function LandingPage() {
               what each sale actually earned.
             </p>
           </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} index={i}>
-                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-7 shadow-card">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+                <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-6">
+                  <span className="flex h-11 w-11 items-center justify-center bg-brand/10 text-brand">
                     <f.icon />
                   </span>
                   <p className="mt-4 text-lg font-bold text-fog">{f.title}</p>
@@ -142,20 +108,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Closing call to action */}
-      <section className="px-5 py-20 sm:py-28">
-        <div className="mx-auto max-w-3xl rounded-[2rem] border border-ink-border bg-ink-card p-10 text-center shadow-card sm:p-14">
-          <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-4xl">
-            Point a camera at it
-          </h2>
-          <p className="mx-auto mt-3 max-w-lg text-base text-fog/55">
-            Two photos is enough to get a priced, written, ready to publish listing.
-          </p>
+      {/* Closing call to action. A full-bleed dark band rather than a bordered
+          box marooned in white space, which is where the trailing gap was. */}
+      <section className="bg-[#0d1112] px-5 py-14 text-white sm:py-16">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-xl">
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-[2.6rem] sm:leading-[1.05]">
+              Point a camera at it
+            </h2>
+            <p className="mt-3 text-base text-white/55">
+              Two photos is enough to get a priced, written, ready to publish listing.
+            </p>
+          </div>
           <Link
             href="/new"
-            className="mt-8 inline-block rounded-full bg-brand px-8 py-3.5 text-sm font-bold text-ink shadow-glow transition hover:bg-brand-dim"
+            className="shrink-0 self-start bg-brand px-7 py-3.5 text-sm font-bold text-[#0d1112] transition hover:bg-brand-dim"
           >
-            Start a listing
+            Start a listing &rarr;
           </Link>
         </div>
       </section>

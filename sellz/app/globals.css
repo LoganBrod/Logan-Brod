@@ -3,14 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --color-ink: 250 251 251;
-  --color-ink-deep: 243 245 245;
-  /* Off-white, never pure #fff, so stacked surfaces stay distinguishable */
-  --color-ink-card: 253 253 252;
-  --color-ink-border: 226 230 231;
-  --color-fog: 24 32 34;
-  --shadow-card: 0 2px 16px rgba(15, 30, 30, 0.08);
-  --shadow-glow: 0 0 30px rgba(45, 212, 191, 0.18);
+  /* Solid white page. Surfaces are separated by crisp borders rather than
+     tints and soft shadows, which is what made everything read as floating. */
+  --color-ink: 255 255 255;
+  --color-ink-deep: 247 248 248;
+  --color-ink-card: 255 255 255;
+  --color-ink-border: 219 224 225;
+  --color-fog: 17 24 26;
+  --shadow-card: none;
+  --shadow-glow: none;
   --shadow-pop: 0 30px 60px -18px rgba(15, 30, 30, 0.35), 0 8px 20px -8px rgba(15, 30, 30, 0.2);
   --scrollbar-track: 240 242 242;
   --scrollbar-thumb: 211 217 218;

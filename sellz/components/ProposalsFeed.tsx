@@ -127,7 +127,7 @@ export default function ProposalsFeed({ ebayConnected }: { ebayConnected: boolea
         <button
           onClick={runResearch}
           disabled={running}
-          className="rounded-full border border-ink-border px-4 py-2 text-xs font-bold text-fog transition hover:border-brand/50 disabled:opacity-50"
+          className="border border-ink-border px-4 py-2 text-xs font-bold text-fog transition hover:border-brand/50 disabled:opacity-50"
         >
           {running ? "Researching…" : "Run research"}
         </button>
@@ -189,7 +189,7 @@ function ProposalRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <span className="rounded-full bg-brand/12 px-3 py-1.5 text-xs font-bold text-brand-dim">
+        <span className="bg-brand/12 px-3 py-1.5 text-xs font-bold text-brand-dim">
           {p.kind === "reprice" && p.proposedPrice !== undefined
             ? `$${p.currentPrice?.toFixed(0)} → $${p.proposedPrice.toFixed(0)}`
             : KIND_LABEL[p.kind]}
@@ -198,7 +198,7 @@ function ProposalRow({
         {settled ? (
           <span
             className={
-              "rounded-full px-3 py-1.5 text-xs font-semibold " +
+              "px-3 py-1.5 text-xs font-semibold " +
               (p.status === "applied"
                 ? "bg-brand/12 text-brand-dim"
                 : p.status === "auto-applied"
@@ -215,14 +215,14 @@ function ProposalRow({
             <button
               onClick={onApprove}
               disabled={busy}
-              className="rounded-full bg-brand px-4 py-1.5 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+              className="bg-brand px-4 py-1.5 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
             >
               {busy ? "Applying…" : "Approve"}
             </button>
             <button
               onClick={onDismiss}
               disabled={busy}
-              className="rounded-full px-2 py-1.5 text-xs font-semibold text-fog/40 transition hover:text-fog disabled:opacity-50"
+              className="px-2 py-1.5 text-xs font-semibold text-fog/40 transition hover:text-fog disabled:opacity-50"
             >
               Skip
             </button>

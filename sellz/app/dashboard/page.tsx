@@ -128,7 +128,7 @@ export default function Dashboard() {
           <button
             onClick={() => syncFromEbay()}
             disabled={syncing}
-            className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+            className="bg-brand px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
           >
             {syncing ? "Syncing from eBay…" : "Sync from eBay"}
           </button>
@@ -236,7 +236,7 @@ export default function Dashboard() {
                     {l.brainScore && (
                       <span
                         className={
-                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold " +
+                          "shrink-0 px-2 py-0.5 text-xs font-bold " +
                           (l.brainScore.score >= 70
                             ? "bg-brand/15 text-brand"
                             : l.brainScore.score >= 40

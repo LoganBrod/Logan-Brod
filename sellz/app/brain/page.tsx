@@ -856,9 +856,13 @@ function BrainPanel() {
                 className="overflow-hidden"
               >
                 <div className="mt-3 space-y-3">
+                  <SeedFromLinks
+                    onAdded={(next) => setSeeds(next)}
+                    field={field}
+                  />
                   <p className="text-xs text-fog/40">
-                    Describe listings in your niche that sold well to bootstrap the
-                    playbook before you have your own data.
+                    Or describe one by hand — useful for listings that have already
+                    come down, or that were never on eBay.
                   </p>
                   <textarea
                     value={seedDesc}
@@ -1023,5 +1027,73 @@ function BrainPanel() {
         )}
       </section>
     </Reveal>
+  );
+}
+
+/**
+ * Feed the Brain by pasting eBay links rather than writing a description of
+ * each sold listing by hand. Each link is looked up and broken down into its
+ * title, price, condition, photo count and item specifics.
+ */
+function SeedFromLinks({
+  onAdded,
+  field,
+}: {
+  onAdded: (seeds: SeedListing[]) => void;
+  field: string;
+}) {
+  const [urls, setUrls] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setReport(null);
+    try {
+      const res = await fetch("/api/seeds/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't read those links");
+      if (Array.isArray(data.seeds)) onAdded(data.seeds);
+      const failures = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
+      setReport(
+        `Added ${data.added}` +
+          (failures.length ? ` — ${failures.length} couldn't be read: ${failures[0].error}` : "")
+      );
+      if (data.added) setUrls("");
+    } catch (err) {
+      setReport(err instanceof Error ? err.message : "Couldn't read those links");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border border-ink-border bg-ink-card p-3">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-fog/40">
+        Paste eBay links
+      </p>
+      <p className="mt-1 text-xs text-fog/40">
+        One per line. Sold listings teach it the most.
+      </p>
+      <textarea
+        value={urls}
+        onChange={(e) => setUrls(e.target.value)}
+        rows={3}
+        placeholder={"https://www.ebay.com/itm/123456789012\nhttps://www.ebay.com/itm/234567890123"}
+        className={`${field} mt-2 bg-ink`}
+      />
+      {report && <p className="mt-2 text-xs text-fog/60">{report}</p>}
+      <button
+        onClick={submit}
+        disabled={busy || !urls.trim()}
+        className="mt-2 bg-brand px-4 py-2 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
+      >
+        {busy ? "Reading listings…" : "Feed from links"}
+      </button>
+    </div>
   );
 }
