@@ -20,9 +20,14 @@ const AUTH_BASE: Record<EbayEnv, string> = {
   sandbox: "https://auth.sandbox.ebay.com",
 };
 
+/**
+ * EBAY_API_BASE_OVERRIDE points every eBay call at a different host. Only for
+ * pointing the request path at a local stub during testing — unset in normal
+ * use, where the real endpoints below apply.
+ */
 const API_BASE: Record<EbayEnv, string> = {
-  production: "https://api.ebay.com",
-  sandbox: "https://api.sandbox.ebay.com",
+  production: process.env.EBAY_API_BASE_OVERRIDE || "https://api.ebay.com",
+  sandbox: process.env.EBAY_API_BASE_OVERRIDE || "https://api.sandbox.ebay.com",
 };
 
 const SCOPES = [
@@ -41,6 +46,24 @@ const SCOPES = [
 ].join(" ");
 
 const MARKETPLACE_ID = "EBAY_US";
+
+/**
+ * Headers common to every eBay REST call.
+ *
+ * Accept-Language must be set explicitly. Node's fetch (undici) injects
+ * `Accept-Language: *` when the header is absent, and eBay rejects `*` as
+ * invalid — surfacing as "Invalid value for header Accept-Language"
+ * (error 25709) on Inventory API calls. Setting a real language tag
+ * overrides that default; the header cannot simply be omitted.
+ */
+function ebayHeaders(tokens: EbayTokens): Record<string, string> {
+  return {
+    Authorization: `Bearer ${tokens.accessToken}`,
+    Accept: "application/json",
+    "Accept-Language": "en-US",
+    "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
+  };
+}
 
 export function getAuthorizeUrl(): string {
   requireCreds();
@@ -190,7 +213,7 @@ async function fetchViews(itemId: string, tokens: EbayTokens): Promise<number | 
   });
   const res = await fetch(
     `${API_BASE[tokens.env]}/sell/analytics/v1/traffic_report?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${tokens.accessToken}` } }
+    { headers: ebayHeaders(tokens) }
   );
   if (!res.ok) return undefined;
   const data: { records?: TrafficReportRecord[] } = await res.json();
@@ -219,7 +242,7 @@ async function fetchSale(
 ): Promise<{ soldPrice?: number; soldAt?: string }> {
   const params = new URLSearchParams({ limit: "50" });
   const res = await fetch(`${API_BASE[tokens.env]}/sell/fulfillment/v1/order?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    headers: ebayHeaders(tokens),
   });
   if (!res.ok) return {};
   const data: { orders?: Order[] } = await res.json();
@@ -278,10 +301,7 @@ async function browseActiveComps(query: string, tokens: EbayTokens): Promise<Eba
   const res = await fetch(
     `${API_BASE[tokens.env]}/buy/browse/v1/item_summary/search?${params.toString()}`,
     {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-        "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
-      },
+      headers: ebayHeaders(tokens),
     }
   );
   if (!res.ok) return [];
@@ -311,11 +331,7 @@ export async function compsByImage(base64Image: string): Promise<EbayComp[]> {
   const tokens = await getValidTokens();
   const res = await fetch(`${API_BASE[tokens.env]}/buy/browse/v1/item_summary/search_by_image`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
-      "Content-Type": "application/json",
-      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
-    },
+    headers: { ...ebayHeaders(tokens), "Content-Type": "application/json" },
     body: JSON.stringify({ image: base64Image }),
   });
   if (!res.ok) return [];
@@ -366,10 +382,7 @@ async function insightsSoldComps(query: string, tokens: EbayTokens): Promise<Eba
   const res = await fetch(
     `${API_BASE[tokens.env]}/buy/marketplace_insights/v1_beta/item_sales/search?${params.toString()}`,
     {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-        "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
-      },
+      headers: ebayHeaders(tokens),
     }
   );
   if (!res.ok) return [];
@@ -498,11 +511,7 @@ export interface PublishReadiness {
 
 async function ebayGet<T>(pathname: string, tokens: EbayTokens): Promise<T | null> {
   const res = await fetch(`${API_BASE[tokens.env]}${pathname}`, {
-    headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
-      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
-      Accept: "application/json",
-    },
+    headers: ebayHeaders(tokens),
   });
   if (!res.ok) return null;
   return (await res.json()) as T;
@@ -615,20 +624,20 @@ function ebayCondition(condition: string): string {
   return "USED_EXCELLENT";
 }
 
+type EbayReply = { ok: boolean; status: number; json: Record<string, unknown>; text: string };
+
 async function ebaySend(
   method: "POST" | "PUT",
   pathname: string,
   body: unknown,
   tokens: EbayTokens
-): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; text: string }> {
+): Promise<EbayReply> {
   const res = await fetch(`${API_BASE[tokens.env]}${pathname}`, {
     method,
     headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
+      ...ebayHeaders(tokens),
       "Content-Type": "application/json",
       "Content-Language": "en-US",
-      "X-EBAY-C-MARKETPLACE-ID": MARKETPLACE_ID,
-      Accept: "application/json",
     },
     body: JSON.stringify(body),
   });
