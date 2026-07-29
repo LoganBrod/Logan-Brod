@@ -3,6 +3,13 @@ import { readRaw, writeRaw } from "./db";
 export type Platform = "ebay" | "depop" | "other";
 export type ListingStatus = "draft" | "active" | "sold" | "stale" | "ended" | "scheduled";
 
+/** One traffic reading, taken each time a live listing is synced from eBay. */
+export interface TrafficPoint {
+  views: number;
+  watchers: number;
+  at: string;
+}
+
 export interface ListingOutcome {
   views: number;
   watchers: number;
@@ -11,6 +18,13 @@ export interface ListingOutcome {
   listedAt?: string;
   soldAt?: string;
   updatedAt: string;
+  /**
+   * Views/watchers over time rather than a single snapshot, so the proposal
+   * engine can tell a listing that's dying in search from one that's simply
+   * young, and a price that's close (watchers climbing, no sale) from one
+   * that's wrong (views but no watchers at all).
+   */
+  trafficHistory?: TrafficPoint[];
 }
 
 /** What it cost to acquire and move an item — drives profit and margin. */
@@ -245,6 +259,13 @@ export interface SellerSettings {
   defaultRelistDays?: number;
   /** Whether auto-relist cycling is enabled */
   relistEnabled: boolean;
+  /**
+   * Brain score (0-100) a freshly-drafted listing must clear to publish
+   * itself instead of waiting for manual review. 0 (the default) disables
+   * auto-publish entirely — this is the one setting that skips a human
+   * looking at the listing at all, so it starts off.
+   */
+  autoPublishThreshold: number;
 }
 
 export const DEFAULT_AUTO_RULES: AutoApplyRules = {
@@ -263,6 +284,7 @@ export const DEFAULT_SELLER: SellerSettings = {
   style: "honest, detailed, no fluff",
   automationLevel: "manual",
   relistEnabled: false,
+  autoPublishThreshold: 0,
 };
 
 export type ProposalKind = "reprice" | "retitle" | "rewrite" | "relist" | "hold";
@@ -492,6 +514,35 @@ export function listingProfit(l: Listing): Profit | null {
     marginPct: revenue > 0 ? (profit / revenue) * 100 : null,
     complete: purchase !== undefined,
   };
+}
+
+/**
+ * Plain-language read on where traffic is heading: rising, flat, or
+ * declining, comparing the earlier half of the recorded history against the
+ * later half so one noisy sync can't flip the verdict. Needs at least 3
+ * points to say anything — with less, the trend is just noise.
+ */
+export function trafficTrend(history: TrafficPoint[] | undefined): string | null {
+  if (!history || history.length < 3) return null;
+  const mid = Math.floor(history.length / 2);
+  const early = history.slice(0, mid);
+  const late = history.slice(mid);
+  const avg = (pts: TrafficPoint[], key: "views" | "watchers") =>
+    pts.reduce((sum, p) => sum + p[key], 0) / pts.length;
+
+  const viewsEarly = avg(early, "views");
+  const viewsLate = avg(late, "views");
+  const watchersLate = avg(late, "watchers");
+  const first = history[0];
+  const last = history[history.length - 1];
+
+  const viewsDelta = viewsEarly > 0 ? (viewsLate - viewsEarly) / viewsEarly : viewsLate > 0 ? 1 : 0;
+  const direction = viewsDelta > 0.15 ? "rising" : viewsDelta < -0.15 ? "declining" : "flat";
+
+  return (
+    `views ${direction} (${first.views}→${last.views} over ${history.length} syncs), ` +
+    `watchers now ${watchersLate.toFixed(1)} avg`
+  );
 }
 
 /** Days from listing to sale (or to now for unsold), null-safe */

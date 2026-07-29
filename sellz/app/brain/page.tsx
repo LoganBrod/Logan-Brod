@@ -443,6 +443,7 @@ interface AutomationState {
   relistEnabled: boolean;
   defaultRelistDays: number;
   defaultPackageWeightOz: number | "";
+  autoPublishThreshold: number;
 }
 
 const DEFAULT_RULES: AutoApplyRules = {
@@ -496,6 +497,7 @@ function AutomationPanel() {
           relistEnabled: Boolean(d.relistEnabled),
           defaultRelistDays: d.defaultRelistDays ?? 10,
           defaultPackageWeightOz: d.defaultPackageWeightOz ?? "",
+          autoPublishThreshold: d.autoPublishThreshold ?? 0,
         })
       )
       .catch((err) =>
@@ -701,6 +703,34 @@ function AutomationPanel() {
                   </p>
                 </>
               )}
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-ink-border bg-ink p-4">
+              <Toggle
+                checked={s.autoPublishThreshold > 0}
+                onChange={(v) => setS({ ...s, autoPublishThreshold: v ? 85 : 0 })}
+                label="Auto-publish drafts that score high enough"
+              />
+              {s.autoPublishThreshold > 0 && (
+                <label className="block max-w-[12rem] space-y-1 text-sm">
+                  <span className="text-fog/50">Minimum Brain score</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={s.autoPublishThreshold}
+                    onChange={(e) =>
+                      setS({ ...s, autoPublishThreshold: Number(e.target.value) })
+                    }
+                    className={`${field} bg-ink-card`}
+                  />
+                </label>
+              )}
+              <p className="text-xs leading-relaxed text-fog/40">
+                The only setting that skips a human entirely: a fresh photo draft that scores at
+                or above this after research and self-correction lists itself on eBay, no review
+                screen. Off by default — turn it on only once you trust the score.
+              </p>
             </div>
 
             <button

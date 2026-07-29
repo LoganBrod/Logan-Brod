@@ -70,6 +70,10 @@ export async function PUT(req: NextRequest) {
       body.defaultPackageWeightOz === undefined
         ? undefined
         : num(body.defaultPackageWeightOz, 0.1, 4000, 3),
+    autoPublishThreshold:
+      body.autoPublishThreshold === undefined
+        ? undefined
+        : num(body.autoPublishThreshold, 0, 100, 0),
   });
   return NextResponse.json({
     ...updated,

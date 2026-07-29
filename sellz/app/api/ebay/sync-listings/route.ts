@@ -58,16 +58,26 @@ export async function POST() {
 
   for (const l of live) {
     const prior = byItemId.get(l.itemId);
+    const views = prior?.outcome?.views ?? 0;
+    // eBay does not return watch count on every call; keep the known value
+    // rather than overwriting a real number with a missing one.
+    const watchers = l.watchers ?? prior?.outcome?.watchers ?? 0;
+    // One reading per sync, capped so a long-lived listing's history doesn't
+    // grow without bound. Only meaningful for active listings — a sold or
+    // ended one stops accumulating readings on its own.
+    const trafficHistory =
+      l.status === "active"
+        ? [...(prior?.outcome?.trafficHistory ?? []), { views, watchers, at: new Date().toISOString() }].slice(-60)
+        : prior?.outcome?.trafficHistory;
     const outcome = {
-      views: prior?.outcome?.views ?? 0,
-      // eBay does not return watch count on every call; keep the known value
-      // rather than overwriting a real number with a missing one.
-      watchers: l.watchers ?? prior?.outcome?.watchers ?? 0,
+      views,
+      watchers,
       offers: prior?.outcome?.offers ?? 0,
       soldPrice: l.soldPrice ?? prior?.outcome?.soldPrice,
       listedAt: l.listedAt ?? prior?.outcome?.listedAt,
       soldAt: l.soldAt ?? prior?.outcome?.soldAt,
       updatedAt: new Date().toISOString(),
+      trafficHistory,
     };
 
     if (prior) {

@@ -83,9 +83,27 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+type QuickFilter = "all" | "attention" | "ready" | "missingCost";
+
+function daysSince(iso?: string): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!isFinite(t)) return null;
+  return Math.round((Date.now() - t) / 86400000);
+}
+
+/** Stale-and-neglected: live a long time with nothing done about it lately. */
+function needsAttention(l: Listing): boolean {
+  if (l.status === "stale") return true;
+  if (l.status !== "active") return false;
+  const since = daysSince(l.lastRelistedAt ?? l.outcome?.listedAt);
+  return since !== null && since >= 60;
+}
+
 export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/listings");
@@ -139,9 +157,14 @@ export default function ListingsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-          {listings ? `${listings.length} listing${listings.length === 1 ? "" : "s"}` : "Listings"}
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+            {listings ? `${listings.length} listing${listings.length === 1 ? "" : "s"}` : "Listings"}
+          </h2>
+          {listings && listings.length > 0 && (
+            <QuickFilters listings={listings} value={quickFilter} onChange={setQuickFilter} />
+          )}
+        </div>
         {!listings ? (
           <div className="grid gap-4 md:grid-cols-2">
             <CardSkeleton />
@@ -153,17 +176,76 @@ export default function ListingsPage() {
             the Generate page.
           </p>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {[...listings]
-              .sort((a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1))
-              .map((l, i) => (
-                <Reveal key={l.id} index={i}>
-                  <ListingCard listing={l} onChanged={load} />
-                </Reveal>
-              ))}
-          </div>
+          (() => {
+            const filtered = listings.filter((l) => {
+              if (quickFilter === "attention") return needsAttention(l);
+              if (quickFilter === "ready") return l.status === "sold";
+              if (quickFilter === "missingCost") return l.cost?.purchasePrice === undefined;
+              return true;
+            });
+            return filtered.length === 0 ? (
+              <p className="text-sm text-fog/40">Nothing matches this filter.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {[...filtered]
+                  .sort((a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1))
+                  .map((l, i) => (
+                    <Reveal key={l.id} index={i}>
+                      <ListingCard listing={l} onChanged={load} />
+                    </Reveal>
+                  ))}
+              </div>
+            );
+          })()
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * One-tap filters for the piles that matter once a shop has more than a
+ * handful of listings: the ones going stale, the ones waiting to ship, and
+ * the ones with no cost basis so profit can't be computed yet.
+ */
+function QuickFilters({
+  listings,
+  value,
+  onChange,
+}: {
+  listings: Listing[];
+  value: QuickFilter;
+  onChange: (f: QuickFilter) => void;
+}) {
+  const counts = {
+    all: listings.length,
+    attention: listings.filter(needsAttention).length,
+    ready: listings.filter((l) => l.status === "sold").length,
+    missingCost: listings.filter((l) => l.cost?.purchasePrice === undefined).length,
+  };
+  const chips: { key: QuickFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "attention", label: "Needs attention" },
+    { key: "ready", label: "Ready to ship" },
+    { key: "missingCost", label: "Missing cost" },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map((c) => (
+        <button
+          key={c.key}
+          onClick={() => onChange(c.key)}
+          className={
+            "rounded-full border px-3 py-1 text-xs font-semibold transition " +
+            (value === c.key
+              ? "border-brand bg-brand/15 text-brand-dim"
+              : "border-ink-border text-fog/50 hover:border-brand/40 hover:text-fog")
+          }
+        >
+          {c.label}
+          {c.key !== "all" && <span className="ml-1 text-fog/30">{counts[c.key]}</span>}
+        </button>
+      ))}
     </div>
   );
 }

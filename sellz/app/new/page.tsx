@@ -94,6 +94,10 @@ export default function NewListingPage() {
     { label: "Back", id: null, preview: null, uploading: false },
   ]);
   const [notes, setNotes] = useState("");
+  const [photoTip, setPhotoTip] = useState<{
+    qualityWarning: string;
+    missingShots: string[];
+  } | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +107,7 @@ export default function NewListingPage() {
   const [comps, setComps] = useState<CompsSummary | null>(null);
   const [retail, setRetail] = useState<RetailInfo | null>(null);
   const [specifics, setSpecifics] = useState<ItemSpecificUI[]>([]);
+  const [missingAspects, setMissingAspects] = useState<string[]>([]);
 
   // Where the seller is in the flow, and what they already have set up.
   const [phase, setPhase] = useState<Phase | null>(null);
@@ -163,9 +168,22 @@ export default function NewListingPage() {
       const res = await fetch("/api/photos", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      const shotsSoFar = slots.filter((s) => s.id).map((s) => s.label);
       setSlots((prev) =>
         prev.map((s, i) => (i === index ? { ...s, id: data.id, uploading: false } : s))
       );
+      // Fire-and-forget: a coaching tip while they're still holding the item
+      // up beats a perfectly-timed one that arrives after they've set it down.
+      setPhotoTip(null);
+      fetchJson<{ qualityWarning: string; missingShots: string[] }>("/api/photo-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId: data.id, shotsSoFar }),
+      })
+        .then((tip) => {
+          if (tip.qualityWarning || tip.missingShots.length) setPhotoTip(tip);
+        })
+        .catch(() => {});
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Upload failed", "error");
       setSlots((prev) =>
@@ -242,8 +260,12 @@ export default function NewListingPage() {
         const refined = await fetchJson<{
           listing: Draft;
           refined: boolean;
+          selfCorrected?: boolean;
+          autoPublished?: boolean;
+          score?: { score: number } | null;
           analysis?: Analysis;
           itemSpecifics?: ItemSpecificUI[];
+          missingAspects?: string[];
         }>(`/api/listings/${id}/refine`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -257,10 +279,22 @@ export default function NewListingPage() {
         }).catch(() => null);
 
         if (refined?.refined) {
+          if (refined.autoPublished) {
+            toast.push(
+              `Listed automatically — Brain score ${refined.score?.score ?? "?"}/100 cleared your auto-publish threshold`
+            );
+            router.push("/listings");
+            return;
+          }
           setDraft(refined.listing);
           if (refined.analysis) setAnalysis(refined.analysis);
           if (refined.itemSpecifics?.length) setSpecifics(refined.itemSpecifics);
-          toast.push("Listing refined against comps");
+          setMissingAspects(refined.missingAspects ?? []);
+          toast.push(
+            refined.selfCorrected
+              ? "Refined, then rewrote its own weak spot before showing you"
+              : "Listing refined against comps"
+          );
         }
       }
     } catch (err) {
@@ -318,6 +352,7 @@ export default function NewListingPage() {
           retail={retail}
           specifics={specifics}
           setSpecifics={setSpecifics}
+          missingAspects={missingAspects}
           stage={stage}
           onDone={() => router.push("/listings")}
           onRestart={() => {
@@ -326,6 +361,7 @@ export default function NewListingPage() {
             setComps(null);
             setRetail(null);
             setSpecifics([]);
+            setMissingAspects([]);
             setSlots([
               { label: "Front", id: null, preview: null, uploading: false },
               { label: "Back", id: null, preview: null, uploading: false },
@@ -388,6 +424,26 @@ export default function NewListingPage() {
           >
             + Add another angle
           </button>
+
+          <AnimatePresence>
+            {photoTip && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="mt-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-xs"
+              >
+                {photoTip.qualityWarning && (
+                  <p className="font-semibold text-amber-400">📸 {photoTip.qualityWarning}</p>
+                )}
+                {photoTip.missingShots.length > 0 && (
+                  <p className="mt-1 text-fog/60">
+                    Worth adding: {photoTip.missingShots.join(" · ")}
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <label className="mt-5 block space-y-1 text-sm">
             <span className="text-fog/50">
@@ -686,6 +742,7 @@ function ReviewStep({
   retail,
   specifics,
   setSpecifics,
+  missingAspects,
   stage,
   onDone,
   onRestart,
@@ -697,6 +754,7 @@ function ReviewStep({
   retail: RetailInfo | null;
   specifics: ItemSpecificUI[];
   setSpecifics: (s: ItemSpecificUI[]) => void;
+  missingAspects: string[];
   stage: string | null;
   onDone: () => void;
   onRestart: () => void;
@@ -980,6 +1038,13 @@ function ReviewStep({
           eBay ranks listings with complete specifics dramatically higher in search.
           Fill in as many as possible.
         </p>
+        {missingAspects.length > 0 && (
+          <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-400">
+            eBay requires these for this category and the photos didn&apos;t make them clear:{" "}
+            <span className="font-semibold">{missingAspects.join(", ")}</span>. Add them below or
+            publish may be rejected.
+          </p>
+        )}
         <div className="mt-3 space-y-2">
           {specifics.map((spec, i) => (
             <div key={i} className="flex items-center gap-2">

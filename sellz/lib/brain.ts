@@ -10,10 +10,12 @@ import {
   listListings,
   listSeedListings,
   setPlaybook,
+  trafficTrend,
   updateListing,
   type BrainScore,
   type Comps,
   type Diagnosis,
+  type ItemSpecific,
   type Listing,
   type Playbook,
 } from "./store";
@@ -604,6 +606,136 @@ export async function generateFromPhotos(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Aspect gap-fill: eBay requires specific fields per category (e.g. "Sleeve
+// Length" for tops) that the first vision pass may not have thought to look
+// for. Rather than guess at publish time, ask again, by name, before the
+// seller ever sees the review screen.
+// ---------------------------------------------------------------------------
+
+const AspectFillSchema = z.object({
+  found: z
+    .array(
+      z.object({
+        name: z.string().describe("The exact eBay aspect name asked for"),
+        value: z.string().describe("The value, determined from the photos"),
+        confident: z.boolean().describe("True if clearly visible/legible, false if a best guess"),
+      })
+    )
+    .describe("One entry per aspect you could determine — omit any you genuinely cannot tell"),
+});
+
+const ASPECT_FILL_PROMPT = `eBay requires specific item specifics for this listing's category that weren't extracted the first time. Look at the photos again and determine each one if you can. Only report a value when the photos actually support it — a confident guess is fine (mark confident=false), but do not invent brands, sizes, or materials with no visual basis. Skip any aspect you truly cannot determine from these photos.`;
+
+/**
+ * Second, narrower vision pass: given the specific eBay aspect names still
+ * missing after the main listing was written, look at the same photos again
+ * and try to answer just those. Cheaper and more likely to succeed than
+ * re-running the whole listing generation, because the model isn't also
+ * juggling title/description/price this time — it only has one job.
+ */
+export async function fillMissingAspects(
+  images: { base64: string; mediaType: string }[],
+  missingAspectNames: string[]
+): Promise<ItemSpecific[]> {
+  if (missingAspectNames.length === 0) return [];
+  requireKey();
+
+  const content: Anthropic.ContentBlockParam[] = images.map((img) => ({
+    type: "image" as const,
+    source: { type: "base64" as const, media_type: img.mediaType as "image/jpeg", data: img.base64 },
+  }));
+  content.push({
+    type: "text",
+    text: `eBay still needs: ${missingAspectNames.join(", ")}. Determine what you can from the photos above.`,
+  });
+
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 1500,
+    thinking: { type: "adaptive" },
+    system: ASPECT_FILL_PROMPT,
+    messages: [{ role: "user", content }],
+    output_config: { format: zodOutputFormat(AspectFillSchema) },
+  });
+
+  if (!response.parsed_output) return [];
+  return response.parsed_output.found.map((f) => ({
+    name: f.name,
+    value: f.value,
+    source: f.confident ? ("photo" as const) : ("inferred" as const),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Photo coach: instant feedback the moment a photo lands, before the full
+// pipeline runs. Deliberately the fastest/cheapest model available — this
+// only needs to catch "retake this" in a couple seconds, not write the
+// listing.
+// ---------------------------------------------------------------------------
+
+const PhotoCheckSchema = z.object({
+  quickId: z.string().describe("Best guess at what the item is, one short phrase"),
+  qualityWarning: z
+    .string()
+    .describe("A specific problem worth retaking for (blur, too dark, too far away, cropped) — empty string if the photo is fine"),
+  missingShots: z
+    .array(z.string())
+    .describe(
+      "Concrete shots still worth taking given what's visible so far, e.g. 'the brand tag inside the collar', 'the back', 'a close-up of the stain near the hem'. Empty if nothing obvious is missing yet."
+    ),
+});
+
+export type PhotoCheck = z.infer<typeof PhotoCheckSchema>;
+
+const PHOTO_CHECK_PROMPT = `You give a marketplace seller instant feedback on a photo they just took, before they've finished shooting the item. Look fast: is the photo usable (in focus, close enough, well lit), and given only what you can see, what's an obvious next shot worth taking (the other side, a brand tag, a visible flaw up close)? Be brief and specific. Do not write a listing — this is a quick coaching check, not the analysis.`;
+
+/**
+ * Instant first-pass run the moment a photo is uploaded, before the seller
+ * has finished shooting the item. Separate from generateFromPhotos: that call
+ * does full identification + comps-aware listing writing and takes several
+ * seconds per stage; this only needs to answer "is this shot good enough" and
+ * "what's obviously missing" in near real time, so it runs on the fastest
+ * model rather than the one doing the real analysis.
+ */
+export async function checkPhoto(
+  image: { base64: string; mediaType: string },
+  shotsSoFar: string[]
+): Promise<PhotoCheck> {
+  requireKey();
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 500,
+    system: PHOTO_CHECK_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "base64", media_type: image.mediaType as "image/jpeg", data: image.base64 },
+          },
+          {
+            type: "text",
+            text: shotsSoFar.length
+              ? `Shots already taken: ${shotsSoFar.join(", ")}. This is the latest one.`
+              : "This is the first photo taken of the item.",
+          },
+        ],
+      },
+    ],
+    output_config: { format: zodOutputFormat(PhotoCheckSchema) },
+  });
+
+  if (!response.parsed_output) throw new Error("Photo check returned no structured output");
+  return {
+    ...response.parsed_output,
+    missingShots: response.parsed_output.missingShots.slice(0, 3),
+  };
+}
+
 /** Round-robin a listing into "control" or an active experiment arm. */
 export async function pickExperiment(): Promise<string> {
   const experiments = (await getPlaybook())?.experiments ?? [];
@@ -664,6 +796,7 @@ Judge against the evidence, not vibes:
 - Almost no views usually means the title is not matching what buyers search.
 - Watchers but no sale often means the price is close but slightly high, so a small cut or accepting offers moves it.
 - A listing only a day or two old has not gathered enough signal. Say "hold" and be honest that it is too early.
+- When a traffic trend is given, weigh direction over the raw snapshot: views declining over time means the listing is losing search position and a title rewrite is worth more than a price change; views flat-to-rising with watchers climbing but no sale means the price is close, not wrong — a small cut beats a rewrite; a fresh relist with a sudden view spike means whatever changed is working, so hold rather than change it again.
 
 Be conservative. A wrong price cut costs the seller real money, and churning a listing that is simply young is worse than doing nothing. Only propose "relist" when a listing has been live a long time with poor traffic, since relisting loses accumulated watchers and can incur fees.
 
@@ -703,8 +836,14 @@ export async function proposeListingChange(
           o
             ? `Traffic so far: ${o.views} views, ${o.watchers} watchers, ${o.offers} offers.`
             : "No traffic data recorded yet.",
+          (() => {
+            const trend = trafficTrend(o?.trafficHistory);
+            return trend ? `Traffic trend: ${trend}.` : "";
+          })(),
           compsContext || "No comparable listings were found for this item.",
-        ].join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
       },
     ],
     output_config: { format: zodOutputFormat(ProposalSchema) },

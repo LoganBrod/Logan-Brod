@@ -1526,6 +1526,33 @@ export function buildInventoryAspects(
   return Object.fromEntries(Array.from(result.entries()).map(([k, v]) => [k, [v]]));
 }
 
+export interface AspectGaps {
+  categoryId: string | null;
+  aspects: EbayAspect[];
+  /** Required category aspects none of the extracted specifics cover. */
+  missingRequired: EbayAspect[];
+}
+
+/**
+ * Same category + aspect lookup publishToEbay does internally, run early
+ * (during review, not at publish time) so a missing required field shows up
+ * as something the seller — or a second, targeted Claude pass — can still
+ * fix, instead of surfacing as an opaque publish failure after they've
+ * already approved the listing.
+ */
+export async function resolveAspectGaps(
+  title: string,
+  itemSpecifics: ItemSpecific[]
+): Promise<AspectGaps> {
+  const tokens = await getValidTokens();
+  const categoryId = await suggestCategoryId(title, tokens);
+  const aspects = categoryId ? await fetchCategoryAspects(categoryId).catch(() => []) : [];
+  const mapped = mapSpecificsToAspects(itemSpecifics, aspects);
+  const covered = new Set(mapped.map((m) => m.name));
+  const missingRequired = aspects.filter((a) => a.required && !covered.has(a.name));
+  return { categoryId, aspects, missingRequired };
+}
+
 // ---------------------------------------------------------------------------
 // Relist: end and re-create a listing for a freshness boost
 // ---------------------------------------------------------------------------
