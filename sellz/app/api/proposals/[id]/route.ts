@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProposal, getListing, updateListing, updateProposal } from "@/lib/store";
-import { reviseEbayListing } from "@/lib/ebay";
+import { getProposal, getListing, updateListing, updateProposal, type RelistRecord } from "@/lib/store";
+import { reviseEbayListing, relistItem } from "@/lib/ebay";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -38,6 +38,46 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { error: "This listing is not linked to a live eBay item" },
       { status: 400 }
     );
+  }
+
+  // A "relist" proposal has no price/title/description of its own — the
+  // whole point is ending and republishing for a freshness boost — so it
+  // needs relistItem, not reviseEbayListing. Sending it through the revise
+  // path left nothing to revise and failed every single time.
+  if (proposal.kind === "relist") {
+    if (!listing.ebayOfferId) {
+      const message =
+        "This listing wasn't published through LevoZ, so there's no eBay offer to withdraw — it can't be relisted from here.";
+      await updateProposal(proposal.id, { status: "failed", error: message });
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+    try {
+      const newPrice = proposal.proposedPrice ?? listing.price;
+      const result = await relistItem(listing.ebayOfferId, newPrice);
+      const record: RelistRecord = {
+        oldItemId: listing.ebayItemId ?? "",
+        newItemId: result.newListingId,
+        oldPrice: listing.price,
+        newPrice,
+        at: new Date().toISOString(),
+      };
+      await updateListing(listing.id, {
+        ebayItemId: result.newListingId,
+        price: newPrice,
+        relistHistory: [...(listing.relistHistory ?? []), record],
+        lastRelistedAt: record.at,
+      });
+      await updateProposal(proposal.id, { status: "applied", resolvedAt: record.at });
+      return NextResponse.json({
+        ok: true,
+        status: "applied",
+        listing: await getListing(listing.id),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Relist failed";
+      await updateProposal(proposal.id, { status: "failed", error: message });
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
   }
 
   const changes = {

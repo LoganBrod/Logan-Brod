@@ -42,6 +42,8 @@ interface Listing {
   ebayItemId?: string;
   /** Present only for listings published from here; required to relist. */
   ebayOfferId?: string;
+  relistHistory?: { oldItemId: string; newItemId: string; oldPrice: number; newPrice: number; at: string }[];
+  lastRelistedAt?: string;
   photos?: string[];
   /** eBay-hosted images on listings synced from the account */
   imageUrls?: string[];
@@ -773,6 +775,17 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
         />
       )}
 
+      {/* Proof the relist system actually did something: a real new item id
+          and timestamp, not just a claim. Last entry first. */}
+      {l.relistHistory && l.relistHistory.length > 0 && (
+        <p className="mt-2 text-xs text-fog/40">
+          Relisted {l.relistHistory.length}×, last{" "}
+          {new Date(l.relistHistory[l.relistHistory.length - 1].at).toLocaleString()} — $
+          {l.relistHistory[l.relistHistory.length - 1].oldPrice} → $
+          {l.relistHistory[l.relistHistory.length - 1].newPrice}
+        </p>
+      )}
+
       {actionError && <p className="mt-2 text-xs text-red-400">{actionError}</p>}
 
       <div className="mt-3 flex items-center gap-2 text-sm">
@@ -790,6 +803,32 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
             className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
           >
             {busyAction === "diagnose" ? "Diagnosing…" : "Why isn't it selling?"}
+          </button>
+        )}
+        {l.status === "active" && l.ebayOfferId && (
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "Relist now? This ends the current listing and republishes it fresh — it loses its watchers and question history, and may cost an insertion fee."
+                )
+              ) {
+                act(
+                  "relist",
+                  "/api/relist",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ listingId: l.id }),
+                  },
+                  "Relisted on eBay"
+                );
+              }
+            }}
+            disabled={busyAction !== null}
+            className="rounded-lg bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
+          >
+            {busyAction === "relist" ? "Relisting…" : "Relist now"}
           </button>
         )}
         <button

@@ -12,8 +12,9 @@ import {
   type Listing,
   type Proposal,
   type ProposalStatus,
+  type RelistRecord,
 } from "@/lib/store";
-import { researchEbayComps, reviseEbayListing } from "@/lib/ebay";
+import { researchEbayComps, reviseEbayListing, relistItem } from "@/lib/ebay";
 import { proposeListingChange } from "@/lib/brain";
 import { getPhoto } from "@/lib/photos";
 
@@ -134,29 +135,58 @@ export async function POST(req: NextRequest) {
 
         if (shouldAutoApply) {
           try {
-            const changes: { price?: number; title?: string; description?: string } = {};
-            if (draft.kind === "reprice" && draft.proposedPrice > 0) {
-              changes.price = draft.proposedPrice;
-            }
-            if (draft.kind === "retitle" && draft.proposedTitle?.trim()) {
-              changes.title = draft.proposedTitle.trim();
-            }
-            if (draft.kind === "rewrite" && draft.proposedDescription?.trim()) {
-              changes.title = draft.proposedTitle?.trim() || undefined;
-              changes.description = draft.proposedDescription.trim();
-            }
-
-            if (Object.keys(changes).length > 0) {
-              // eBay first. The local copy is only updated once eBay has
-              // actually accepted the change, so the app never shows a price
-              // the live listing does not have.
-              await reviseEbayListing(listing.ebayItemId, changes);
+            // "relist" isn't a revise — it has no price/title/description of
+            // its own, so it needs relistItem, not reviseEbayListing. The
+            // rule check above already says yes for relist proposals, but
+            // nothing downstream ever executed one: this branch was simply
+            // missing, so autoRelist and full-auto silently did nothing.
+            if (draft.kind === "relist") {
+              if (!listing.ebayOfferId) {
+                throw new Error(
+                  "wasn't published through LevoZ, so there's no eBay offer to withdraw"
+                );
+              }
+              const newPrice = draft.proposedPrice > 0 ? draft.proposedPrice : listing.price;
+              const result = await relistItem(listing.ebayOfferId, newPrice);
+              const record: RelistRecord = {
+                oldItemId: listing.ebayItemId,
+                newItemId: result.newListingId,
+                oldPrice: listing.price,
+                newPrice,
+                at: new Date().toISOString(),
+              };
               await updateListing(listing.id, {
-                ...(changes.price ? { price: changes.price } : {}),
-                ...(changes.title ? { title: changes.title } : {}),
-                ...(changes.description ? { description: changes.description } : {}),
+                ebayItemId: result.newListingId,
+                price: newPrice,
+                relistHistory: [...(listing.relistHistory ?? []), record],
+                lastRelistedAt: record.at,
               });
               finalStatus = "auto-applied";
+            } else {
+              const changes: { price?: number; title?: string; description?: string } = {};
+              if (draft.kind === "reprice" && draft.proposedPrice > 0) {
+                changes.price = draft.proposedPrice;
+              }
+              if (draft.kind === "retitle" && draft.proposedTitle?.trim()) {
+                changes.title = draft.proposedTitle.trim();
+              }
+              if (draft.kind === "rewrite" && draft.proposedDescription?.trim()) {
+                changes.title = draft.proposedTitle?.trim() || undefined;
+                changes.description = draft.proposedDescription.trim();
+              }
+
+              if (Object.keys(changes).length > 0) {
+                // eBay first. The local copy is only updated once eBay has
+                // actually accepted the change, so the app never shows a
+                // price the live listing does not have.
+                await reviseEbayListing(listing.ebayItemId, changes, listing.ebayListingType);
+                await updateListing(listing.id, {
+                  ...(changes.price ? { price: changes.price } : {}),
+                  ...(changes.title ? { title: changes.title } : {}),
+                  ...(changes.description ? { description: changes.description } : {}),
+                });
+                finalStatus = "auto-applied";
+              }
             }
           } catch (err) {
             // Auto-apply failed — fall back to manual review, and keep the
