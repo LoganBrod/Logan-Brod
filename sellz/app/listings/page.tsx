@@ -6,6 +6,7 @@ import ScoreBar from "@/components/ScoreBar";
 import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
 import ListingPreview from "@/components/ListingPreview";
+import FixPanel from "@/components/FixPanel";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -39,6 +40,8 @@ interface Listing {
   };
   brainScore?: { score: number; reason: string };
   ebayItemId?: string;
+  /** Present only for listings published from here; required to relist. */
+  ebayOfferId?: string;
   photos?: string[];
   /** eBay-hosted images on listings synced from the account */
   imageUrls?: string[];
@@ -759,6 +762,16 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* A weak grade is only useful if it comes with the repair. */}
+      {l.brainScore && l.brainScore.score < 70 && l.status !== "sold" && (
+        <FixPanel
+          listingId={l.id}
+          score={l.brainScore.score}
+          canRelist={Boolean(l.ebayOfferId)}
+          onApplied={onChanged}
+        />
+      )}
 
       {actionError && <p className="mt-2 text-xs text-red-400">{actionError}</p>}
 

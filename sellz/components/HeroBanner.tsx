@@ -3,40 +3,92 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { DenimJacket, Hoodie, Tee, Jeans, type Palette } from "@/components/GarmentArt";
 
 /**
  * The landing banner: a full-bleed dark block with the headline on the left
- * and a panel of item artwork on the right.
+ * and eBay-style listing cards on the right.
  *
  * This replaced a stage of 3D cards that tilted toward the cursor. The tilt
  * made every card read as floating above the page, which fought the flat,
- * square surfaces used everywhere else. Motion here is deliberately small —
- * the panels drift, and the price tag steps through categories — so the
- * banner shows what the product outputs without the whole thing hovering.
+ * square surfaces used everywhere else. What is on show now is the actual
+ * output — a finished listing, priced, with the garment hanging in the photo
+ * — because that is what the product makes.
  */
 
 interface Item {
-  label: string;
+  category: string;
   title: string;
   price: string;
+  wasPrice?: string;
+  condition: string;
+  watchers: number;
+  shipping: string;
   score: number;
-  art: (props: { className?: string }) => JSX.Element;
-  tint: string;
+  art: (props: { p: Palette }) => JSX.Element;
+  palette: Palette;
+  /** Backdrop behind the garment, so each photo doesn't look identical. */
+  backdrop: string;
 }
 
 const ITEMS: Item[] = [
-  { label: "Streetwear", title: "Carhartt Detroit Jacket, Brown Duck, L", price: "92.00", score: 86, art: JacketArt, tint: "bg-brand" },
-  { label: "Sneakers", title: "Air Force 1 Low, White, US 10, Deadstock", price: "134.00", score: 91, art: SneakerArt, tint: "bg-[#7c5cff]" },
-  { label: "Collectables", title: "1999 Holo Trading Card, PSA 8", price: "340.00", score: 93, art: CardArt, tint: "bg-brand" },
-  { label: "Cameras and tech", title: "35mm SLR Body, Meter Tested", price: "185.00", score: 87, art: CameraArt, tint: "bg-[#7c5cff]" },
+  {
+    category: "Men's Jackets",
+    title: "Carhartt Detroit Jacket, Brown Duck, Large",
+    price: "92.00",
+    wasPrice: "115.00",
+    condition: "Pre-owned · Very good",
+    watchers: 14,
+    shipping: "Free 3 day shipping",
+    score: 86,
+    art: DenimJacket,
+    palette: { fabric: "#b3762f", shade: "#8f5b21", stitch: "#f2d9a8" },
+    backdrop: "from-[#f7f2ea] to-[#e8dfd2]",
+  },
+  {
+    category: "Men's Hoodies",
+    title: "Vintage Champion Reverse Weave Hoodie, XL",
+    price: "58.00",
+    condition: "Pre-owned · Good",
+    watchers: 9,
+    shipping: "Free shipping",
+    score: 74,
+    art: Hoodie,
+    palette: { fabric: "#5a6b86", shade: "#44536b", stitch: "#dbe4f0" },
+    backdrop: "from-[#eef1f6] to-[#dde3ec]",
+  },
+  {
+    category: "Women's Tops",
+    title: "Single Stitch Graphic Tee, Faded Black, M",
+    price: "44.00",
+    wasPrice: "55.00",
+    condition: "Pre-owned · Excellent",
+    watchers: 21,
+    shipping: "Free 2 day shipping",
+    score: 91,
+    art: Tee,
+    palette: { fabric: "#3b3b40", shade: "#2b2b2f", stitch: "#cfd2d8" },
+    backdrop: "from-[#f4f4f5] to-[#e4e4e7]",
+  },
+  {
+    category: "Men's Jeans",
+    title: "Levi's 501 Selvedge Denim, W32 L30",
+    price: "78.00",
+    condition: "Pre-owned · Excellent",
+    watchers: 17,
+    shipping: "Free 3 day shipping",
+    score: 88,
+    art: Jeans,
+    palette: { fabric: "#3f5f86", shade: "#31496a", stitch: "#e8c98a" },
+    backdrop: "from-[#eff3f8] to-[#dee5ef]",
+  },
 ];
 
-const ROTATE_MS = 4200;
+const ROTATE_MS = 5200;
 
 export default function HeroBanner() {
   const reduceMotion = useReducedMotion();
   const [i, setI] = useState(0);
-  const item = ITEMS[i];
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -44,13 +96,12 @@ export default function HeroBanner() {
     return () => clearInterval(t);
   }, [reduceMotion]);
 
-  const drift = reduceMotion
-    ? {}
-    : { animate: { y: [0, -10, 0] }, transition: { duration: 9, repeat: Infinity, ease: "easeInOut" } };
+  const front = ITEMS[i];
+  const behind = ITEMS[(i + 1) % ITEMS.length];
 
   return (
     <section className="relative overflow-hidden bg-[#0d1112] text-white">
-      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:py-20">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">
         {/* Left: the claim */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -93,43 +144,23 @@ export default function HeroBanner() {
           </div>
         </div>
 
-        {/* Right: item artwork. Two offset columns, echoing the panels the
-            listing photos will sit in once the seller has their own. */}
-        <div className="relative h-[19rem] sm:h-[23rem] lg:h-[26rem]">
-          <motion.div
-            {...drift}
-            className="absolute bottom-0 left-0 h-[72%] w-[46%] overflow-hidden bg-gradient-to-b from-brand/25 to-brand/5"
-          >
-            <ItemArtwork item={ITEMS[(i + 1) % ITEMS.length]} />
-          </motion.div>
+        {/* Right: the finished listings */}
+        <div className="relative mx-auto h-[25rem] w-full max-w-[26rem] sm:h-[28rem]">
+          {/* The card behind, to suggest a queue of them rather than one item */}
+          <div className="absolute right-0 top-2 hidden w-[62%] sm:block">
+            <ListingCard key={`behind-${behind.title}`} item={behind} muted />
+          </div>
 
           <motion.div
-            {...(reduceMotion
-              ? {}
-              : { animate: { y: [0, 12, 0] }, transition: { duration: 11, repeat: Infinity, ease: "easeInOut" } })}
-            className="absolute right-0 top-0 h-[80%] w-[50%] overflow-hidden bg-[#7c5cff]/20"
-          >
-            <ItemArtwork item={item} large />
-          </motion.div>
-
-          {/* The live read-out: what the app produced for the item on show */}
-          <motion.div
-            key={item.title}
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            key={front.title}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute bottom-4 right-2 w-[62%] border border-white/15 bg-[#151a1b] p-3.5 sm:bottom-6 sm:right-4"
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute bottom-0 left-0 w-[86%] sm:w-[76%]"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">
-              {item.label}
-            </p>
-            <p className="mt-1.5 line-clamp-2 text-xs font-semibold leading-snug text-white/90">
-              {item.title}
-            </p>
-            <div className="mt-2.5 flex items-end justify-between">
-              <span className="text-xl font-extrabold text-white">${item.price}</span>
-              <span className="text-[11px] font-bold text-brand">{item.score}/100</span>
-            </div>
+            {/* The grade rides on the photo rather than floating beside the
+                card, where it collided with the Buy It Now button. */}
+            <ListingCard item={front} showScore />
           </motion.div>
         </div>
       </div>
@@ -137,69 +168,59 @@ export default function HeroBanner() {
   );
 }
 
-function ItemArtwork({ item, large }: { item: Item; large?: boolean }) {
+/** One listing, laid out the way eBay lays them out. */
+function ListingCard({
+  item,
+  muted,
+  showScore,
+}: {
+  item: Item;
+  muted?: boolean;
+  showScore?: boolean;
+}) {
   const Art = item.art;
   return (
-    <motion.div
-      key={item.title}
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="flex h-full w-full items-center justify-center p-6"
+    <article
+      className={
+        "border border-black/10 bg-white text-slate-900 shadow-[0_18px_40px_rgba(0,0,0,0.35)] " +
+        (muted ? "opacity-45" : "")
+      }
     >
-      <Art className={large ? "h-3/4 w-3/4" : "h-2/3 w-2/3"} />
-    </motion.div>
-  );
-}
+      {/* Photo */}
+      <div className={`relative aspect-[4/3] bg-gradient-to-b ${item.backdrop} p-3`}>
+        <div className="mx-auto h-full w-[52%]">
+          <Art p={item.palette} />
+        </div>
+        <span className="absolute left-2 top-2 bg-white/85 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+          {item.watchers} watching
+        </span>
+        {showScore && (
+          <span className="absolute right-2 top-2 bg-[#0d1112] px-2 py-1 text-[10px] font-extrabold text-brand">
+            {item.score}/100
+          </span>
+        )}
+      </div>
 
-/* Item artwork. Drawn inline rather than loaded: the banner must not wait on
-   a network request, and a stock photo of someone else's item would be a
-   claim about inventory this seller does not have. */
+      {/* Details */}
+      <div className="p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          {item.category}
+        </p>
+        <h3 className="mt-0.5 line-clamp-2 text-[13px] font-bold leading-snug">{item.title}</h3>
+        <p className="mt-1 text-[11px] text-slate-500">{item.condition}</p>
 
-function JacketArt({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 140" fill="none" className={className} aria-hidden>
-      <path d="M45 18 L60 30 L75 18 L100 32 L94 60 L84 56 L84 124 L36 124 L36 56 L26 60 L20 32 Z" fill="#2dd4bf" fillOpacity="0.9" />
-      <path d="M60 30 L60 124" stroke="#0d1112" strokeWidth="2.5" />
-      <path d="M45 18 L60 30 L75 18" stroke="#0d1112" strokeWidth="2.5" strokeLinejoin="round" />
-      <rect x="42" y="70" width="12" height="16" fill="#0d1112" fillOpacity="0.35" />
-      <rect x="66" y="70" width="12" height="16" fill="#0d1112" fillOpacity="0.35" />
-    </svg>
-  );
-}
+        <div className="mt-2 flex items-end gap-2">
+          <span className="text-xl font-extrabold">${item.price}</span>
+          {item.wasPrice && (
+            <span className="pb-0.5 text-[11px] text-slate-400 line-through">${item.wasPrice}</span>
+          )}
+        </div>
+        <p className="mt-0.5 text-[11px] font-semibold text-emerald-600">{item.shipping}</p>
 
-function SneakerArt({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 140 100" fill="none" className={className} aria-hidden>
-      <path d="M14 74 L14 46 L40 46 L58 60 L96 62 C116 63 126 68 126 76 L126 82 L18 82 Z" fill="#ffffff" fillOpacity="0.92" />
-      <path d="M14 74 L126 76" stroke="#0d1112" strokeWidth="3" />
-      <path d="M40 46 L58 60" stroke="#0d1112" strokeWidth="2.5" />
-      <path d="M62 62 C74 52 86 50 96 54" stroke="#2dd4bf" strokeWidth="5" strokeLinecap="round" />
-      <rect x="18" y="82" width="108" height="8" fill="#0d1112" fillOpacity="0.55" />
-    </svg>
-  );
-}
-
-function CardArt({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 140" fill="none" className={className} aria-hidden>
-      <rect x="10" y="8" width="80" height="124" fill="#2dd4bf" fillOpacity="0.9" />
-      <rect x="18" y="16" width="64" height="72" fill="#0d1112" fillOpacity="0.75" />
-      <path d="M30 74 L44 54 L56 70 L66 58 L74 74 Z" fill="#2dd4bf" />
-      <rect x="18" y="96" width="46" height="6" fill="#0d1112" fillOpacity="0.5" />
-      <rect x="18" y="108" width="30" height="6" fill="#0d1112" fillOpacity="0.35" />
-    </svg>
-  );
-}
-
-function CameraArt({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 140 110" fill="none" className={className} aria-hidden>
-      <rect x="14" y="30" width="112" height="64" fill="#ffffff" fillOpacity="0.9" />
-      <path d="M48 30 L56 16 L86 16 L94 30 Z" fill="#ffffff" fillOpacity="0.9" />
-      <circle cx="70" cy="62" r="24" fill="#0d1112" fillOpacity="0.8" />
-      <circle cx="70" cy="62" r="13" fill="#2dd4bf" />
-      <rect x="20" y="36" width="16" height="8" fill="#0d1112" fillOpacity="0.45" />
-    </svg>
+        <button className="mt-2.5 w-full bg-brand py-2 text-[12px] font-bold text-[#0d1112]">
+          Buy It Now
+        </button>
+      </div>
+    </article>
   );
 }

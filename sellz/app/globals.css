@@ -94,6 +94,69 @@ body {
   transform-style: preserve-3d;
 }
 
+/*
+ * Hanging-garment motion for the banner artwork.
+ *
+ * These animate parts *inside* an SVG, which React state can't reach without
+ * re-rendering the whole tree every frame. transform-box: fill-box makes each
+ * part rotate about its own top edge, so a sleeve pivots at the shoulder
+ * rather than around the canvas origin. The offset delays stop the pieces
+ * moving in lockstep, which is what makes cloth read as cloth.
+ */
+@keyframes garment-sway {
+  0%,
+  100% {
+    transform: rotate(-1.4deg);
+  }
+  50% {
+    transform: rotate(1.4deg);
+  }
+}
+@keyframes sleeve-sway {
+  0%,
+  100% {
+    transform: rotate(-2.6deg);
+  }
+  50% {
+    transform: rotate(2.2deg);
+  }
+}
+@keyframes string-sway {
+  0%,
+  100% {
+    transform: rotate(-3.5deg);
+  }
+  50% {
+    transform: rotate(3.5deg);
+  }
+}
+
+.garment {
+  transform-box: fill-box;
+  transform-origin: 50% 2%;
+  animation: garment-sway 6.5s ease-in-out infinite;
+}
+.garment-sleeve-l {
+  transform-box: fill-box;
+  transform-origin: 88% 4%;
+  animation: sleeve-sway 5.2s ease-in-out infinite;
+  animation-delay: -1.1s;
+}
+.garment-sleeve-r {
+  transform-box: fill-box;
+  transform-origin: 12% 4%;
+  animation: sleeve-sway 5.6s ease-in-out infinite;
+  animation-delay: -2.7s;
+}
+.garment-string {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: string-sway 3.8s ease-in-out infinite;
+}
+.garment-string-b {
+  animation-delay: -1.6s;
+}
+
 /* Anyone who asks for less motion gets a static, readable page instead. */
 @media (prefers-reduced-motion: reduce) {
   *,

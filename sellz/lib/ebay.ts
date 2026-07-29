@@ -1314,7 +1314,14 @@ export function parseEbayItemId(input: string): string | null {
  */
 export async function reviseEbayListing(
   itemId: string,
-  changes: { price?: number; title?: string; description?: string },
+  changes: {
+    price?: number;
+    title?: string;
+    description?: string;
+    categoryId?: string;
+    /** Replaces the listing's photos wholesale — eBay has no "append". */
+    imageUrls?: string[];
+  },
   listingType?: string
 ): Promise<void> {
   const tokens = await getValidTokens();
@@ -1324,6 +1331,19 @@ export async function reviseEbayListing(
     parts.push(`<Description><![CDATA[${changes.description}]]></Description>`);
   if (changes.price !== undefined && changes.price > 0)
     parts.push(`<StartPrice>${changes.price.toFixed(2)}</StartPrice>`);
+  if (changes.categoryId)
+    parts.push(`<PrimaryCategory><CategoryID>${changes.categoryId}</CategoryID></PrimaryCategory>`);
+  if (changes.imageUrls?.length) {
+    // PictureDetails replaces the whole set, so callers must send the photos
+    // they want to keep as well as the new ones — sending only the additions
+    // would silently delete the originals.
+    parts.push(
+      `<PictureDetails>${changes.imageUrls
+        .slice(0, 24)
+        .map((u) => `<PictureURL>${u}</PictureURL>`)
+        .join("")}</PictureDetails>`
+    );
+  }
 
   if (parts.length === 1) throw new Error("Nothing to revise on this listing");
 
