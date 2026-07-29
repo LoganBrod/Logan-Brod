@@ -64,6 +64,7 @@ interface EbayStatus {
   connected: boolean;
   env?: string;
   connectedAt?: string;
+  canBuyLabels?: boolean;
 }
 
 function IntegrationsPanel() {
@@ -180,6 +181,28 @@ function IntegrationsPanel() {
               </a>
             ))}
         </div>
+        )}
+
+        {status?.connected && !status.canBuyLabels && (
+          <div className="mt-3 rounded-xl bg-ink p-4">
+            <p className="font-semibold text-fog">Shipping labels</p>
+            <p className="mt-0.5 text-xs text-fog/40">
+              Buy postage at eBay&apos;s rates from a sold listing and the tracking fills itself
+              in. Needs extra permissions — eBay grants label access per account, so it may not be
+              available on yours. Your current connection keeps working either way.
+            </p>
+            <a
+              href="/api/ebay/connect?labels=1"
+              className="mt-3 inline-block rounded-lg bg-ink-border px-4 py-2 text-sm font-semibold text-fog transition hover:bg-brand hover:text-ink"
+            >
+              Enable label buying
+            </a>
+          </div>
+        )}
+        {status?.connected && status.canBuyLabels && (
+          <p className="mt-3 rounded-xl bg-ink px-4 py-3 text-xs text-brand">
+            Shipping labels enabled — buy postage from any sold listing.
+          </p>
         )}
 
         {status?.connected && <InventoryLocationPanel />}

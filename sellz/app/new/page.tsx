@@ -100,6 +100,7 @@ export default function NewListingPage() {
   } | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
+  const [findings, setFindings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -208,7 +209,9 @@ export default function NewListingPage() {
   async function analyze() {
     setAnalyzing(true);
     setError(null);
+    setFindings([]);
     setStage("Identifying the item…");
+    const found = (line: string) => setFindings((prev) => [...prev, line]);
     try {
       const first = await fetchJson<{
         listing: Draft;
@@ -223,6 +226,9 @@ export default function NewListingPage() {
       });
 
       const id = first.listing.id;
+      if (first.analysis.identified) {
+        found(`${first.analysis.identified} · ${first.analysis.confidence}% confident`);
+      }
       setDraft(first.listing);
       setAnalysis(first.analysis);
       setSpecifics(first.itemSpecifics ?? []);
@@ -241,7 +247,16 @@ export default function NewListingPage() {
             body: JSON.stringify({ query: first.query }),
           }
         ).catch(() => null);
-        if (compsData) setComps(compsData);
+        if (compsData) {
+          setComps(compsData);
+          const n = compsData.top?.length ?? 0;
+          if (n > 0) {
+            found(
+              `${n} comparable listing${n === 1 ? "" : "s"}` +
+                (compsData.suggestedPrice ? ` · median $${compsData.suggestedPrice}` : "")
+            );
+          }
+        }
       }
 
       setStage("Looking up what it sold for new…");
@@ -253,7 +268,14 @@ export default function NewListingPage() {
           compTitles: (compsData?.top ?? []).map((c) => c.title).slice(0, 8),
         }),
       }).catch(() => null);
-      if (retailData) setRetail(retailData);
+      if (retailData) {
+        setRetail(retailData);
+        found(
+          retailData.retailPrice > 0
+            ? `${retailData.productName} · $${retailData.retailPrice} new`
+            : retailData.productName
+        );
+      }
 
       if (compsData || retailData) {
         setStage("Refining the listing against what it found…");
@@ -285,6 +307,12 @@ export default function NewListingPage() {
             );
             router.push("/listings");
             return;
+          }
+          if (refined.score?.score !== undefined) {
+            found(
+              `Scored ${refined.score.score}/100` +
+                (refined.selfCorrected ? " after fixing its own weak spot" : "")
+            );
           }
           setDraft(refined.listing);
           if (refined.analysis) setAnalysis(refined.analysis);
@@ -336,6 +364,7 @@ export default function NewListingPage() {
         <AnalyzingScreen
           stage={stage}
           photoPreview={slots.find((s) => s.preview)?.preview ?? null}
+          findings={findings}
         />
       </div>
     );
@@ -362,6 +391,7 @@ export default function NewListingPage() {
             setRetail(null);
             setSpecifics([]);
             setMissingAspects([]);
+            setFindings([]);
             setSlots([
               { label: "Front", id: null, preview: null, uploading: false },
               { label: "Back", id: null, preview: null, uploading: false },

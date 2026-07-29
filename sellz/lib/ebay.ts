@@ -43,7 +43,22 @@ const SCOPES = [
   // users, it needs a client-credentials app token rather than this user
   // token, and asking for a scope the keyset was never granted risks the
   // whole consent failing. See soldCompsAvailable() below.
+  //
+  // sell.logistics is left out for the same reason — see LOGISTICS_SCOPE.
 ].join(" ");
+
+/**
+ * Buying postage needs this, and it is deliberately NOT in SCOPES above.
+ *
+ * The Logistics API is a Limited Release that eBay approves keyset by keyset
+ * and is closed to most developers. Requesting a scope the keyset was never
+ * granted can fail the whole consent, which would take the working
+ * connection — publishing, syncing, relisting — down with it just to add
+ * label buying. So it is only ever requested from the opt-in consent link,
+ * where the seller has deliberately asked for it and a failure costs them
+ * nothing they already had.
+ */
+const LOGISTICS_SCOPE = "https://api.ebay.com/oauth/api_scope/sell.logistics";
 
 const MARKETPLACE_ID = "EBAY_US";
 
@@ -65,15 +80,25 @@ function ebayHeaders(tokens: EbayTokens): Record<string, string> {
   };
 }
 
-export function getAuthorizeUrl(): string {
+export function getAuthorizeUrl(opts?: { includeLogistics?: boolean }): string {
   requireCreds();
   const params = new URLSearchParams({
     client_id: process.env.EBAY_CLIENT_ID!,
     redirect_uri: process.env.EBAY_RUNAME!,
     response_type: "code",
-    scope: SCOPES,
+    scope: opts?.includeLogistics ? `${SCOPES} ${LOGISTICS_SCOPE}` : SCOPES,
   });
   return `${AUTH_BASE[env()]}/oauth2/authorize?${params.toString()}`;
+}
+
+/**
+ * Whether this connection can buy postage. Connections made before label
+ * support existed, and any keyset eBay hasn't approved for the Limited
+ * Release Logistics API, will not have it.
+ */
+export async function hasLogisticsScope(): Promise<boolean> {
+  const tokens = await getEbayTokens();
+  return Boolean(tokens?.grantedScopes?.includes(LOGISTICS_SCOPE));
 }
 
 function basicAuthHeader(): string {
@@ -1831,6 +1856,143 @@ export async function markShipped(
      </Shipment>`,
     tokens
   );
+}
+
+// ---------------------------------------------------------------------------
+// Shipping labels: quote real postage rates and buy one
+// ---------------------------------------------------------------------------
+
+/**
+ * The eBay order id behind a sold listing. The Logistics API works on orders,
+ * not listings — an item id identifies what was sold, the order identifies
+ * the sale that needs posting.
+ */
+export async function findOrderIdForItem(itemId: string): Promise<string | null> {
+  const tokens = await getValidTokens();
+  const data = await ebayGet<{ orders?: (Order & { orderId?: string })[] }>(
+    `/sell/fulfillment/v1/order?limit=50`,
+    tokens
+  );
+  for (const order of data?.orders ?? []) {
+    if (order.lineItems?.some((li) => li.legacyItemId === itemId)) {
+      return order.orderId ?? null;
+    }
+  }
+  return null;
+}
+
+export interface ShippingRate {
+  rateId: string;
+  carrier: string;
+  service: string;
+  cost: number;
+  currency: string;
+  /** Plain-language delivery estimate, when eBay gives one. */
+  deliveryEstimate?: string;
+}
+
+export interface ShippingQuote {
+  shippingQuoteId: string;
+  rates: ShippingRate[];
+}
+
+interface RawRate {
+  rateId?: string;
+  shippingCarrierCode?: string;
+  shippingServiceCode?: string;
+  baseShippingCost?: { value?: string; currency?: string };
+  minEstimatedDeliveryDate?: string;
+  maxEstimatedDeliveryDate?: string;
+}
+
+function describeWindow(min?: string, max?: string): string | undefined {
+  const day = (iso?: string) =>
+    iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+  if (min && max) return `${day(min)} – ${day(max)}`;
+  return min || max ? day(min || max) : undefined;
+}
+
+/**
+ * Live postage rates at eBay's negotiated prices for one sold order.
+ *
+ * Nothing is bought here — this only asks what it would cost, so it is safe
+ * to call on render. The quote's rate ids are what buyShippingLabel spends
+ * against, and they expire, so a stale quote must be re-fetched rather than
+ * reused.
+ */
+export async function getShippingRates(
+  orderId: string,
+  packageWeightOz: number,
+  dimensions?: { length: number; width: number; height: number }
+): Promise<ShippingQuote> {
+  const tokens = await getValidTokens();
+  const res = await ebaySend(
+    "POST",
+    "/sell/logistics/v1/shipping_quote",
+    {
+      orders: [{ orderId }],
+      packageSpecification: {
+        weight: { value: packageWeightOz, unit: "OUNCE" },
+        ...(dimensions
+          ? { dimensions: { ...dimensions, unit: "INCH" } }
+          : {}),
+      },
+    },
+    tokens
+  );
+  if (!res.ok) throw ebayError("Getting postage rates", res);
+
+  const rates = (res.json.rates as RawRate[] | undefined) ?? [];
+  return {
+    shippingQuoteId: String(res.json.shippingQuoteId ?? ""),
+    rates: rates
+      .filter((r) => r.rateId)
+      .map((r) => ({
+        rateId: String(r.rateId),
+        carrier: String(r.shippingCarrierCode ?? "?"),
+        service: String(r.shippingServiceCode ?? "?"),
+        cost: Number(r.baseShippingCost?.value ?? 0) || 0,
+        currency: String(r.baseShippingCost?.currency ?? "USD"),
+        deliveryEstimate: describeWindow(r.minEstimatedDeliveryDate, r.maxEstimatedDeliveryDate),
+      })),
+  };
+}
+
+export interface PurchasedLabel {
+  shipmentId: string;
+  trackingNumber: string;
+  labelUrl: string;
+  cost: number;
+  carrier: string;
+}
+
+/**
+ * Buys the chosen rate. This spends real money the moment it succeeds and
+ * eBay bills the seller for the postage, so it is only ever called straight
+ * from an explicit seller confirmation — never from a cron, a retry, or as a
+ * side effect of anything else.
+ */
+export async function buyShippingLabel(
+  shippingQuoteId: string,
+  rateId: string
+): Promise<PurchasedLabel> {
+  const tokens = await getValidTokens();
+  const res = await ebaySend(
+    "POST",
+    "/sell/logistics/v1/shipment/create_from_shipping_quote",
+    { shippingQuoteId, rateId, labelSize: "SIZE_4X6" },
+    tokens
+  );
+  if (!res.ok) throw ebayError("Buying the shipping label", res);
+
+  const cost = res.json.totalShippingCost as { value?: string } | undefined;
+  return {
+    shipmentId: String(res.json.shipmentId ?? ""),
+    trackingNumber: String(res.json.shipmentTrackingNumber ?? ""),
+    labelUrl: String(res.json.labelDownloadUrl ?? ""),
+    cost: Number(cost?.value ?? 0) || 0,
+    carrier: String(res.json.shippingCarrierCode ?? ""),
+  };
 }
 
 // ---------------------------------------------------------------------------

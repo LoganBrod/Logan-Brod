@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEbayTokens } from "@/lib/store";
+import { hasLogisticsScope } from "@/lib/ebay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export async function GET() {
       connected: Boolean(tokens),
       env: tokens?.env,
       connectedAt: tokens?.connectedAt,
+      canBuyLabels: await hasLogisticsScope(),
     },
     {
       // Without this the CDN/browser can serve a stale "connected" response

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuip, QuipLine, stageKeyFor } from "@/components/LoadingQuips";
 
 const ORDER = ["identify", "comps", "retail", "refine"] as const;
@@ -20,9 +20,12 @@ const STEP_LABEL: Record<(typeof ORDER)[number], string> = {
 export default function AnalyzingScreen({
   stage,
   photoPreview,
+  findings = [],
 }: {
   stage: string | null;
   photoPreview?: string | null;
+  /** What each stage actually turned up, appended as it lands. */
+  findings?: string[];
 }) {
   const quip = useQuip(stage, true);
   const activeKey = stageKeyFor(stage) ?? "identify";
@@ -57,6 +60,27 @@ export default function AnalyzingScreen({
 
         <p className="mt-7 text-lg font-bold text-fog">{stage ?? "Working on it…"}</p>
         <QuipLine quip={quip} className="mt-1.5 justify-center text-center" />
+
+        {/* What it has actually found so far. A stage name alone says the
+            machine is busy; these say it is getting somewhere, which is what
+            makes a long wait tolerable. */}
+        {findings.length > 0 && (
+          <div className="mt-5 space-y-1">
+            <AnimatePresence initial={false}>
+              {findings.map((f) => (
+                <motion.p
+                  key={f}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-center gap-1.5 text-xs text-fog/60"
+                >
+                  <span className="text-brand">✓</span>
+                  {f}
+                </motion.p>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Where this sits in the pipeline, so the wait reads as progress
             rather than one indeterminate spinner. */}

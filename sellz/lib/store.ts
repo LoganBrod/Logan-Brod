@@ -174,6 +174,13 @@ export interface Listing {
     shippedAt: string;
     /** False when eBay wasn't updated (no linked item, or the call failed) */
     syncedToEbay: boolean;
+    /**
+     * Set when the postage was bought through here rather than typed in.
+     * labelCost is a real expense, so it feeds the cost basis.
+     */
+    labelUrl?: string;
+    labelCost?: number;
+    shipmentId?: string;
   };
   /** History of auto-relist cycles on eBay */
   relistHistory?: RelistRecord[];

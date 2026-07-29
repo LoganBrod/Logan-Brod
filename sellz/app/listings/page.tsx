@@ -44,7 +44,16 @@ interface Listing {
   ebayOfferId?: string;
   relistHistory?: { oldItemId: string; newItemId: string; oldPrice: number; newPrice: number; at: string }[];
   lastRelistedAt?: string;
-  shipping?: { carrier: string; trackingNumber: string; shippedAt: string; syncedToEbay: boolean };
+  shipping?: {
+    carrier: string;
+    trackingNumber: string;
+    shippedAt: string;
+    syncedToEbay: boolean;
+    labelUrl?: string;
+    labelCost?: number;
+    shipmentId?: string;
+  };
+  packageWeightOz?: number;
   photos?: string[];
   /** eBay-hosted images on listings synced from the account */
   imageUrls?: string[];
@@ -760,6 +769,174 @@ function ImportForm({ onDone }: { onDone: () => void }) {
 
 const SHIPPING_CARRIERS = ["USPS", "UPS", "FedEx", "DHL", "OnTrac", "Other"] as const;
 
+interface ShippingRate {
+  rateId: string;
+  carrier: string;
+  service: string;
+  cost: number;
+  currency: string;
+  deliveryEstimate?: string;
+}
+
+/**
+ * Buys real postage through eBay. Every step is deliberately explicit: rates
+ * are only fetched when asked for, nothing is preselected, and the actual
+ * purchase needs a second confirmation naming the price — because unlike
+ * everything else in this app, getting this wrong spends the seller's money
+ * and can't be undone with an "undo" button.
+ */
+function BuyLabelBox({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
+  const toast = useToast();
+  const [canBuy, setCanBuy] = useState<boolean | null>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [rates, setRates] = useState<ShippingRate[] | null>(null);
+  const [chosen, setChosen] = useState<ShippingRate | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ebay/status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((s) => setCanBuy(Boolean(s.connected && s.canBuyLabels)))
+      .catch(() => setCanBuy(false));
+  }, []);
+
+  async function loadRates() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/listings/${l.id}/label`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't get rates");
+      setQuoteId(data.shippingQuoteId);
+      setRates(data.rates ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't get rates");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function buy() {
+    if (!chosen || !quoteId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/listings/${l.id}/label`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingQuoteId: quoteId, rateId: chosen.rateId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't buy the label");
+      toast.push(
+        data.syncedToEbay
+          ? `Label bought — tracking sent to eBay`
+          : `Label bought, but tracking didn't reach eBay — mark shipped manually`
+      );
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't buy the label");
+    } finally {
+      setBusy(false);
+      setChosen(null);
+    }
+  }
+
+  if (canBuy === null) return null;
+
+  if (!canBuy) {
+    return (
+      <div className="mt-2 rounded-lg border border-ink-border bg-ink-card p-3 text-xs">
+        <p className="text-fog/60">
+          Buy postage here at eBay&apos;s rates and the tracking fills itself in.
+        </p>
+        <a
+          href="/api/ebay/connect?labels=1"
+          className="mt-2 inline-block rounded bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink"
+        >
+          Enable label buying →
+        </a>
+        <p className="mt-1.5 text-fog/30">
+          Re-authorises with shipping permissions. eBay grants label access per account, so this
+          may not be available on yours — your current connection keeps working either way.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-ink-border bg-ink-card p-3 text-xs">
+      {error && <p className="mb-2 text-red-400">{error}</p>}
+
+      {!rates && (
+        <button
+          onClick={loadRates}
+          disabled={busy}
+          className="rounded bg-ink-border px-3 py-1.5 font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
+        >
+          {busy ? "Checking rates…" : "Check postage rates"}
+        </button>
+      )}
+
+      {rates && rates.length === 0 && (
+        <p className="text-fog/50">eBay returned no postage rates for this parcel.</p>
+      )}
+
+      {rates && rates.length > 0 && !chosen && (
+        <div className="space-y-1.5">
+          <p className="text-fog/50">Pick a service — nothing is bought until you confirm.</p>
+          {rates.map((r) => (
+            <button
+              key={r.rateId}
+              onClick={() => setChosen(r)}
+              className="flex w-full items-center justify-between gap-2 rounded border border-ink-border px-2.5 py-1.5 text-left transition hover:border-brand/50"
+            >
+              <span className="min-w-0">
+                <span className="block font-semibold text-fog">
+                  {r.carrier} {r.service.replace(/_/g, " ")}
+                </span>
+                {r.deliveryEstimate && (
+                  <span className="block text-fog/40">{r.deliveryEstimate}</span>
+                )}
+              </span>
+              <span className="shrink-0 font-bold text-brand">${r.cost.toFixed(2)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {chosen && (
+        <div className="rounded border border-brand/40 bg-brand/5 p-2.5">
+          <p className="font-bold text-fog">
+            Buy {chosen.carrier} {chosen.service.replace(/_/g, " ")} for ${chosen.cost.toFixed(2)}?
+          </p>
+          <p className="mt-1 text-fog/60">
+            eBay charges this to your seller account immediately and the label can&apos;t be
+            unbought from here. The tracking gets sent to the buyer automatically.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={buy}
+              disabled={busy}
+              className="rounded bg-brand px-3 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+            >
+              {busy ? "Buying…" : `Yes, buy for $${chosen.cost.toFixed(2)}`}
+            </button>
+            <button
+              onClick={() => setChosen(null)}
+              disabled={busy}
+              className="rounded bg-ink-border px-3 py-1.5 font-semibold text-fog"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Records real carrier + tracking for a sold item. When the listing is
  * linked to eBay, this also pushes the tracking to eBay itself — the seller
@@ -810,7 +987,20 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
             <span className="text-amber-400"> · not synced to eBay</span>
           )}
         </p>
-        <p className="mt-0.5 text-fog/30">Shipped {new Date(l.shipping.shippedAt).toLocaleDateString()}</p>
+        <p className="mt-0.5 text-fog/30">
+          Shipped {new Date(l.shipping.shippedAt).toLocaleDateString()}
+          {l.shipping.labelCost !== undefined && ` · label $${l.shipping.labelCost.toFixed(2)}`}
+        </p>
+        {l.shipping.labelUrl && (
+          <a
+            href={l.shipping.labelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-block rounded bg-brand px-2 py-1 font-bold text-ink transition hover:bg-brand-dim"
+          >
+            Download label (PDF)
+          </a>
+        )}
       </div>
     );
   }
@@ -818,6 +1008,10 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
   return (
     <div className="mt-3 border-t border-ink-border pt-3">
       <SectionLabel>Shipping</SectionLabel>
+      <BuyLabelBox listing={l} onChanged={onChanged} />
+      <p className="mt-3 text-[10px] uppercase tracking-wider text-fog/30">
+        Or record tracking you bought elsewhere
+      </p>
       <div className="mt-2 flex flex-wrap items-end gap-2 text-xs">
         <label className="space-y-0.5">
           <span className="block text-[10px] uppercase tracking-wider text-fog/40">Carrier</span>
