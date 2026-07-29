@@ -405,10 +405,15 @@ export default function NewListingPage() {
     content = (
       <div className="space-y-5">
         <StepRail steps={rail} current="photos" onJump={(k) => setPhase(k as Phase)} />
-        <PageHeader
-          title="Photograph the item"
-          subtitle="Front and back is enough. The Brain writes the listing from what it can see."
-        />
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <PageHeader
+            title="Photograph the item"
+            subtitle="Front and back is enough. The Brain writes the listing from what it can see."
+          />
+          <Link href="/new/batch" className="text-xs font-semibold text-brand hover:underline">
+            Have a pile of items? Try Batch mode →
+          </Link>
+        </div>
 
         {/* Capped width: the photo slots are square, so on a wide screen an
             unconstrained grid turns them into oversized empty boxes. */}

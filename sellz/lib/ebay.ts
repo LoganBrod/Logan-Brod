@@ -1761,3 +1761,133 @@ export async function createInventoryLocation(
     }
   );
 }
+
+// ---------------------------------------------------------------------------
+// Shipping: mark the order fulfilled with real tracking
+// ---------------------------------------------------------------------------
+
+/** Carriers CompleteSale accepts in ShippingCarrierUsed. Kept to a known set
+ * rather than free text, since this value goes straight into the request. */
+export const SHIPPING_CARRIERS = [
+  "USPS",
+  "UPS",
+  "FedEx",
+  "DHL",
+  "OnTrac",
+  "Other",
+] as const;
+export type ShippingCarrier = (typeof SHIPPING_CARRIERS)[number];
+
+interface TradingTransaction {
+  TransactionID?: string | number;
+}
+
+/**
+ * CompleteSale needs the order line item, not just the listing — an item id
+ * alone identifies the listing, but the sale is a transaction on it. Most
+ * resale is quantity 1, so this is normally the only transaction; the most
+ * recent one is used when there happen to be more.
+ */
+async function getLatestTransactionId(itemId: string): Promise<string | null> {
+  const tokens = await getValidTokens();
+  const root = await tradingCall(
+    "GetItemTransactions",
+    `<ItemID>${itemId}</ItemID><NumberOfTransactions>10</NumberOfTransactions>`,
+    tokens
+  );
+  const transactions = asArray(
+    (root.TransactionArray as { Transaction?: TradingTransaction | TradingTransaction[] } | undefined)
+      ?.Transaction
+  );
+  const last = transactions[transactions.length - 1];
+  return last?.TransactionID !== undefined ? String(last.TransactionID) : null;
+}
+
+/**
+ * Marks the sale shipped on eBay with real carrier + tracking, so the buyer
+ * sees it and the order closes out properly — not just a note kept locally.
+ */
+export async function markShipped(
+  itemId: string,
+  trackingNumber: string,
+  carrier: ShippingCarrier
+): Promise<void> {
+  const tokens = await getValidTokens();
+  const transactionId = await getLatestTransactionId(itemId);
+  if (!transactionId) {
+    throw new Error("Couldn't find the order for this listing on eBay to mark shipped");
+  }
+
+  await tradingCall(
+    "CompleteSale",
+    `<ItemID>${itemId}</ItemID>
+     <TransactionID>${transactionId}</TransactionID>
+     <Shipped>true</Shipped>
+     <Shipment>
+       <ShipmentTrackingDetails>
+         <ShipmentTrackingNumber><![CDATA[${trackingNumber}]]></ShipmentTrackingNumber>
+         <ShippingCarrierUsed>${carrier}</ShippingCarrierUsed>
+       </ShipmentTrackingDetails>
+     </Shipment>`,
+    tokens
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Best Offers: read pending offers and respond
+// ---------------------------------------------------------------------------
+
+export interface BestOfferSummary {
+  bestOfferId: string;
+  price: number;
+  quantity: number;
+}
+
+interface TradingBestOffer {
+  BestOfferID?: string | number;
+  Status?: string;
+  Price?: { "#text"?: string | number } | string | number;
+  Quantity?: string | number;
+}
+
+function bestOfferPrice(p: TradingBestOffer["Price"]): number {
+  if (p && typeof p === "object") return Number(p["#text"] ?? 0) || 0;
+  return Number(p ?? 0) || 0;
+}
+
+/**
+ * Offers still awaiting a seller decision. eBay auto-expires a Best Offer
+ * after 48 hours, so "Pending" is always a live, actionable list — nothing
+ * here has already been settled one way or another.
+ */
+export async function getPendingBestOffers(itemId: string): Promise<BestOfferSummary[]> {
+  const tokens = await getValidTokens();
+  const root = await tradingCall("GetBestOffers", `<ItemID>${itemId}</ItemID>`, tokens);
+  const offers = asArray(
+    (root.BestOfferArray as { BestOffer?: TradingBestOffer | TradingBestOffer[] } | undefined)
+      ?.BestOffer
+  );
+  return offers
+    .filter((o) => o.Status === "Pending")
+    .map((o) => ({
+      bestOfferId: String(o.BestOfferID ?? ""),
+      price: bestOfferPrice(o.Price),
+      quantity: Number(o.Quantity ?? 1) || 1,
+    }))
+    .filter((o) => o.bestOfferId);
+}
+
+/** Accepts or declines a specific Best Offer. eBay settles the sale itself
+ * once accepted — nothing further to publish or revise here. */
+export async function respondToBestOffer(
+  itemId: string,
+  bestOfferId: string,
+  action: "Accept" | "Decline"
+): Promise<void> {
+  const tokens = await getValidTokens();
+  await tradingCall(
+    "RespondToBestOffer",
+    `<ItemID>${itemId}</ItemID><BestOfferID>${bestOfferId}</BestOfferID><Action>${action}</Action>`,
+    tokens
+  );
+}

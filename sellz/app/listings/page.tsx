@@ -44,6 +44,7 @@ interface Listing {
   ebayOfferId?: string;
   relistHistory?: { oldItemId: string; newItemId: string; oldPrice: number; newPrice: number; at: string }[];
   lastRelistedAt?: string;
+  shipping?: { carrier: string; trackingNumber: string; shippedAt: string; syncedToEbay: boolean };
   photos?: string[];
   /** eBay-hosted images on listings synced from the account */
   imageUrls?: string[];
@@ -99,6 +100,11 @@ function needsAttention(l: Listing): boolean {
   if (l.status !== "active") return false;
   const since = daysSince(l.lastRelistedAt ?? l.outcome?.listedAt);
   return since !== null && since >= 60;
+}
+
+/** Sold, but no tracking recorded yet — the pile that still needs a trip to the post office. */
+function needsShipping(l: Listing): boolean {
+  return l.status === "sold" && !l.shipping?.trackingNumber;
 }
 
 type ViewMode = "cards" | "table";
@@ -210,7 +216,7 @@ export default function ListingsPage() {
             const filtered = [...listings]
               .filter((l) => {
                 if (quickFilter === "attention") return needsAttention(l);
-                if (quickFilter === "ready") return l.status === "sold";
+                if (quickFilter === "ready") return needsShipping(l);
                 if (quickFilter === "missingCost") return l.cost?.purchasePrice === undefined;
                 return true;
               })
@@ -274,7 +280,7 @@ function QuickFilters({
   const counts = {
     all: listings.length,
     attention: listings.filter(needsAttention).length,
-    ready: listings.filter((l) => l.status === "sold").length,
+    ready: listings.filter(needsShipping).length,
     missingCost: listings.filter((l) => l.cost?.purchasePrice === undefined).length,
   };
   const chips: { key: QuickFilter; label: string }[] = [
@@ -752,6 +758,102 @@ function ImportForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+const SHIPPING_CARRIERS = ["USPS", "UPS", "FedEx", "DHL", "OnTrac", "Other"] as const;
+
+/**
+ * Records real carrier + tracking for a sold item. When the listing is
+ * linked to eBay, this also pushes the tracking to eBay itself — the seller
+ * sees "shipped" here, but the buyer needs to see it there too, or nothing
+ * has actually closed.
+ */
+function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
+  const toast = useToast();
+  const [carrier, setCarrier] = useState<(typeof SHIPPING_CARRIERS)[number]>("USPS");
+  const [tracking, setTracking] = useState(l.shipping?.trackingNumber ?? "");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!tracking.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/listings/${l.id}/ship`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carrier, trackingNumber: tracking.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't record shipping");
+      toast.push(
+        data.syncedToEbay
+          ? "Marked shipped — tracking pushed to eBay"
+          : l.ebayItemId
+            ? `Saved here, but couldn't push to eBay: ${data.ebayError ?? "unknown error"}`
+            : "Saved — not linked to an eBay listing, so nothing to push"
+      );
+      onChanged();
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Couldn't record shipping", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (l.shipping?.trackingNumber) {
+    return (
+      <div className="mt-3 border-t border-ink-border pt-3 text-xs">
+        <SectionLabel>Shipping</SectionLabel>
+        <p className="mt-1 text-fog/70">
+          {l.shipping.carrier} · {l.shipping.trackingNumber}
+          {l.shipping.syncedToEbay ? (
+            <span className="text-brand"> · synced to eBay</span>
+          ) : (
+            <span className="text-amber-400"> · not synced to eBay</span>
+          )}
+        </p>
+        <p className="mt-0.5 text-fog/30">Shipped {new Date(l.shipping.shippedAt).toLocaleDateString()}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 border-t border-ink-border pt-3">
+      <SectionLabel>Shipping</SectionLabel>
+      <div className="mt-2 flex flex-wrap items-end gap-2 text-xs">
+        <label className="space-y-0.5">
+          <span className="block text-[10px] uppercase tracking-wider text-fog/40">Carrier</span>
+          <select
+            value={carrier}
+            onChange={(e) => setCarrier(e.target.value as (typeof SHIPPING_CARRIERS)[number])}
+            className="rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+          >
+            {SHIPPING_CARRIERS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="min-w-0 flex-1 space-y-0.5">
+          <span className="block text-[10px] uppercase tracking-wider text-fog/40">Tracking number</span>
+          <input
+            value={tracking}
+            onChange={(e) => setTracking(e.target.value)}
+            placeholder="e.g. 9400111206213..."
+            className="w-full rounded-lg border border-ink-border bg-ink-card px-2 py-1 text-fog focus:border-brand focus:outline-none"
+          />
+        </label>
+        <button
+          onClick={submit}
+          disabled={busy || !tracking.trim()}
+          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Mark shipped"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type TabKey = "listing" | "comps" | "outcome" | "cost" | "diagnosis";
 
 function ListingCard({
@@ -1055,6 +1157,7 @@ function ListingCard({
                   Save
                 </button>
               </div>
+              {l.status === "sold" && <ShippingBox listing={l} onChanged={onChanged} />}
             </div>
           )}
 

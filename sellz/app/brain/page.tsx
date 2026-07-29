@@ -459,6 +459,7 @@ interface AutomationState {
   defaultRelistDays: number;
   defaultPackageWeightOz: number | "";
   autoPublishThreshold: number;
+  autoAcceptOfferPct: number;
 }
 
 const DEFAULT_RULES: AutoApplyRules = {
@@ -513,6 +514,7 @@ function AutomationPanel() {
           defaultRelistDays: d.defaultRelistDays ?? 10,
           defaultPackageWeightOz: d.defaultPackageWeightOz ?? "",
           autoPublishThreshold: d.autoPublishThreshold ?? 0,
+          autoAcceptOfferPct: d.autoAcceptOfferPct ?? 0,
         })
       )
       .catch((err) =>
@@ -745,6 +747,35 @@ function AutomationPanel() {
                 The only setting that skips a human entirely: a fresh photo draft that scores at
                 or above this after research and self-correction lists itself on eBay, no review
                 screen. Off by default — turn it on only once you trust the score.
+              </p>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-ink-border bg-ink p-4">
+              <Toggle
+                checked={s.autoAcceptOfferPct > 0}
+                onChange={(v) => setS({ ...s, autoAcceptOfferPct: v ? 90 : 0 })}
+                label="Auto-accept eBay Best Offers above a threshold"
+              />
+              {s.autoAcceptOfferPct > 0 && (
+                <label className="block max-w-[12rem] space-y-1 text-sm">
+                  <span className="text-fog/50">Minimum % of asking price</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={s.autoAcceptOfferPct}
+                    onChange={(e) =>
+                      setS({ ...s, autoAcceptOfferPct: Number(e.target.value) })
+                    }
+                    className={`${field} bg-ink-card`}
+                  />
+                </label>
+              )}
+              <p className="text-xs leading-relaxed text-fog/40">
+                Checked roughly every 30 minutes. An offer at or above this percentage of the
+                asking price accepts itself — eBay settles the sale, and this closes the loop
+                locally with the real accepted price. Off by default; this commits to a real sale
+                at a discount without you looking at it first.
               </p>
             </div>
 

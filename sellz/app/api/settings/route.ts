@@ -74,6 +74,10 @@ export async function PUT(req: NextRequest) {
       body.autoPublishThreshold === undefined
         ? undefined
         : num(body.autoPublishThreshold, 0, 100, 0),
+    autoAcceptOfferPct:
+      body.autoAcceptOfferPct === undefined
+        ? undefined
+        : num(body.autoAcceptOfferPct, 0, 100, 0),
   });
   return NextResponse.json({
     ...updated,

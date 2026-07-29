@@ -167,6 +167,14 @@ export interface Listing {
    */
   packageWeightOz?: number;
   packageDimensionsIn?: { length: number; width: number; height: number };
+  /** Real carrier + tracking once the sale has been shipped */
+  shipping?: {
+    carrier: string;
+    trackingNumber: string;
+    shippedAt: string;
+    /** False when eBay wasn't updated (no linked item, or the call failed) */
+    syncedToEbay: boolean;
+  };
   /** History of auto-relist cycles on eBay */
   relistHistory?: RelistRecord[];
   /** Override relist cadence for this listing (null = use global default) */
@@ -278,6 +286,13 @@ export interface SellerSettings {
    * looking at the listing at all, so it starts off.
    */
   autoPublishThreshold: number;
+  /**
+   * % of asking price at or above which an incoming eBay Best Offer
+   * auto-accepts (e.g. 90 = accept anything at 90%+ of ask). 0 (the
+   * default) disables it — this commits to a real sale at a discount, so
+   * it starts off like auto-publish does.
+   */
+  autoAcceptOfferPct: number;
 }
 
 export const DEFAULT_AUTO_RULES: AutoApplyRules = {
@@ -297,6 +312,7 @@ export const DEFAULT_SELLER: SellerSettings = {
   automationLevel: "manual",
   relistEnabled: false,
   autoPublishThreshold: 0,
+  autoAcceptOfferPct: 0,
 };
 
 export type ProposalKind = "reprice" | "retitle" | "rewrite" | "relist" | "hold";
