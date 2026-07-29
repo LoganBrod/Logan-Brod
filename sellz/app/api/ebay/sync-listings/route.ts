@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { fetchAllEbayListings, fetchEbayItem } from "@/lib/ebay";
 import { addListing, getEbayTokens, listListings, updateListing, type Listing } from "@/lib/store";
@@ -13,13 +14,17 @@ export const maxDuration = 300;
  * score, comps, diagnosis) is preserved.
  */
 export async function POST() {
-  if (!(await getEbayTokens())) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  if (!(await getEbayTokens(userId))) {
     return NextResponse.json({ error: "Connect your eBay account first" }, { status: 400 });
   }
 
   let live;
   try {
-    live = await fetchAllEbayListings();
+    live = await fetchAllEbayListings(userId);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Couldn't reach eBay" },
@@ -27,7 +32,7 @@ export async function POST() {
     );
   }
 
-  const existing = await listListings();
+  const existing = await listListings(userId);
   const byItemId = new Map(existing.filter((l) => l.ebayItemId).map((l) => [l.ebayItemId!, l]));
 
   // The bulk call only returns the gallery image, so a listing with eight
@@ -42,7 +47,7 @@ export async function POST() {
     await Promise.all(
       needsPhotos.slice(i, i + 4).map(async (l) => {
         try {
-          const detail = await fetchEbayItem(l.itemId);
+          const detail = await fetchEbayItem(userId, l.itemId);
           if (detail.imageUrls.length > (l.imageUrls?.length ?? 0)) {
             l.imageUrls = detail.imageUrls;
           }
@@ -81,7 +86,7 @@ export async function POST() {
     };
 
     if (prior) {
-      await updateListing(prior.id, {
+      await updateListing(userId, prior.id, {
         title: l.title || prior.title,
         price: l.price || prior.price,
         status: l.status === "ended" ? "ended" : l.status,
@@ -92,7 +97,7 @@ export async function POST() {
       updated++;
     } else {
       const listing: Listing = {
-        id: crypto.randomUUID().slice(0, 8),
+        id: crypto.randomUUID(),
         platform: "ebay",
         title: l.title,
         description: "",
@@ -110,7 +115,7 @@ export async function POST() {
         outcome,
         createdAt: l.listedAt ?? new Date().toISOString(),
       };
-      await addListing(listing);
+      await addListing(userId, listing);
       created++;
     }
   }

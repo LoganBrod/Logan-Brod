@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -8,7 +9,11 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -16,7 +21,7 @@ export async function PUT(
   const d = (v: unknown) =>
     typeof v === "string" && isFinite(Date.parse(v)) ? new Date(v).toISOString() : undefined;
 
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     outcome: {
       views: n(body.views),
       watchers: n(body.watchers),
@@ -29,5 +34,5 @@ export async function PUT(
       updatedAt: new Date().toISOString(),
     },
   });
-  return NextResponse.json(await getListing(listing.id));
+  return NextResponse.json(await getListing(userId, listing.id));
 }

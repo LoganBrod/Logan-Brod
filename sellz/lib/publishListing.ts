@@ -15,14 +15,14 @@ export interface PublishOutcome {
  * a failure here just means the draft falls back to waiting for manual
  * review, same as if auto-publish were off.
  */
-export async function publishListing(listingId: string, origin: string): Promise<PublishOutcome> {
-  const listing = await getListing(listingId);
+export async function publishListing(userId: string, listingId: string, origin: string): Promise<PublishOutcome> {
+  const listing = await getListing(userId, listingId);
   if (!listing) return { ok: false, error: "Not found" };
   if (listing.publishedAt) return { ok: false, error: "Already published" };
   if (!listing.photos?.length) return { ok: false, error: "No photos" };
   if (!(listing.price > 0)) return { ok: false, error: "No price set" };
 
-  const settings = await getSellerSettings();
+  const settings = await getSellerSettings(userId);
   const packageWeightOz = listing.packageWeightOz ?? settings.defaultPackageWeightOz;
   if (!packageWeightOz || packageWeightOz <= 0) {
     return { ok: false, error: "No shipping weight set" };
@@ -31,7 +31,7 @@ export async function publishListing(listingId: string, origin: string): Promise
   const imageUrls = listing.photos.map((p) => photoUrl(p, origin));
 
   try {
-    const result = await publishToEbay({
+    const result = await publishToEbay(userId, {
       sku: `levoz-${listing.id}`,
       title: listing.title,
       description: listing.description,
@@ -43,7 +43,7 @@ export async function publishListing(listingId: string, origin: string): Promise
       packageDimensionsIn: listing.packageDimensionsIn,
     });
 
-    await updateListing(listing.id, {
+    await updateListing(userId, listing.id, {
       status: "active",
       ebayItemId: result.listingId || undefined,
       ebaySku: result.sku,
@@ -60,7 +60,7 @@ export async function publishListing(listingId: string, origin: string): Promise
       },
     });
 
-    return { ok: true, listing: await getListing(listing.id) };
+    return { ok: true, listing: await getListing(userId, listing.id) };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Publishing to eBay failed" };
   }

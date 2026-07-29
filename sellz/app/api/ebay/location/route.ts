@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { createInventoryLocation, listInventoryLocations } from "@/lib/ebay";
 import { getEbayTokens } from "@/lib/store";
 
@@ -8,12 +9,16 @@ export const dynamic = "force-dynamic";
 const noStore = { headers: { "Cache-Control": "no-store" } };
 
 export async function GET() {
-  if (!(await getEbayTokens())) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  if (!(await getEbayTokens(userId))) {
     return NextResponse.json({ connected: false, locations: [] }, noStore);
   }
   try {
     return NextResponse.json(
-      { connected: true, locations: await listInventoryLocations() },
+      { connected: true, locations: await listInventoryLocations(userId) },
       noStore
     );
   } catch (err) {
@@ -34,14 +39,18 @@ export async function GET() {
  * provide it or publishing can never be unblocked.
  */
 export async function POST(req: NextRequest) {
-  if (!(await getEbayTokens())) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  if (!(await getEbayTokens(userId))) {
     return NextResponse.json({ error: "Connect your eBay account first" }, { status: 400 });
   }
   const body = await req.json().catch(() => ({}));
   const str = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 120) : undefined);
 
   try {
-    const location = await createInventoryLocation({
+    const location = await createInventoryLocation(userId, {
       country: str(body.country) ?? "US",
       postalCode: str(body.postalCode),
       city: str(body.city),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getPhoto } from "@/lib/photos";
 import { checkPhoto } from "@/lib/brain";
 
@@ -13,6 +14,10 @@ export const maxDuration = 30;
  * "uncertainties" note minutes later after they've already put it down.
  */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const photoId = typeof body.photoId === "string" ? body.photoId : "";
   const shotsSoFar: string[] = Array.isArray(body.shotsSoFar)
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "photoId is required" }, { status: 400 });
   }
 
-  const photo = await getPhoto(photoId);
+  const photo = await getPhoto(userId, photoId);
   if (!photo) return NextResponse.json({ error: "Photo not found" }, { status: 404 });
 
   try {

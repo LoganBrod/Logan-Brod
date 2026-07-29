@@ -1,4 +1,10 @@
-import { readRaw, writeRaw } from "./db";
+import { Prisma } from "@prisma/client";
+import type {
+  Listing as ListingRow,
+  Proposal as ProposalRow,
+  SellerSettings as SellerSettingsRow,
+} from "@prisma/client";
+import { prisma } from "./prisma";
 
 export type Platform = "ebay" | "depop" | "other";
 export type ListingStatus = "draft" | "active" | "sold" | "stale" | "ended" | "scheduled";
@@ -366,106 +372,414 @@ export interface EbayTokens {
   grantedScopes?: string;
 }
 
-interface Store {
-  listings: Listing[];
-  seller?: SellerSettings;
-  playbook?: Playbook;
-  seedListings?: SeedListing[];
-  ebay?: EbayTokens;
-  proposals?: Proposal[];
-  lastResearchAt?: string;
+// ---------------------------------------------------------------------------
+// Data access
+//
+// Every function here is scoped to a single seller. `userId` is required, not
+// optional, and every query filters on it — so an id guessed or leaked from
+// another tenant resolves to nothing rather than to someone else's row. That
+// is the whole tenancy boundary; there is no second layer behind it.
+// ---------------------------------------------------------------------------
+
+/** Prisma yields null for an absent column; the app's types use undefined. */
+function nn<T>(v: T | null): T | undefined {
+  return v === null ? undefined : v;
 }
 
-async function read(): Promise<Store> {
-  const raw = await readRaw();
-  if (!raw) return { listings: [] };
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { listings: [] };
+function iso(d: Date | null): string | undefined {
+  return d === null ? undefined : d.toISOString();
+}
+
+/** Read a Json column back out as its declared TypeScript shape. */
+function j<T>(v: unknown): T | undefined {
+  return v === null || v === undefined ? undefined : (v as T);
+}
+
+/**
+ * Value for a nullable Json column. Absent becomes DbNull (SQL NULL, not the
+ * JSON literal `null`). The cast is unavoidable: Prisma's InputJsonValue
+ * requires an index signature, which a declared interface never has.
+ */
+function jsonIn(v: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  return v === undefined || v === null
+    ? Prisma.DbNull
+    : (v as unknown as Prisma.InputJsonValue);
+}
+
+function toListing(r: ListingRow): Listing {
+  return {
+    id: r.id,
+    platform: r.platform as Platform,
+    title: r.title,
+    description: r.description,
+    price: r.price,
+    category: r.category,
+    condition: r.condition,
+    tags: r.tags,
+    photosNote: r.photosNote,
+    status: r.status as ListingStatus,
+    source: r.source as Listing["source"],
+    outcome: j<ListingOutcome>(r.outcome),
+    cost: j<CostBasis>(r.cost),
+    comps: j<Comps>(r.comps),
+    brainScore: j<BrainScore>(r.brainScore),
+    diagnosis: j<Diagnosis>(r.diagnosis),
+    retail: j<Listing["retail"]>(r.retail),
+    shipping: j<Listing["shipping"]>(r.shipping),
+    experimentId: nn(r.experimentId),
+    ebayItemId: nn(r.ebayItemId),
+    ebaySku: nn(r.ebaySku),
+    ebayOfferId: nn(r.ebayOfferId),
+    ebayListingType: nn(r.ebayListingType),
+    ebayCategoryId: nn(r.ebayCategoryId),
+    ebayAspects: j<EbayAspect[]>(r.ebayAspects),
+    itemSpecifics: j<ItemSpecific[]>(r.itemSpecifics),
+    photos: r.photos,
+    imageUrls: r.imageUrls,
+    packageWeightOz: nn(r.packageWeightOz),
+    packageDimensionsIn: j<Listing["packageDimensionsIn"]>(r.packageDimensionsIn),
+    relistHistory: j<RelistRecord[]>(r.relistHistory),
+    relistCadenceDays: nn(r.relistCadenceDays),
+    lastRelistedAt: iso(r.lastRelistedAt),
+    publishedAt: iso(r.publishedAt),
+    scheduledPublishAt: iso(r.scheduledPublishAt),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+const LISTING_REQUIRED = [
+  "platform",
+  "title",
+  "description",
+  "price",
+  "category",
+  "condition",
+  "photosNote",
+  "status",
+  "source",
+] as const;
+
+const LISTING_NULLABLE = [
+  "experimentId",
+  "ebayItemId",
+  "ebaySku",
+  "ebayOfferId",
+  "ebayListingType",
+  "ebayCategoryId",
+  "packageWeightOz",
+  "relistCadenceDays",
+] as const;
+
+const LISTING_ARRAYS = ["tags", "photos", "imageUrls"] as const;
+
+const LISTING_JSON = [
+  "outcome",
+  "cost",
+  "comps",
+  "brainScore",
+  "diagnosis",
+  "retail",
+  "shipping",
+  "ebayAspects",
+  "itemSpecifics",
+  "packageDimensionsIn",
+  "relistHistory",
+] as const;
+
+const LISTING_DATES = ["lastRelistedAt", "publishedAt", "scheduledPublishAt"] as const;
+
+/**
+ * Translate a Partial<Listing> patch into Prisma update data.
+ *
+ * The old JSON store used Object.assign, where a key explicitly set to
+ * undefined cleared the field. Prisma reads undefined as "leave unchanged",
+ * so a caller clearing a field would silently no-op — the scheduled-publish
+ * cron clears `scheduledPublishAt` after publishing, and without this
+ * distinction the same listing would be republished every 15 minutes. A key
+ * that is *present* but undefined is therefore mapped to an explicit null.
+ */
+function listingUpdateData(patch: Partial<Listing>): Prisma.ListingUpdateInput {
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(patch, k);
+  const data: Record<string, unknown> = {};
+  const p = patch as Record<string, unknown>;
+
+  // Non-nullable columns: only ever set to a real value, never cleared.
+  for (const k of LISTING_REQUIRED) if (has(k) && p[k] !== undefined) data[k] = p[k];
+  for (const k of LISTING_ARRAYS) if (has(k)) data[k] = p[k] ?? [];
+  for (const k of LISTING_NULLABLE) if (has(k)) data[k] = p[k] ?? null;
+  // Nullable Json needs Prisma's sentinel; a bare null is a type error.
+  for (const k of LISTING_JSON) if (has(k)) data[k] = jsonIn(p[k]);
+  for (const k of LISTING_DATES) {
+    if (has(k)) data[k] = p[k] ? new Date(String(p[k])) : null;
   }
+
+  return data as Prisma.ListingUpdateInput;
 }
 
-async function write(store: Store) {
-  await writeRaw(JSON.stringify(store, null, 2));
+export async function listListings(userId: string): Promise<Listing[]> {
+  const rows = await prisma.listing.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toListing);
 }
 
-export async function listListings(): Promise<Listing[]> {
-  return (await read()).listings;
+export async function getListing(userId: string, id: string): Promise<Listing | undefined> {
+  // userId is part of the predicate, not checked afterwards — a listing that
+  // is not this seller's simply does not exist as far as this call is concerned.
+  const row = await prisma.listing.findFirst({ where: { id, userId } });
+  return row ? toListing(row) : undefined;
 }
 
-export async function getListing(id: string): Promise<Listing | undefined> {
-  return (await read()).listings.find((l) => l.id === id);
+export async function addListing(userId: string, listing: Listing) {
+  await prisma.listing.create({
+    data: {
+      userId,
+      id: listing.id,
+      platform: listing.platform,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      category: listing.category,
+      condition: listing.condition,
+      tags: listing.tags ?? [],
+      photosNote: listing.photosNote,
+      status: listing.status,
+      source: listing.source,
+      outcome: jsonIn(listing.outcome),
+      cost: jsonIn(listing.cost),
+      comps: jsonIn(listing.comps),
+      brainScore: jsonIn(listing.brainScore),
+      diagnosis: jsonIn(listing.diagnosis),
+      retail: jsonIn(listing.retail),
+      shipping: jsonIn(listing.shipping),
+      ebayAspects: jsonIn(listing.ebayAspects),
+      itemSpecifics: jsonIn(listing.itemSpecifics),
+      packageDimensionsIn: jsonIn(listing.packageDimensionsIn),
+      relistHistory: jsonIn(listing.relistHistory),
+      experimentId: listing.experimentId ?? null,
+      ebayItemId: listing.ebayItemId ?? null,
+      ebaySku: listing.ebaySku ?? null,
+      ebayOfferId: listing.ebayOfferId ?? null,
+      ebayListingType: listing.ebayListingType ?? null,
+      ebayCategoryId: listing.ebayCategoryId ?? null,
+      photos: listing.photos ?? [],
+      imageUrls: listing.imageUrls ?? [],
+      packageWeightOz: listing.packageWeightOz ?? null,
+      relistCadenceDays: listing.relistCadenceDays ?? null,
+      lastRelistedAt: listing.lastRelistedAt ? new Date(listing.lastRelistedAt) : null,
+      publishedAt: listing.publishedAt ? new Date(listing.publishedAt) : null,
+      scheduledPublishAt: listing.scheduledPublishAt
+        ? new Date(listing.scheduledPublishAt)
+        : null,
+      createdAt: new Date(listing.createdAt),
+    },
+  });
 }
 
-export async function addListing(listing: Listing) {
-  const store = await read();
-  store.listings.unshift(listing);
-  await write(store);
+export async function updateListing(userId: string, id: string, patch: Partial<Listing>) {
+  // updateMany rather than update: it scopes by userId in the same statement
+  // and, like the old store, does nothing when the row is not this seller's
+  // instead of throwing.
+  await prisma.listing.updateMany({
+    where: { id, userId },
+    data: listingUpdateData(patch),
+  });
 }
 
-export async function updateListing(id: string, patch: Partial<Listing>) {
-  const store = await read();
-  const listing = store.listings.find((l) => l.id === id);
-  if (!listing) return;
-  Object.assign(listing, patch);
-  await write(store);
+export async function deleteListing(userId: string, id: string) {
+  await prisma.listing.deleteMany({ where: { id, userId } });
 }
 
-export async function deleteListing(id: string) {
-  const store = await read();
-  store.listings = store.listings.filter((l) => l.id !== id);
-  await write(store);
+// ---------------------------------------------------------------------------
+// Seller settings
+// ---------------------------------------------------------------------------
+
+function toSettings(r: SellerSettingsRow): SellerSettings {
+  return {
+    niche: r.niche,
+    platforms: r.platforms,
+    shipping: r.shipping,
+    style: r.style,
+    automationLevel: r.automationLevel as SellerSettings["automationLevel"],
+    autoApplyRules: j<AutoApplyRules>(r.autoApplyRules),
+    relistEnabled: r.relistEnabled,
+    defaultRelistDays: nn(r.defaultRelistDays),
+    defaultPackageWeightOz: nn(r.defaultPackageWeightOz),
+    autoPublishThreshold: r.autoPublishThreshold,
+    autoAcceptOfferPct: r.autoAcceptOfferPct,
+  };
 }
 
-export async function getSellerSettings(): Promise<SellerSettings> {
-  return { ...DEFAULT_SELLER, ...(await read()).seller };
+export async function getSellerSettings(userId: string): Promise<SellerSettings> {
+  const row = await prisma.sellerSettings.findUnique({ where: { userId } });
+  return row ? { ...DEFAULT_SELLER, ...toSettings(row) } : { ...DEFAULT_SELLER };
+}
+
+/** True when this seller has finished the "what do you sell" step. */
+export async function hasSellerSettings(userId: string): Promise<boolean> {
+  return (await prisma.sellerSettings.count({ where: { userId } })) > 0;
 }
 
 export async function updateSellerSettings(
+  userId: string,
   patch: Partial<SellerSettings>
 ): Promise<SellerSettings> {
-  const store = await read();
+  const current = await getSellerSettings(userId);
+  // Undefined entries are dropped so a partial update can never blank a field
+  // the caller did not mention — same contract as the old store.
   const defined = Object.fromEntries(
     Object.entries(patch).filter(([, v]) => v !== undefined)
-  );
-  store.seller = { ...DEFAULT_SELLER, ...store.seller, ...defined };
-  await write(store);
-  return store.seller;
+  ) as Partial<SellerSettings>;
+  const next: SellerSettings = { ...DEFAULT_SELLER, ...current, ...defined };
+
+  const data = {
+    niche: next.niche,
+    platforms: next.platforms,
+    shipping: next.shipping,
+    style: next.style,
+    automationLevel: next.automationLevel,
+    autoApplyRules: jsonIn(next.autoApplyRules),
+    relistEnabled: next.relistEnabled,
+    defaultRelistDays: next.defaultRelistDays ?? null,
+    defaultPackageWeightOz: next.defaultPackageWeightOz ?? null,
+    autoPublishThreshold: next.autoPublishThreshold,
+    autoAcceptOfferPct: next.autoAcceptOfferPct,
+  };
+
+  await prisma.sellerSettings.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
+  return next;
 }
 
-export async function getPlaybook(): Promise<Playbook | undefined> {
-  return (await read()).playbook;
+// ---------------------------------------------------------------------------
+// Playbook
+// ---------------------------------------------------------------------------
+
+export async function getPlaybook(userId: string): Promise<Playbook | undefined> {
+  const r = await prisma.playbook.findUnique({ where: { userId } });
+  if (!r) return undefined;
+  return {
+    updatedAt: r.updatedAt.toISOString(),
+    summary: r.summary,
+    listingGuidelines: r.listingGuidelines,
+    pricingGuidelines: r.pricingGuidelines,
+    avoid: r.avoid,
+    experiments: j<Experiment[]>(r.experiments),
+    experimentResults: nn(r.experimentResults),
+    actionCards: j<ActionCard[]>(r.actionCards),
+  };
 }
 
-export async function setPlaybook(playbook: Playbook) {
-  const store = await read();
-  store.playbook = playbook;
-  await write(store);
+export async function setPlaybook(userId: string, playbook: Playbook) {
+  const data = {
+    summary: playbook.summary,
+    listingGuidelines: playbook.listingGuidelines,
+    pricingGuidelines: playbook.pricingGuidelines,
+    avoid: playbook.avoid,
+    experimentResults: playbook.experimentResults ?? null,
+    experiments: jsonIn(playbook.experiments),
+    actionCards: jsonIn(playbook.actionCards),
+    updatedAt: new Date(playbook.updatedAt),
+  };
+  await prisma.playbook.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
 }
 
-export async function listSeedListings(): Promise<SeedListing[]> {
-  return (await read()).seedListings ?? [];
+// ---------------------------------------------------------------------------
+// Seed (reference) listings
+// ---------------------------------------------------------------------------
+
+const MAX_SEEDS = 50;
+
+export async function listSeedListings(userId: string): Promise<SeedListing[]> {
+  const rows = await prisma.seedListing.findMany({
+    where: { userId },
+    orderBy: { addedAt: "desc" },
+    take: MAX_SEEDS,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    description: r.description,
+    source: nn(r.source),
+    stats: nn(r.stats),
+    addedAt: r.addedAt.toISOString(),
+  }));
 }
 
-export async function addSeedListing(seed: SeedListing) {
-  const store = await read();
-  store.seedListings = [seed, ...(store.seedListings ?? [])].slice(0, 50);
-  await write(store);
+export async function addSeedListing(userId: string, seed: SeedListing) {
+  await prisma.seedListing.create({
+    data: {
+      id: seed.id,
+      userId,
+      description: seed.description,
+      source: seed.source ?? null,
+      stats: seed.stats ?? null,
+      addedAt: new Date(seed.addedAt),
+    },
+  });
+  // The old store kept only the newest 50; trim rather than grow unbounded.
+  const stale = await prisma.seedListing.findMany({
+    where: { userId },
+    orderBy: { addedAt: "desc" },
+    skip: MAX_SEEDS,
+    select: { id: true },
+  });
+  if (stale.length) {
+    await prisma.seedListing.deleteMany({
+      where: { userId, id: { in: stale.map((s) => s.id) } },
+    });
+  }
 }
 
-export async function deleteSeedListing(id: string) {
-  const store = await read();
-  store.seedListings = (store.seedListings ?? []).filter((s) => s.id !== id);
-  await write(store);
+export async function deleteSeedListing(userId: string, id: string) {
+  await prisma.seedListing.deleteMany({ where: { id, userId } });
 }
 
-export async function listProposals(): Promise<Proposal[]> {
-  return (await read()).proposals ?? [];
+// ---------------------------------------------------------------------------
+// Proposals
+// ---------------------------------------------------------------------------
+
+const MAX_PROPOSALS = 300;
+
+function toProposal(r: ProposalRow): Proposal {
+  return {
+    id: r.id,
+    listingId: r.listingId,
+    kind: r.kind as ProposalKind,
+    summary: r.summary,
+    rationale: r.rationale,
+    currentPrice: nn(r.currentPrice),
+    proposedPrice: nn(r.proposedPrice),
+    currentTitle: nn(r.currentTitle),
+    proposedTitle: nn(r.proposedTitle),
+    proposedDescription: nn(r.proposedDescription),
+    confidence: r.confidence,
+    status: r.status as ProposalStatus,
+    error: nn(r.error),
+    createdAt: r.createdAt.toISOString(),
+    resolvedAt: iso(r.resolvedAt),
+  };
 }
 
-export async function getProposal(id: string): Promise<Proposal | undefined> {
-  return (await read()).proposals?.find((p) => p.id === id);
+export async function listProposals(userId: string): Promise<Proposal[]> {
+  const rows = await prisma.proposal.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: MAX_PROPOSALS,
+  });
+  return rows.map(toProposal);
+}
+
+export async function getProposal(userId: string, id: string): Promise<Proposal | undefined> {
+  const r = await prisma.proposal.findFirst({ where: { id, userId } });
+  return r ? toProposal(r) : undefined;
 }
 
 /**
@@ -473,49 +787,115 @@ export async function getProposal(id: string): Promise<Proposal | undefined> {
  * repeated research pass refreshes advice rather than stacking duplicates.
  * Decided proposals are kept as history.
  */
-export async function upsertProposal(proposal: Proposal) {
-  const store = await read();
-  const kept = (store.proposals ?? []).filter(
-    (p) =>
-      !(p.listingId === proposal.listingId && p.kind === proposal.kind && p.status === "pending")
-  );
-  store.proposals = [proposal, ...kept].slice(0, 300);
-  await write(store);
+export async function upsertProposal(userId: string, proposal: Proposal) {
+  await prisma.$transaction([
+    prisma.proposal.deleteMany({
+      where: {
+        userId,
+        listingId: proposal.listingId,
+        kind: proposal.kind,
+        status: "pending",
+      },
+    }),
+    prisma.proposal.create({
+      data: {
+        id: proposal.id,
+        userId,
+        listingId: proposal.listingId,
+        kind: proposal.kind,
+        summary: proposal.summary,
+        rationale: proposal.rationale,
+        currentPrice: proposal.currentPrice ?? null,
+        proposedPrice: proposal.proposedPrice ?? null,
+        currentTitle: proposal.currentTitle ?? null,
+        proposedTitle: proposal.proposedTitle ?? null,
+        proposedDescription: proposal.proposedDescription ?? null,
+        confidence: proposal.confidence,
+        status: proposal.status,
+        error: proposal.error ?? null,
+        createdAt: new Date(proposal.createdAt),
+        resolvedAt: proposal.resolvedAt ? new Date(proposal.resolvedAt) : null,
+      },
+    }),
+  ]);
 }
 
-export async function updateProposal(id: string, patch: Partial<Proposal>) {
-  const store = await read();
-  const p = store.proposals?.find((x) => x.id === id);
-  if (!p) return;
-  Object.assign(p, patch);
-  await write(store);
+export async function updateProposal(userId: string, id: string, patch: Partial<Proposal>) {
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(patch, k);
+  const data: Record<string, unknown> = {};
+  if (patch.status !== undefined) data.status = patch.status;
+  if (has("error")) data.error = patch.error ?? null;
+  if (has("resolvedAt")) data.resolvedAt = patch.resolvedAt ? new Date(patch.resolvedAt) : null;
+  if (patch.summary !== undefined) data.summary = patch.summary;
+  if (patch.rationale !== undefined) data.rationale = patch.rationale;
+  if (has("proposedPrice")) data.proposedPrice = patch.proposedPrice ?? null;
+  if (has("proposedTitle")) data.proposedTitle = patch.proposedTitle ?? null;
+  if (has("proposedDescription")) {
+    data.proposedDescription = patch.proposedDescription ?? null;
+  }
+  if (Object.keys(data).length === 0) return;
+  await prisma.proposal.updateMany({ where: { id, userId }, data });
 }
 
-export async function setLastResearchAt(iso: string) {
-  const store = await read();
-  store.lastResearchAt = iso;
-  await write(store);
+// ---------------------------------------------------------------------------
+// Research timestamp (was a single global value; now per seller)
+// ---------------------------------------------------------------------------
+
+export async function setLastResearchAt(userId: string, isoTime: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { lastResearchAt: new Date(isoTime) },
+  });
 }
 
-export async function getLastResearchAt(): Promise<string | undefined> {
-  return (await read()).lastResearchAt;
+export async function getLastResearchAt(userId: string): Promise<string | undefined> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { lastResearchAt: true },
+  });
+  return u?.lastResearchAt ? u.lastResearchAt.toISOString() : undefined;
 }
 
-export async function getEbayTokens(): Promise<EbayTokens | undefined> {
-  return (await read()).ebay;
+// ---------------------------------------------------------------------------
+// eBay tokens
+//
+// These are live OAuth credentials for a third-party account, one row per
+// seller. Nothing outside this module should read them.
+// ---------------------------------------------------------------------------
+
+export async function getEbayTokens(userId: string): Promise<EbayTokens | undefined> {
+  const r = await prisma.ebayTokens.findUnique({ where: { userId } });
+  if (!r) return undefined;
+  return {
+    env: r.env as EbayTokens["env"],
+    accessToken: r.accessToken,
+    refreshToken: r.refreshToken,
+    accessTokenExpiresAt: r.accessTokenExpiresAt.toISOString(),
+    connectedAt: r.connectedAt.toISOString(),
+    grantedScopes: nn(r.grantedScopes),
+  };
 }
 
-export async function setEbayTokens(tokens: EbayTokens) {
-  const store = await read();
-  store.ebay = tokens;
-  await write(store);
+export async function setEbayTokens(userId: string, tokens: EbayTokens) {
+  const data = {
+    env: tokens.env,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    accessTokenExpiresAt: new Date(tokens.accessTokenExpiresAt),
+    connectedAt: new Date(tokens.connectedAt),
+    grantedScopes: tokens.grantedScopes ?? null,
+  };
+  await prisma.ebayTokens.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
 }
 
-export async function clearEbayTokens() {
-  const store = await read();
-  delete store.ebay;
-  await write(store);
+export async function clearEbayTokens(userId: string) {
+  await prisma.ebayTokens.deleteMany({ where: { userId } });
 }
+
 
 export interface Profit {
   revenue: number;

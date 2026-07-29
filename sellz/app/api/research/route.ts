@@ -17,6 +17,9 @@ import {
 import { researchEbayComps, reviseEbayListing, relistItem } from "@/lib/ebay";
 import { proposeListingChange } from "@/lib/brain";
 import { getPhoto } from "@/lib/photos";
+import { currentUserId } from "@/lib/auth";
+import { cronAuthorized, tenantsWithEbay } from "@/lib/cron";
+import { checkUsage, incrementUsage, planAllows } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 800;
@@ -29,30 +32,32 @@ function daysLive(l: Listing): number | null {
   return Math.max(0, Math.round((Date.now() - t) / 86400000));
 }
 
+interface TenantResult {
+  userId: string;
+  considered: number;
+  proposed: number;
+  autoApplied: number;
+  skipped?: string;
+}
+
 /**
- * The background pass. Walks live listings that have been up long enough to
- * have said something, re-researches comps against the current market, and
- * files a proposal for each. Nothing here touches eBay; proposals only
- * become changes when the seller approves one.
+ * One seller's research pass. Re-comps their live listings against the market
+ * as it is now and files a proposal per listing. Nothing here touches eBay
+ * unless that seller's own automation settings say it may.
  */
-export async function POST(req: NextRequest) {
-  // A shared secret lets the scheduled job call this without a session,
-  // while keeping it from being triggered by anyone who finds the URL.
-  const secret = process.env.RESEARCH_SECRET;
-  if (secret) {
-    const provided =
-      req.headers.get("x-research-secret") ?? req.nextUrl.searchParams.get("secret");
-    if (provided !== secret) {
-      return NextResponse.json({ error: "Not authorised" }, { status: 401 });
-    }
+async function researchForUser(userId: string): Promise<TenantResult> {
+  if (!(await planAllows(userId, "proposals"))) {
+    return { userId, considered: 0, proposed: 0, autoApplied: 0, skipped: "plan" };
+  }
+  if (!(await getEbayTokens(userId))) {
+    return { userId, considered: 0, proposed: 0, autoApplied: 0, skipped: "no-ebay" };
+  }
+  if (!(await checkUsage(userId, "research")).allowed) {
+    return { userId, considered: 0, proposed: 0, autoApplied: 0, skipped: "quota" };
   }
 
-  if (!(await getEbayTokens())) {
-    return NextResponse.json({ error: "Connect your eBay account first" }, { status: 400 });
-  }
-
-  const all = await listListings();
-  const pending = await listProposals();
+  const all = await listListings(userId);
+  const pending = await listProposals(userId);
   const pendingFor = new Set(
     pending.filter((p) => p.status === "pending").map((p) => p.listingId)
   );
@@ -68,23 +73,21 @@ export async function POST(req: NextRequest) {
     .filter((l) => !pendingFor.has(l.id))
     .slice(0, 15);
 
-  const results: { listingId: string; kind: string; autoApplied?: boolean }[] = [];
-
-  // Read once, not once per listing — on Blobs every read is a round trip.
-  const settings = await getSellerSettings();
+  const settings = await getSellerSettings(userId);
   const autoLevel = settings.automationLevel ?? "manual";
   const rules = settings.autoApplyRules ?? DEFAULT_AUTO_RULES;
 
+  let proposed = 0;
+  let autoApplied = 0;
+
   for (const listing of candidates) {
     try {
-      // Re-comp against the market as it is now, using the item photo when
-      // we have one so matches come from the picture.
       let base64: string | undefined;
       if (listing.photos?.length) {
-        const photo = await getPhoto(listing.photos[0]);
+        const photo = await getPhoto(userId, listing.photos[0]);
         base64 = photo?.data.toString("base64");
       }
-      const comps = await researchEbayComps(listing.title, base64).catch(() => null);
+      const comps = await researchEbayComps(userId, listing.title, base64).catch(() => null);
 
       const compsContext = comps
         ? [
@@ -99,14 +102,17 @@ export async function POST(req: NextRequest) {
             .join("\n")
         : "";
 
-      const draft = await proposeListingChange(listing.id, compsContext, daysLive(listing) ?? 0);
-      if (!draft || draft.kind === "hold") {
-        results.push({ listingId: listing.id, kind: draft?.kind ?? "none" });
-        continue;
-      }
+      const draft = await proposeListingChange(
+        userId,
+        listing.id,
+        compsContext,
+        daysLive(listing) ?? 0
+      );
+      await incrementUsage(userId, "research");
+      if (!draft || draft.kind === "hold") continue;
 
       const proposal: Proposal = {
-        id: crypto.randomUUID().slice(0, 8),
+        id: crypto.randomUUID(),
         listingId: listing.id,
         kind: draft.kind,
         summary: draft.summary,
@@ -122,24 +128,14 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       };
 
-      // ---- Automation level check ----
       let finalStatus: ProposalStatus = "pending";
 
       if (autoLevel !== "manual" && listing.ebayItemId) {
-        const shouldAutoApply = checkAutoApplyRules(
-          draft,
-          listing,
-          rules,
-          autoLevel === "auto"
-        );
-
+        const shouldAutoApply = checkAutoApplyRules(draft, listing, rules, autoLevel === "auto");
         if (shouldAutoApply) {
           try {
             // "relist" isn't a revise — it has no price/title/description of
-            // its own, so it needs relistItem, not reviseEbayListing. The
-            // rule check above already says yes for relist proposals, but
-            // nothing downstream ever executed one: this branch was simply
-            // missing, so autoRelist and full-auto silently did nothing.
+            // its own, so it needs relistItem, not reviseEbayListing.
             if (draft.kind === "relist") {
               if (!listing.ebayOfferId) {
                 throw new Error(
@@ -147,7 +143,7 @@ export async function POST(req: NextRequest) {
                 );
               }
               const newPrice = draft.proposedPrice > 0 ? draft.proposedPrice : listing.price;
-              const result = await relistItem(listing.ebayOfferId, newPrice);
+              const result = await relistItem(userId, listing.ebayOfferId, newPrice);
               const record: RelistRecord = {
                 oldItemId: listing.ebayItemId,
                 newItemId: result.newListingId,
@@ -155,7 +151,7 @@ export async function POST(req: NextRequest) {
                 newPrice,
                 at: new Date().toISOString(),
               };
-              await updateListing(listing.id, {
+              await updateListing(userId, listing.id, {
                 ebayItemId: result.newListingId,
                 price: newPrice,
                 relistHistory: [...(listing.relistHistory ?? []), record],
@@ -177,10 +173,15 @@ export async function POST(req: NextRequest) {
 
               if (Object.keys(changes).length > 0) {
                 // eBay first. The local copy is only updated once eBay has
-                // actually accepted the change, so the app never shows a
-                // price the live listing does not have.
-                await reviseEbayListing(listing.ebayItemId, changes, listing.ebayListingType);
-                await updateListing(listing.id, {
+                // accepted the change, so the app never shows a price the
+                // live listing does not have.
+                await reviseEbayListing(
+                  userId,
+                  listing.ebayItemId,
+                  changes,
+                  listing.ebayListingType
+                );
+                await updateListing(userId, listing.id, {
                   ...(changes.price ? { price: changes.price } : {}),
                   ...(changes.title ? { title: changes.title } : {}),
                   ...(changes.description ? { description: changes.description } : {}),
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest) {
               }
             }
           } catch (err) {
-            // Auto-apply failed — fall back to manual review, and keep the
+            // Auto-apply failed — fall back to manual review, keeping the
             // reason so the seller sees why rather than an unexplained
             // proposal sitting in the queue.
             finalStatus = "pending";
@@ -202,25 +203,78 @@ export async function POST(req: NextRequest) {
       }
 
       proposal.status = finalStatus;
-      await upsertProposal(proposal);
-      results.push({
-        listingId: listing.id,
-        kind: draft.kind,
-        autoApplied: finalStatus === "auto-applied",
-      });
+      await upsertProposal(userId, proposal);
+      proposed++;
+      if (finalStatus === "auto-applied") autoApplied++;
     } catch {
       // One bad listing should never abort the whole pass.
-      results.push({ listingId: listing.id, kind: "error" });
     }
   }
 
-  await setLastResearchAt(new Date().toISOString());
+  await setLastResearchAt(userId, new Date().toISOString());
+  return { userId, considered: candidates.length, proposed, autoApplied };
+}
+
+/**
+ * Two legitimate callers, so two ways in:
+ *  - a signed-in seller pressing "Run research", scoped to themselves
+ *  - the scheduler holding CRON_SECRET, sweeping every tenant
+ *
+ * The old `?secret=` query-string option is gone: it put a shared credential
+ * into URLs, which end up in access logs and referrer headers.
+ */
+export async function POST(req: NextRequest) {
+  if (cronAuthorized(req)) {
+    const results: TenantResult[] = [];
+    for (const userId of await tenantsWithEbay()) {
+      try {
+        results.push(await researchForUser(userId));
+      } catch (err) {
+        results.push({
+          userId,
+          considered: 0,
+          proposed: 0,
+          autoApplied: 0,
+          skipped: err instanceof Error ? err.message : "failed",
+        });
+      }
+    }
+    return NextResponse.json({
+      ok: true,
+      mode: "cron",
+      tenants: results.length,
+      proposed: results.reduce((n, r) => n + r.proposed, 0),
+      autoApplied: results.reduce((n, r) => n + r.autoApplied, 0),
+      results,
+    });
+  }
+
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+
+  if (!(await planAllows(userId, "proposals"))) {
+    return NextResponse.json(
+      {
+        error:
+          "Brain proposals are a Pro feature. Upgrade to have LevoZ keep watching your listings.",
+        upgrade: true,
+      },
+      { status: 402 }
+    );
+  }
+  if (!(await getEbayTokens(userId))) {
+    return NextResponse.json({ error: "Connect your eBay account first" }, { status: 400 });
+  }
+
+  const result = await researchForUser(userId);
   return NextResponse.json({
     ok: true,
-    considered: candidates.length,
-    proposed: results.filter((r) => !["hold", "none", "error"].includes(r.kind)).length,
-    autoApplied: results.filter((r) => r.autoApplied).length,
-    results,
+    mode: "interactive",
+    considered: result.considered,
+    proposed: result.proposed,
+    autoApplied: result.autoApplied,
   });
 }
 
@@ -231,10 +285,16 @@ export async function POST(req: NextRequest) {
 function checkAutoApplyRules(
   draft: { kind: string; proposedPrice: number; confidence: number; proposedDescription?: string },
   listing: Listing,
-  rules: { maxPriceDrop: number; maxPriceDropPct: number; autoRetitle: boolean; autoRelist: boolean; requireReviewForRewrite: boolean; minConfidence: number },
+  rules: {
+    maxPriceDrop: number;
+    maxPriceDropPct: number;
+    autoRetitle: boolean;
+    autoRelist: boolean;
+    requireReviewForRewrite: boolean;
+    minConfidence: number;
+  },
   isFullAuto: boolean
 ): boolean {
-  // Confidence check applies to all modes
   if (draft.confidence < rules.minConfidence) return false;
 
   if (draft.kind === "reprice") {
@@ -247,19 +307,15 @@ function checkAutoApplyRules(
     return delta <= rules.maxPriceDrop && deltaPct <= rules.maxPriceDropPct;
   }
 
-  if (draft.kind === "retitle") {
-    return rules.autoRetitle || isFullAuto;
-  }
+  if (draft.kind === "retitle") return rules.autoRetitle || isFullAuto;
 
   if (draft.kind === "rewrite") {
-    // Full rewrites are risky — require review unless full auto
+    // Full rewrites are risky — require review unless full auto.
     if (rules.requireReviewForRewrite && !isFullAuto) return false;
     return isFullAuto;
   }
 
-  if (draft.kind === "relist") {
-    return rules.autoRelist || isFullAuto;
-  }
+  if (draft.kind === "relist") return rules.autoRelist || isFullAuto;
 
   return false;
 }

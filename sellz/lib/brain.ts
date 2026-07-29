@@ -27,8 +27,8 @@ function requireKey() {
   }
 }
 
-async function sellerContext(): Promise<string> {
-  const s = await getSellerSettings();
+async function sellerContext(userId: string): Promise<string> {
+  const s = await getSellerSettings(userId);
   if (!s.niche.trim()) return "";
   return `\n\nThe seller:\nSells: ${s.niche}\nPlatforms: ${s.platforms}\nShipping: ${s.shipping || "(not set)"}\nShop style: ${s.style}`;
 }
@@ -107,19 +107,19 @@ Do three things:
 
 Be honest about sample size. Never invent patterns the data doesn't show.`;
 
-export async function analyzePerformance(): Promise<Playbook> {
+export async function analyzePerformance(userId: string): Promise<Playbook> {
   requireKey();
-  const informative = (await listListings()).filter(
+  const informative = (await listListings(userId)).filter(
     (l) => l.status === "sold" || ((l.status === "active" || l.status === "stale" || l.status === "ended") && l.outcome)
   );
-  const seeds = await listSeedListings();
+  const seeds = await listSeedListings(userId);
   if (informative.length < 3 && seeds.length < 3) {
     throw new Error(
       `Need either 3+ listings with outcomes — sold or stuck (have ${informative.length}) — or 3+ reference listings fed to the Brain (have ${seeds.length}).`
     );
   }
 
-  const previous = await getPlaybook();
+  const previous = await getPlaybook(userId);
   const rows = informative
     .sort((a, b) => (b.status === "sold" ? 1 : 0) - (a.status === "sold" ? 1 : 0))
     .map((l, i) => listingRow(l, i + 1))
@@ -149,7 +149,7 @@ export async function analyzePerformance(): Promise<Playbook> {
     model: "claude-opus-4-8",
     max_tokens: 4000,
     thinking: { type: "adaptive" },
-    system: ANALYZE_PROMPT + (await sellerContext()),
+    system: ANALYZE_PROMPT + (await sellerContext(userId)),
     messages: [
       { role: "user", content: `${ownContext}${seedContext}${experimentContext}` },
     ],
@@ -167,8 +167,8 @@ export async function analyzePerformance(): Promise<Playbook> {
     })),
     updatedAt: new Date().toISOString(),
   };
-  playbook.actionCards = await suggestActionCards(playbook, await listListings()).catch(() => []);
-  await setPlaybook(playbook);
+  playbook.actionCards = await suggestActionCards(playbook, await listListings(userId)).catch(() => []);
+  await setPlaybook(userId, playbook);
   return playbook;
 }
 
@@ -265,9 +265,9 @@ const CompsSchema = z.object({
 
 const COMPS_PROMPT = `You research market comparables for a marketplace seller. Search the web for what items like the one described actually sell for (sold/completed prices where findable — price guides, marketplace searches, community posts about recent sales; asking prices only as a weak fallback, labeled as such). Then report a realistic sold-price range and demand picture. Be specific about what you found and honest about what you couldn't find — never fabricate prices or sales.`;
 
-export async function researchComps(listingId: string): Promise<Comps> {
+export async function researchComps(userId: string, listingId: string): Promise<Comps> {
   requireKey();
-  const listing = await getListing(listingId);
+  const listing = await getListing(userId, listingId);
   if (!listing) throw new Error("Listing not found");
 
   const client = new Anthropic();
@@ -306,7 +306,7 @@ export async function researchComps(listingId: string): Promise<Comps> {
     manualNotes: listing.comps?.manualNotes,
     at: new Date().toISOString(),
   };
-  await updateListing(listingId, { comps });
+  await updateListing(userId, listingId, { comps });
   return comps;
 }
 
@@ -353,16 +353,16 @@ The overall score is the weighted average leaning toward the weakest dimensions 
 
 If a playbook is provided, weigh it heavily — it's learned from their real sales. If comps are provided, weigh price against them hard. If the listing is part of an experiment, it deliberately deviates in that one way; don't penalize the deviation being tested. Be a tough, honest judge.`;
 
-export async function scoreListing(listingId: string): Promise<BrainScore | null> {
+export async function scoreListing(userId: string, listingId: string): Promise<BrainScore | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  const listing = await getListing(listingId);
+  const listing = await getListing(userId, listingId);
   if (!listing) return null;
 
-  const playbook = await getPlaybook();
+  const playbook = await getPlaybook(userId);
   const experiment = playbook?.experiments?.find((e) => e.id === listing.experimentId);
   const system =
     SCORE_PROMPT +
-    (await sellerContext()) +
+    (await sellerContext(userId)) +
     (playbook
       ? `\n\nSeller playbook (from their real sales):\n${playbook.summary}\nListings: ${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "\n\nNo playbook exists yet — judge on general marketplace instincts and say so in the reason.");
@@ -407,7 +407,7 @@ export async function scoreListing(listingId: string): Promise<BrainScore | null
     breakdown,
     at: new Date().toISOString(),
   };
-  await updateListing(listingId, { brainScore });
+  await updateListing(userId, listingId, { brainScore });
   return brainScore;
 }
 
@@ -426,13 +426,13 @@ const DiagnosisSchema = z.object({
 
 const DIAGNOSE_PROMPT = `You are the performance brain of a marketplace selling tool. A listing isn't selling. Work out why — price vs comps, title searchability (would a buyer's search find it?), description gaps that kill trust, condition framing, photo plan — contrasted against what has worked in the seller's playbook and sold listings. Then rewrite it: title, description, and a suggested price. Platform matters: eBay titles are keyword-dense (≤80 chars, brand/model/size/condition); Depop is casual with hashtags. Never invent condition details, measurements, or provenance not in the original listing.`;
 
-export async function diagnose(listingId: string): Promise<Diagnosis> {
+export async function diagnose(userId: string, listingId: string): Promise<Diagnosis> {
   requireKey();
-  const listing = await getListing(listingId);
+  const listing = await getListing(userId, listingId);
   if (!listing) throw new Error("Listing not found");
 
-  const playbook = await getPlaybook();
-  const soldExamples = (await listListings())
+  const playbook = await getPlaybook(userId);
+  const soldExamples = (await listListings(userId))
     .filter((l) => l.status === "sold")
     .slice(0, 5)
     .map((l) => listingRow(l))
@@ -440,7 +440,7 @@ export async function diagnose(listingId: string): Promise<Diagnosis> {
 
   const system =
     DIAGNOSE_PROMPT +
-    (await sellerContext()) +
+    (await sellerContext(userId)) +
     (playbook
       ? `\n\nSeller playbook:\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");
@@ -473,7 +473,7 @@ export async function diagnose(listingId: string): Promise<Diagnosis> {
     ...response.parsed_output,
     at: new Date().toISOString(),
   };
-  await updateListing(listingId, { diagnosis });
+  await updateListing(userId, listingId, { diagnosis });
   return diagnosis;
 }
 
@@ -512,6 +512,7 @@ export interface GeneratedListing {
 }
 
 export async function generateListings(
+  userId: string,
   itemDescription: string,
   platform: "ebay" | "depop" | "other",
   count: number,
@@ -521,10 +522,10 @@ export async function generateListings(
   if (itemDescription.trim().length < 10) {
     throw new Error("Describe the item — brand, size, condition, flaws, anything a buyer asks");
   }
-  const playbook = await getPlaybook();
+  const playbook = await getPlaybook(userId);
   const system =
     GENERATE_PROMPT +
-    (await sellerContext()) +
+    (await sellerContext(userId)) +
     (playbook
       ? `\n\nSeller playbook (from real sales — follow it):\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");
@@ -629,6 +630,7 @@ If comparable sold items and a seller playbook are provided, price and phrase ag
  * with their media types, in the order the seller uploaded them.
  */
 export async function generateFromPhotos(
+  userId: string,
   images: { base64: string; mediaType: string }[],
   sellerNotes: string,
   compsContext?: string
@@ -636,10 +638,10 @@ export async function generateFromPhotos(
   requireKey();
   if (images.length === 0) throw new Error("Add at least one photo of the item");
 
-  const playbook = await getPlaybook();
+  const playbook = await getPlaybook(userId);
   const system =
     PHOTO_PROMPT +
-    (await sellerContext()) +
+    (await sellerContext(userId)) +
     (playbook
       ? `\n\nSeller playbook (learned from their real sales — follow it):\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");
@@ -815,12 +817,12 @@ export async function checkPhoto(
 }
 
 /** Round-robin a listing into "control" or an active experiment arm. */
-export async function pickExperiment(): Promise<string> {
-  const experiments = (await getPlaybook())?.experiments ?? [];
+export async function pickExperiment(userId: string): Promise<string> {
+  const experiments = (await getPlaybook(userId))?.experiments ?? [];
   if (experiments.length === 0) return "control";
   const arms = ["control", ...experiments.map((e) => e.id)];
   const counts = new Map(arms.map((a) => [a, 0]));
-  for (const l of await listListings()) {
+  for (const l of await listListings(userId)) {
     if (l.experimentId && counts.has(l.experimentId)) {
       counts.set(l.experimentId, (counts.get(l.experimentId) ?? 0) + 1);
     }
@@ -830,9 +832,9 @@ export async function pickExperiment(): Promise<string> {
   );
 }
 
-export async function experimentInstruction(experimentId?: string): Promise<string | undefined> {
+export async function experimentInstruction(userId: string, experimentId?: string): Promise<string | undefined> {
   if (!experimentId || experimentId === "control") return undefined;
-  return (await getPlaybook())?.experiments?.find((e) => e.id === experimentId)?.instruction;
+  return (await getPlaybook(userId))?.experiments?.find((e) => e.id === experimentId)?.instruction;
 }
 
 // ---------------------------------------------------------------------------
@@ -882,18 +884,19 @@ Comparable prices you are given are asking prices unless explicitly marked SOLD.
 
 /** Decide what, if anything, should change about a live listing. */
 export async function proposeListingChange(
+  userId: string,
   listingId: string,
   compsContext: string,
   daysLive: number
 ): Promise<ProposalDraft | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  const listing = await getListing(listingId);
+  const listing = await getListing(userId, listingId);
   if (!listing) return null;
 
-  const playbook = await getPlaybook();
+  const playbook = await getPlaybook(userId);
   const system =
     PROPOSE_PROMPT +
-    (await sellerContext()) +
+    (await sellerContext(userId)) +
     (playbook
       ? `\n\nSeller playbook, learned from their real sales:\n${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}`
       : "");

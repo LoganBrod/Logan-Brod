@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, type RelistRecord } from "@/lib/store";
 import { relistItem, researchEbayComps } from "@/lib/ebay";
 import { getPhoto } from "@/lib/photos";
@@ -11,6 +12,10 @@ export const maxDuration = 120;
  * at the Brain's suggested price, and publish it for a freshness boost.
  */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const listingId = typeof body.listingId === "string" ? body.listingId : "";
   const forcePrice = typeof body.price === "number" ? body.price : undefined;
@@ -19,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "listingId is required" }, { status: 400 });
   }
 
-  const listing = await getListing(listingId);
+  const listing = await getListing(userId, listingId);
   if (!listing) {
     return NextResponse.json({ error: "Listing not found" }, { status: 404 });
   }
@@ -45,10 +50,10 @@ export async function POST(req: NextRequest) {
       // Re-comp against current market
       let base64: string | undefined;
       if (listing.photos?.length) {
-        const photo = await getPhoto(listing.photos[0]);
+        const photo = await getPhoto(userId, listing.photos[0]);
         base64 = photo?.data.toString("base64");
       }
-      const comps = await researchEbayComps(listing.title, base64).catch(() => null);
+      const comps = await researchEbayComps(userId, listing.title, base64).catch(() => null);
 
       if (comps?.suggestedPrice && comps.suggestedPrice > 0) {
         // Use the median of current comps as the new price, but never drop
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = await relistItem(listing.ebayOfferId, newPrice);
+    const result = await relistItem(userId, listing.ebayOfferId, newPrice);
 
     const record: RelistRecord = {
       oldItemId: listing.ebayItemId ?? "",
@@ -68,7 +73,7 @@ export async function POST(req: NextRequest) {
       at: new Date().toISOString(),
     };
 
-    await updateListing(listingId, {
+    await updateListing(userId, listingId, {
       ebayItemId: result.newListingId,
       price: newPrice,
       relistHistory: [...(listing.relistHistory ?? []), record],

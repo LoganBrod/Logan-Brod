@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { checkPublishReadiness, missingPublishScopes } from "@/lib/ebay";
 import { getEbayTokens } from "@/lib/store";
 
@@ -16,7 +17,11 @@ const noStore = { headers: { "Cache-Control": "no-store" } };
  * wrong screen.
  */
 export async function GET() {
-  const tokens = await getEbayTokens();
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const tokens = await getEbayTokens(userId);
 
   if (!tokens) {
     return NextResponse.json(
@@ -47,7 +52,7 @@ export async function GET() {
   }
 
   try {
-    const readiness = await checkPublishReadiness();
+    const readiness = await checkPublishReadiness(userId);
     return NextResponse.json(
       {
         connected: true,

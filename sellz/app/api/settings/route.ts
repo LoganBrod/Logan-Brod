@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import {
   getSellerSettings,
   updateSellerSettings,
@@ -11,8 +12,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   return NextResponse.json({
-    ...(await getSellerSettings()),
+    ...(await getSellerSettings(userId)),
     hasBrain: Boolean(process.env.ANTHROPIC_API_KEY),
   });
 }
@@ -48,11 +53,15 @@ function parseRules(v: unknown, current: AutoApplyRules): AutoApplyRules | undef
 }
 
 export async function PUT(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const clean = (v: unknown, max: number) =>
     typeof v === "string" ? v.slice(0, max) : undefined;
-  const currentRules = (await getSellerSettings()).autoApplyRules ?? DEFAULT_AUTO_RULES;
-  const updated = await updateSellerSettings({
+  const currentRules = (await getSellerSettings(userId)).autoApplyRules ?? DEFAULT_AUTO_RULES;
+  const updated = await updateSellerSettings(userId, {
     niche: clean(body.niche, 400),
     platforms: clean(body.platforms, 200),
     shipping: clean(body.shipping, 300),

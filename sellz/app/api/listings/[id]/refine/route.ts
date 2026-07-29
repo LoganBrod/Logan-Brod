@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, getEbayTokens, getSellerSettings, type ItemSpecific } from "@/lib/store";
 import { generateFromPhotos, scoreListing, fillMissingAspects } from "@/lib/brain";
 import { resolveAspectGaps } from "@/lib/ebay";
@@ -24,7 +25,11 @@ interface CompLine {
  * than asking the model to stare at the same photo again.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const images: { base64: string; mediaType: string }[] = [];
   for (const id of listing.photos ?? []) {
-    const photo = await getPhoto(id);
+    const photo = await getPhoto(userId, id);
     if (photo) {
       images.push({
         base64: photo.data.toString("base64"),
@@ -79,13 +84,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // eBay requires specific fields per category — ask about them now, while
   // the seller can still fix a gap, rather than finding out at publish time.
-  async function resolveAspects(
+  // An arrow const rather than a function declaration: a hoisted declaration
+  // is considered callable before the 401 guard above, so TypeScript will not
+  // narrow the captured userId to a string inside it.
+  const resolveAspects = async (
     title: string,
     specifics: ItemSpecific[]
-  ): Promise<{ itemSpecifics: ItemSpecific[]; missingAspects: string[] }> {
-    if (!(await getEbayTokens())) return { itemSpecifics: specifics, missingAspects: [] };
+  ): Promise<{ itemSpecifics: ItemSpecific[]; missingAspects: string[] }> => {
+    if (!(await getEbayTokens(userId))) return { itemSpecifics: specifics, missingAspects: [] };
     try {
-      const gaps = await resolveAspectGaps(title, specifics);
+      const gaps = await resolveAspectGaps(userId, title, specifics);
       if (gaps.missingRequired.length === 0) return { itemSpecifics: specifics, missingAspects: [] };
 
       const filled = await fillMissingAspects(
@@ -107,7 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       // never let it block the refine pass from landing.
       return { itemSpecifics: specifics, missingAspects: [] };
     }
-  }
+  };
 
   const compsContext = [
     compsText ? `Comparable items on eBay right now:\n${compsText}` : "",
@@ -121,14 +129,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .join("\n\n");
 
   try {
-    const final = await generateFromPhotos(images, notes, compsContext);
+    const final = await generateFromPhotos(userId, images, notes, compsContext);
 
     let { itemSpecifics, missingAspects } = await resolveAspects(
       final.title,
       final.itemSpecifics ?? listing.itemSpecifics ?? []
     );
 
-    await updateListing(listing.id, {
+    await updateListing(userId, listing.id, {
       title: final.title,
       description: final.description,
       price: final.price,
@@ -144,7 +152,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // — a targeted rewrite beats shipping a known-weak draft and hoping the
     // seller notices the fix panel later. Capped at a single retry so a
     // stubbornly low score can't loop the pipeline.
-    let score = await scoreListing(listing.id);
+    let score = await scoreListing(userId, listing.id);
     let selfCorrected = false;
     let analysis = final;
 
@@ -152,7 +160,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const weakest = score.breakdown.reduce((min, d) => (d.score < min.score ? d : min));
       if (weakest.score < 55) {
         try {
-          const corrected = await generateFromPhotos(
+          const corrected = await generateFromPhotos(userId, 
             images,
             notes,
             `${compsContext}\n\nSelf-correction before this reaches the seller: a first pass scored this listing's "${weakest.dimension}" at only ${weakest.score}/100 — ${weakest.detail} Fix that specifically without regressing anything else.`
@@ -164,7 +172,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           itemSpecifics = resolved.itemSpecifics;
           missingAspects = resolved.missingAspects;
           analysis = corrected;
-          await updateListing(listing.id, {
+          await updateListing(userId, listing.id, {
             title: corrected.title,
             description: corrected.description,
             price: corrected.price,
@@ -174,7 +182,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             photosNote: corrected.photosNote,
             itemSpecifics,
           });
-          score = await scoreListing(listing.id);
+          score = await scoreListing(userId, listing.id);
           selfCorrected = true;
         } catch {
           // Keep the first pass — a failed retry must not lose a working draft.
@@ -187,16 +195,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // computed after any self-correction above has already run.
     let autoPublished = false;
     let autoPublishError: string | undefined;
-    const settings = await getSellerSettings();
+    const settings = await getSellerSettings(userId);
     if (settings.autoPublishThreshold > 0 && (score?.score ?? 0) >= settings.autoPublishThreshold) {
       const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
-      const outcome = await publishListing(listing.id, origin);
+      const outcome = await publishListing(userId, listing.id, origin);
       autoPublished = outcome.ok;
       if (!outcome.ok) autoPublishError = outcome.error;
     }
 
     return NextResponse.json({
-      listing: await getListing(listing.id),
+      listing: await getListing(userId, listing.id),
       refined: true,
       selfCorrected,
       autoPublished,

@@ -1,0 +1,265 @@
+// LevoZ multi-tenant schema.
+//
+// Everything a seller owns hangs off User. Nested value objects that were
+// plain TypeScript sub-objects in the old single-JSON store (outcome, cost,
+// comps, brainScore, ...) stay as Json columns: they are always read and
+// written as a whole with their parent row, never queried across, so
+// normalising them would add joins without buying anything.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth + tenancy
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+
+  /// Set only for email/password signups; Google-only users have none.
+  passwordHash String?
+
+  plan                 String  @default("free")
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String?
+
+  /// Usage counters, reset monthly by the cron. Limits are always enforced
+  /// from these columns, never from the JWT — a plan change made by a Stripe
+  /// webhook must take effect without waiting for the user to sign in again.
+  listingsUsedThisMonth Int      @default(0)
+  aiCallsUsedThisMonth  Int      @default(0)
+  usageResetAt          DateTime @default(now())
+
+  /// Was a single global value in the old store; it is per-seller now.
+  lastResearchAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  accounts     Account[]
+  sessions     Session[]
+  listings     Listing[]
+  proposals    Proposal[]
+  seedListings SeedListing[]
+  photos       Photo[]
+  settings     SellerSettings?
+  playbook     Playbook?
+  ebayTokens   EbayTokens?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Seller data
+// ---------------------------------------------------------------------------
+
+model Listing {
+  /// Supplied by the app rather than defaulted, because the id appears in
+  /// URLs the client already holds before the row is written.
+  id     String @id
+  userId String
+
+  platform    String
+  title       String @db.Text
+  description String @db.Text
+  price       Float
+  category    String
+  condition    String
+  tags        String[]
+  photosNote  String @db.Text
+  status      String
+  source      String
+
+  outcome   Json?
+  cost      Json?
+  comps     Json?
+  brainScore Json?
+  diagnosis Json?
+  retail    Json?
+  shipping  Json?
+
+  experimentId String?
+
+  ebayItemId      String?
+  ebaySku         String?
+  ebayOfferId     String?
+  ebayListingType String?
+  ebayCategoryId  String?
+  ebayAspects     Json?
+  itemSpecifics   Json?
+
+  photos    String[]
+  imageUrls String[]
+
+  packageWeightOz      Float?
+  packageDimensionsIn  Json?
+
+  relistHistory     Json?
+  relistCadenceDays Int?
+  lastRelistedAt    DateTime?
+
+  publishedAt        DateTime?
+  scheduledPublishAt DateTime?
+  createdAt          DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([userId, ebayItemId])
+}
+
+model SellerSettings {
+  userId String @id
+
+  niche      String @db.Text
+  platforms  String
+  shipping   String
+  style      String
+
+  automationLevel String  @default("manual")
+  autoApplyRules  Json?
+  relistEnabled   Boolean @default(false)
+
+  defaultRelistDays      Int?
+  defaultPackageWeightOz Float?
+  autoPublishThreshold   Int @default(0)
+  autoAcceptOfferPct     Int @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Playbook {
+  userId String @id
+
+  summary            String @db.Text
+  listingGuidelines  String @db.Text
+  pricingGuidelines  String @db.Text
+  avoid              String @db.Text
+  experimentResults  String? @db.Text
+  experiments        Json?
+  actionCards        Json?
+  updatedAt          DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SeedListing {
+  id     String @id
+  userId String
+
+  description String  @db.Text
+  source      String?
+  stats       String?
+  addedAt     DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, addedAt])
+}
+
+model Proposal {
+  id     String @id
+  userId String
+
+  /// Intentionally a plain column rather than a foreign key: proposals are
+  /// kept as history and the UI already renders "Listing removed", so a
+  /// deleted listing should orphan its proposals, not erase them.
+  listingId String
+
+  kind      String
+  summary   String @db.Text
+  rationale String @db.Text
+
+  currentPrice        Float?
+  proposedPrice       Float?
+  currentTitle        String?
+  proposedTitle       String?
+  proposedDescription String? @db.Text
+
+  confidence Int
+  status     String
+  error      String? @db.Text
+  createdAt  DateTime
+  resolvedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([listingId, kind, status])
+}
+
+model EbayTokens {
+  userId String @id
+
+  env                   String
+  accessToken           String   @db.Text
+  refreshToken          String   @db.Text
+  accessTokenExpiresAt  DateTime
+  connectedAt           DateTime
+  grantedScopes         String?  @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Maps an opaque photo id to its owner. Exists because /api/photos/[id] must
+/// stay public — eBay fetches listing images by URL and cannot present a
+/// session — so the unguessable id is the capability, and the owner has to be
+/// resolvable server-side without putting the userId in the URL.
+model Photo {
+  id          String   @id
+  userId      String
+  contentType String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

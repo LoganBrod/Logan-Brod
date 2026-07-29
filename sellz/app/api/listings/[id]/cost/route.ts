@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing } from "@/lib/store";
 
 export const runtime = "nodejs";
 
 /** Record what an item cost to acquire and ship — the basis for profit. */
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -17,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return isFinite(n) && n >= 0 ? n : undefined;
   };
 
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     cost: {
       purchasePrice: money(body.purchasePrice),
       shippingCost: money(body.shippingCost),
@@ -26,5 +31,5 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       updatedAt: new Date().toISOString(),
     },
   });
-  return NextResponse.json(await getListing(listing.id));
+  return NextResponse.json(await getListing(userId, listing.id));
 }

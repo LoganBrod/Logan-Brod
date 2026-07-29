@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, getSellerSettings } from "@/lib/store";
 import { publishToEbay } from "@/lib/ebay";
 import { photoUrl } from "@/lib/photos";
@@ -11,7 +12,11 @@ export const maxDuration = 120;
  * only ever called from the seller's "Approve & list" action.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (listing.publishedAt) {
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // eBay's own complaint here is "invalid shipping package details", which
   // doesn't tell the seller which field to fill in or where.
-  const settings = await getSellerSettings();
+  const settings = await getSellerSettings(userId);
   const packageWeightOz = listing.packageWeightOz ?? settings.defaultPackageWeightOz;
   if (!packageWeightOz || packageWeightOz <= 0) {
     return NextResponse.json(
@@ -50,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const imageUrls = listing.photos.map((p) => photoUrl(p, origin));
 
   try {
-    const result = await publishToEbay({
+    const result = await publishToEbay(userId, {
       sku: `levoz-${listing.id}`,
       title: listing.title,
       description: listing.description,
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       packageDimensionsIn: listing.packageDimensionsIn,
     });
 
-    await updateListing(listing.id, {
+    await updateListing(userId, listing.id, {
       status: "active",
       ebayItemId: result.listingId || undefined,
       ebaySku: result.sku,
@@ -80,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     });
 
-    return NextResponse.json({ ...result, listing: await getListing(listing.id) });
+    return NextResponse.json({ ...result, listing: await getListing(userId, listing.id) });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Publishing to eBay failed" },

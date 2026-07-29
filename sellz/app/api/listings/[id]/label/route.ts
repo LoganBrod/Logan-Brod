@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, getSellerSettings } from "@/lib/store";
 import {
   buyShippingLabel,
@@ -14,10 +15,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** Shared preconditions for both quoting and buying. */
-async function resolveOrder(listingId: string) {
-  const listing = await getListing(listingId);
+async function resolveOrder(userId: string, listingId: string) {
+  const listing = await getListing(userId, listingId);
   if (!listing) return { error: "Not found", status: 404 as const };
-  if (!(await hasLogisticsScope())) {
+  if (!(await hasLogisticsScope(userId))) {
     return {
       error:
         "This eBay connection can't buy postage yet. Enable label buying on the Brain page to re-authorise with shipping permissions.",
@@ -27,7 +28,7 @@ async function resolveOrder(listingId: string) {
   if (!listing.ebayItemId) {
     return { error: "This listing isn't linked to an eBay item", status: 400 as const };
   }
-  const settings = await getSellerSettings();
+  const settings = await getSellerSettings(userId);
   const weight = listing.packageWeightOz ?? settings.defaultPackageWeightOz;
   if (!weight || weight <= 0) {
     return { error: "Set the packed weight before quoting postage", status: 400 as const };
@@ -40,21 +41,25 @@ async function resolveOrder(listingId: string) {
  * postage would cost and buys nothing, so it's safe to call on render.
  */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const resolved = await resolveOrder(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const resolved = await resolveOrder(userId, params.id);
   if ("error" in resolved) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
   const { listing, weight } = resolved;
 
   try {
-    const orderId = await findOrderIdForItem(listing.ebayItemId!);
+    const orderId = await findOrderIdForItem(userId, listing.ebayItemId!);
     if (!orderId) {
       return NextResponse.json(
         { error: "Couldn't find the eBay order for this sale — it may be too old to look up." },
         { status: 404 }
       );
     }
-    const quote = await getShippingRates(orderId, weight, listing.packageDimensionsIn);
+    const quote = await getShippingRates(userId, orderId, weight, listing.packageDimensionsIn);
     return NextResponse.json(quote);
   } catch (err) {
     return NextResponse.json(
@@ -74,7 +79,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
  * leave the buyer staring at an unshipped order.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const resolved = await resolveOrder(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const resolved = await resolveOrder(userId, params.id);
   if ("error" in resolved) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
@@ -98,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   let label;
   try {
-    label = await buyShippingLabel(shippingQuoteId, rateId);
+    label = await buyShippingLabel(userId, shippingQuoteId, rateId);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Couldn't buy the label" },
@@ -116,7 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   let syncedToEbay = false;
   if (label.trackingNumber) {
     try {
-      await markShipped(listing.ebayItemId!, label.trackingNumber, carrier);
+      await markShipped(userId, listing.ebayItemId!, label.trackingNumber, carrier);
       syncedToEbay = true;
     } catch {
       // Buyer-visible tracking failed; the seller can still retry from the
@@ -124,7 +133,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     shipping: {
       carrier: label.carrier || carrier,
       trackingNumber: label.trackingNumber,
@@ -147,6 +156,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ok: true,
     syncedToEbay,
     label,
-    listing: await getListing(listing.id),
+    listing: await getListing(userId, listing.id),
   });
 }

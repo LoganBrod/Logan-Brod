@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import {
   getListing,
@@ -21,6 +22,10 @@ const KINDS: ProposalKind[] = ["reprice", "retitle", "rewrite", "relist", "hold"
  * the Insight report, not 12 unreviewed changes hitting eBay.
  */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const insight = typeof body.insight === "string" ? body.insight.slice(0, 400) : "";
   const action: ProposalKind = KINDS.includes(body.action) ? body.action : "hold";
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "insight and matchListingIds are required" }, { status: 400 });
   }
 
-  const pending = await listProposals();
+  const pending = await listProposals(userId);
   const alreadyPending = new Set(
     pending.filter((p) => p.status === "pending").map((p) => p.listingId)
   );
@@ -44,13 +49,13 @@ export async function POST(req: NextRequest) {
       results.push({ listingId: id, created: false });
       continue;
     }
-    const listing = await getListing(id);
+    const listing = await getListing(userId, id);
     if (!listing) {
       results.push({ listingId: id, created: false });
       continue;
     }
     try {
-      const draft = await proposeListingChange(
+      const draft = await proposeListingChange(userId, 
         id,
         `Apply this specific playbook insight to this listing: "${insight}". A "${action}" change is what the playbook suggests here, but judge the listing on its own evidence too.`,
         0
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
       const proposal: Proposal = {
-        id: crypto.randomUUID().slice(0, 8),
+        id: crypto.randomUUID(),
         listingId: id,
         kind: draft.kind,
         summary: draft.summary,
@@ -74,7 +79,7 @@ export async function POST(req: NextRequest) {
         status: "pending",
         createdAt: new Date().toISOString(),
       };
-      await upsertProposal(proposal);
+      await upsertProposal(userId, proposal);
       results.push({ listingId: id, created: true, kind: draft.kind });
     } catch {
       results.push({ listingId: id, created: false });

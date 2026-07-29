@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing } from "@/lib/store";
 import { researchRetail } from "@/lib/brain";
 
@@ -10,7 +11,11 @@ export const maxDuration = 300;
  * because this one uses web search and is the slowest step in the pipeline.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     const retail = await researchRetail(query, compTitles);
     if (retail) {
-      await updateListing(listing.id, {
+      await updateListing(userId, listing.id, {
         retail: { ...retail, at: new Date().toISOString() },
       });
     }

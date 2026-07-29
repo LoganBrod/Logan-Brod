@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, getEbayTokens } from "@/lib/store";
 import { researchEbayComps } from "@/lib/ebay";
 import { getPhoto } from "@/lib/photos";
@@ -8,9 +9,13 @@ export const maxDuration = 120;
 
 /** Stage 2: comparable eBay listings, matched on the photo where possible. */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!(await getEbayTokens())) {
+  if (!(await getEbayTokens(userId))) {
     return NextResponse.json({ error: "eBay account isn't connected" }, { status: 400 });
   }
 
@@ -22,14 +27,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   let base64: string | undefined;
   const firstPhoto = listing.photos?.[0];
   if (firstPhoto) {
-    const photo = await getPhoto(firstPhoto);
+    const photo = await getPhoto(userId, firstPhoto);
     base64 = photo?.data.toString("base64");
   }
 
   try {
-    const result = await researchEbayComps(query, base64);
+    const result = await researchEbayComps(userId, query, base64);
     if (result.comps.length > 0) {
-      await updateListing(listing.id, {
+      await updateListing(userId, listing.id, {
         comps: {
           summary: result.note,
           priceLow: result.priceLow,

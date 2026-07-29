@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { listProposals, listListings, getLastResearchAt } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -6,10 +7,14 @@ export const dynamic = "force-dynamic";
 
 /** Proposals joined to the listings they refer to, newest first. */
 export async function GET() {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const [proposals, listings, lastResearchAt] = await Promise.all([
-    listProposals(),
-    listListings(),
-    getLastResearchAt(),
+    listProposals(userId),
+    listListings(userId),
+    getLastResearchAt(userId),
   ]);
   const byId = new Map(listings.map((l) => [l.id, l]));
 

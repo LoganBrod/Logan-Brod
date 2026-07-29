@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { savePhoto } from "@/lib/photos";
 
@@ -10,6 +11,10 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/h
 
 /** Upload one item photo. Returns its id; the image is served at /api/photos/[id]. */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!file || typeof file === "string") {
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
   try {
-    await savePhoto(id, bytes, contentType);
+    await savePhoto(userId, id, bytes, contentType);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Couldn't save the photo" },

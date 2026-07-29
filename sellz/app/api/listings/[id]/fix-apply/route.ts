@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, type RelistRecord } from "@/lib/store";
 import { relistItem, reviseEbayListing } from "@/lib/ebay";
 import { photoUrl } from "@/lib/photos";
@@ -22,7 +23,11 @@ export const maxDuration = 300;
  * it automatically.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (isLive) {
     try {
-      await reviseEbayListing(
+      await reviseEbayListing(userId, 
         listing.ebayItemId!,
         {
           ...(title ? { title } : {}),
@@ -93,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       // next the local copy has to record it — otherwise the app shows the old
       // title while the live listing shows the new one.
       const relistError = async (message: string, status: number) => {
-        await updateListing(listing.id, edits);
+        await updateListing(userId, listing.id, edits);
         return NextResponse.json(
           { error: `${message} The edits themselves are live on eBay and saved here.` },
           { status }
@@ -107,7 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         );
       }
       try {
-        const result = await relistItem(listing.ebayOfferId, price ?? listing.price);
+        const result = await relistItem(userId, listing.ebayOfferId, price ?? listing.price);
         relisted = {
           oldItemId: listing.ebayItemId ?? "",
           newItemId: result.newListingId,
@@ -123,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Mirror locally only after eBay accepted, so the app never shows a change
   // that did not actually land.
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     ...edits,
     ...(relisted
       ? {
@@ -138,6 +143,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ok: true,
     appliedToEbay: isLive,
     relisted: Boolean(relisted),
-    listing: await getListing(listing.id),
+    listing: await getListing(userId, listing.id),
   });
 }

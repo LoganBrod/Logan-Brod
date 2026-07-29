@@ -1,113 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listListings, updateListing, getSellerSettings } from "@/lib/store";
-import { publishToEbay } from "@/lib/ebay";
-import { getPhoto } from "@/lib/photos";
+import { listListings, updateListing } from "@/lib/store";
+import { publishListing } from "@/lib/publishListing";
+import { cronAuthorized, tenantsWithEbay } from "@/lib/cron";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 600;
 
 /**
- * Scheduled publish: checks for listings with status "scheduled" whose
- * scheduledPublishAt time has passed, and publishes them to eBay.
+ * Publishes listings whose scheduled time has arrived, across every tenant.
  *
- * Designed to be called by an external cron service every 15 minutes.
- * Protected by a simple bearer token in production.
+ * The actual publish is delegated to lib/publishListing so this and the
+ * interactive "Approve & list" path cannot drift apart — they previously had
+ * two separate copies of the same eBay call, and only one of them knew about
+ * the shipping-weight requirement.
  */
 export async function POST(req: NextRequest) {
-  // Simple auth: check for a cron secret if set
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const origin =
+    process.env.PUBLIC_SITE_URL ||
+    process.env.RAILWAY_PUBLIC_DOMAIN_URL ||
+    req.nextUrl.origin;
 
   const now = Date.now();
-  const listings = await listListings();
-  const scheduled = listings.filter(
-    (l) =>
-      l.status === "scheduled" &&
-      l.scheduledPublishAt &&
-      Date.parse(l.scheduledPublishAt) <= now
-  );
+  const results: { userId: string; listingId: string; ok: boolean; error?: string }[] = [];
 
-  if (scheduled.length === 0) {
-    return NextResponse.json({ ok: true, published: 0 });
-  }
-
-  const results: { listingId: string; ok: boolean; error?: string }[] = [];
-  const settings = await getSellerSettings();
-
-  for (const listing of scheduled) {
+  for (const userId of await tenantsWithEbay()) {
+    let due;
     try {
-      // Collect photo URLs for the listing
-      const imageUrls: string[] = [];
-      for (const photoId of listing.photos ?? []) {
-        const photo = await getPhoto(photoId);
-        if (photo) {
-          // Photos are served via the API route. PUBLIC_SITE_URL first, to
-          // match the interactive publish path — the two disagreeing means a
-          // scheduled listing points its images at a different host.
-          const base =
-            process.env.PUBLIC_SITE_URL ||
-            process.env.URL ||
-            process.env.DEPLOY_URL ||
-            "http://localhost:3000";
-          imageUrls.push(`${base}/api/photos/${photoId}`);
-        }
+      due = (await listListings(userId)).filter(
+        (l) =>
+          l.status === "scheduled" &&
+          l.scheduledPublishAt &&
+          Date.parse(l.scheduledPublishAt) <= now
+      );
+    } catch {
+      continue;
+    }
+
+    for (const listing of due) {
+      const outcome = await publishListing(userId, listing.id, origin);
+      if (outcome.ok) {
+        // Clear the schedule so the listing cannot be picked up again on the
+        // next pass. The store maps a present-but-undefined key to an explicit
+        // null for exactly this case.
+        await updateListing(userId, listing.id, { scheduledPublishAt: undefined });
       }
-
-      if (imageUrls.length === 0) {
-        results.push({
-          listingId: listing.id,
-          ok: false,
-          error: "No photos available for publishing",
-        });
-        continue;
-      }
-
-      const sku = `levoz-${listing.id}-${Date.now()}`;
-      const result = await publishToEbay({
-        sku,
-        title: listing.title,
-        description: listing.description,
-        price: listing.price,
-        condition: listing.condition,
-        imageUrls,
-        itemSpecifics: listing.itemSpecifics?.map((s) => ({
-          name: s.name,
-          value: s.value,
-        })),
-        // Without this eBay rejects the publish on calculated shipping, and
-        // there is no one watching a cron run to read the error.
-        packageWeightOz: listing.packageWeightOz ?? settings.defaultPackageWeightOz,
-        packageDimensionsIn: listing.packageDimensionsIn,
-      });
-
-      await updateListing(listing.id, {
-        status: "active",
-        ebayItemId: result.listingId,
-        ebaySku: sku,
-        // Needed to end this listing again later; relist acts on the offer id.
-        ebayOfferId: result.offerId || undefined,
-        publishedAt: new Date().toISOString(),
-        scheduledPublishAt: undefined,
-        outcome: {
-          views: 0,
-          watchers: 0,
-          offers: 0,
-          listedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      });
-
-      results.push({ listingId: listing.id, ok: true });
-    } catch (err) {
       results.push({
+        userId,
         listingId: listing.id,
-        ok: false,
-        error: err instanceof Error ? err.message : "Publish failed",
+        ok: outcome.ok,
+        error: outcome.error,
       });
     }
   }

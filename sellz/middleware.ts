@@ -1,0 +1,61 @@
+import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
+import { authConfig } from "./auth.config";
+
+// Edge-safe config only — see the comment in auth.config.ts.
+const { auth } = NextAuth(authConfig);
+
+/** Exact paths anyone may reach. */
+const PUBLIC_PATHS = new Set(["/", "/pricing", "/login", "/signup"]);
+
+/**
+ * Path prefixes that authenticate themselves rather than by session:
+ * - /api/auth/*      the sign-in flow itself
+ * - /api/cron/*       machine-called, guarded by CRON_SECRET
+ * - /api/stripe/webhook  Stripe signs the payload; it carries no session
+ * - /api/research     dual-auth: a browser session OR the cron secret, decided
+ *                     inside the route because both callers are legitimate
+ * - /api/ebay/callback eBay redirects the browser here; the tenant travels in
+ *                     a signed state parameter, not a session
+ */
+const SELF_GUARDED_PREFIXES = [
+  "/api/auth/",
+  "/api/cron/",
+  "/api/stripe/webhook",
+  "/api/research",
+  "/api/ebay/callback",
+];
+
+/**
+ * Serving one photo is public because eBay fetches listing images by URL and
+ * cannot present a session — the unguessable id is the capability. Note this
+ * matches only `/api/photos/<id>`; the bare `/api/photos` upload endpoint is
+ * NOT public and stays behind the session check.
+ */
+const PUBLIC_PHOTO = /^\/api\/photos\/[^/]+$/;
+
+function isPublic(pathname: string): boolean {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (PUBLIC_PHOTO.test(pathname)) return true;
+  return SELF_GUARDED_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+  if (isPublic(pathname)) return NextResponse.next();
+  if (req.auth?.user) return NextResponse.next();
+
+  // API callers get a status they can act on; page requests get the login
+  // screen with a return path so they land where they were headed.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const login = new URL("/login", req.nextUrl.origin);
+  login.searchParams.set("next", pathname);
+  return NextResponse.redirect(login);
+});
+
+export const config = {
+  // Everything except Next internals and static files.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico)$).*)"],
+};

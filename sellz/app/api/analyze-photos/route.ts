@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { getPhoto } from "@/lib/photos";
 import { generateFromPhotos, pickExperiment } from "@/lib/brain";
@@ -17,6 +18,10 @@ export const maxDuration = 300;
  * feature fail rather than just be slow.
  */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const photoIds: string[] = Array.isArray(body.photoIds)
     ? body.photoIds.filter((p: unknown) => typeof p === "string").slice(0, 8)
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const images: { base64: string; mediaType: string }[] = [];
   for (const id of photoIds) {
-    const photo = await getPhoto(id);
+    const photo = await getPhoto(userId, id);
     if (!photo) {
       return NextResponse.json({ error: `Photo ${id} is missing` }, { status: 404 });
     }
@@ -40,11 +45,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const first = await generateFromPhotos(images, notes);
-    const experimentId = await pickExperiment();
+    const first = await generateFromPhotos(userId, images, notes);
+    const experimentId = await pickExperiment(userId);
 
     const listing: Listing = {
-      id: crypto.randomUUID().slice(0, 8),
+      id: crypto.randomUUID(),
       platform: "ebay",
       title: first.title,
       description: first.description,
@@ -61,7 +66,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    await addListing(listing);
+    await addListing(userId, listing);
 
     return NextResponse.json({
       listing,
@@ -77,7 +82,7 @@ export async function POST(req: NextRequest) {
       // The client drives the remaining stages with these
       query: [first.brand, first.identified, first.size].filter(Boolean).join(" "),
       notes,
-      ebayConnected: Boolean(await getEbayTokens()),
+      ebayConnected: Boolean(await getEbayTokens(userId)),
     });
   } catch (err) {
     return NextResponse.json(

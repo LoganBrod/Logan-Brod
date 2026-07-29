@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { addListing, listListings, type Listing } from "@/lib/store";
 import { scoreListing } from "@/lib/brain";
@@ -7,11 +8,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(await listListings());
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  return NextResponse.json(await listListings(userId));
 }
 
 /** Import an existing listing (sold, active, or stuck). */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const s = (v: unknown, max: number, fallback = "") =>
     typeof v === "string" ? v.trim().slice(0, max) : fallback;
@@ -27,7 +36,7 @@ export async function POST(req: NextRequest) {
     : "active";
 
   const listing: Listing = {
-    id: crypto.randomUUID().slice(0, 8),
+    id: crypto.randomUUID(),
     platform: ["ebay", "depop", "other"].includes(body.platform) ? body.platform : "other",
     title,
     description: s(body.description, 4000),
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
     };
   }
 
-  await addListing(listing);
-  if (listing.status === "draft") void scoreListing(listing.id);
+  await addListing(userId, listing);
+  if (listing.status === "draft") void scoreListing(userId, listing.id);
   return NextResponse.json(listing);
 }

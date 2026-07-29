@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getProposal, getListing, updateListing, updateProposal, type RelistRecord } from "@/lib/store";
 import { reviseEbayListing, relistItem } from "@/lib/ebay";
 
@@ -11,7 +12,11 @@ export const maxDuration = 120;
  * recreating it.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const proposal = await getProposal(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const proposal = await getProposal(userId, params.id);
   if (!proposal) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (proposal.status !== "pending") {
     return NextResponse.json(
@@ -24,14 +29,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const action = body.action === "approve" ? "approve" : "dismiss";
 
   if (action === "dismiss") {
-    await updateProposal(proposal.id, {
+    await updateProposal(userId, proposal.id, {
       status: "dismissed",
       resolvedAt: new Date().toISOString(),
     });
     return NextResponse.json({ ok: true, status: "dismissed" });
   }
 
-  const listing = await getListing(proposal.listingId);
+  const listing = await getListing(userId, proposal.listingId);
   if (!listing) return NextResponse.json({ error: "Listing is gone" }, { status: 404 });
   if (!listing.ebayItemId) {
     return NextResponse.json(
@@ -48,12 +53,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!listing.ebayOfferId) {
       const message =
         "This listing wasn't published through LevoZ, so there's no eBay offer to withdraw — it can't be relisted from here.";
-      await updateProposal(proposal.id, { status: "failed", error: message });
+      await updateProposal(userId, proposal.id, { status: "failed", error: message });
       return NextResponse.json({ error: message }, { status: 409 });
     }
     try {
       const newPrice = proposal.proposedPrice ?? listing.price;
-      const result = await relistItem(listing.ebayOfferId, newPrice);
+      const result = await relistItem(userId, listing.ebayOfferId, newPrice);
       const record: RelistRecord = {
         oldItemId: listing.ebayItemId ?? "",
         newItemId: result.newListingId,
@@ -61,21 +66,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         newPrice,
         at: new Date().toISOString(),
       };
-      await updateListing(listing.id, {
+      await updateListing(userId, listing.id, {
         ebayItemId: result.newListingId,
         price: newPrice,
         relistHistory: [...(listing.relistHistory ?? []), record],
         lastRelistedAt: record.at,
       });
-      await updateProposal(proposal.id, { status: "applied", resolvedAt: record.at });
+      await updateProposal(userId, proposal.id, { status: "applied", resolvedAt: record.at });
       return NextResponse.json({
         ok: true,
         status: "applied",
-        listing: await getListing(listing.id),
+        listing: await getListing(userId, listing.id),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Relist failed";
-      await updateProposal(proposal.id, { status: "failed", error: message });
+      await updateProposal(userId, proposal.id, { status: "failed", error: message });
       return NextResponse.json({ error: message }, { status: 502 });
     }
   }
@@ -87,24 +92,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   };
 
   try {
-    await reviseEbayListing(listing.ebayItemId, changes, listing.ebayListingType);
+    await reviseEbayListing(userId, listing.ebayItemId, changes, listing.ebayListingType);
   } catch (err) {
     const message = err instanceof Error ? err.message : "eBay rejected the change";
-    await updateProposal(proposal.id, { status: "failed", error: message });
+    await updateProposal(userId, proposal.id, { status: "failed", error: message });
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
   // Only mirror locally once eBay has accepted it, so the app never claims a
   // change that did not actually land.
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     ...(changes.price !== undefined ? { price: changes.price } : {}),
     ...(changes.title ? { title: changes.title } : {}),
     ...(changes.description ? { description: changes.description } : {}),
   });
-  await updateProposal(proposal.id, {
+  await updateProposal(userId, proposal.id, {
     status: "applied",
     resolvedAt: new Date().toISOString(),
   });
 
-  return NextResponse.json({ ok: true, status: "applied", listing: await getListing(listing.id) });
+  return NextResponse.json({ ok: true, status: "applied", listing: await getListing(userId, listing.id) });
 }

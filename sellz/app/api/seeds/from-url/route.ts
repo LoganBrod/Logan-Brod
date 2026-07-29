@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { addSeedListing, getEbayTokens, listSeedListings } from "@/lib/store";
 import { fetchEbayItem, parseEbayItemId, type EbayItemDetail } from "@/lib/ebay";
@@ -48,7 +49,11 @@ function stats(d: EbayItemDetail): string | undefined {
  * down into a reference listing.
  */
 export async function POST(req: NextRequest) {
-  if (!(await getEbayTokens())) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  if (!(await getEbayTokens(userId))) {
     return NextResponse.json(
       { error: "Connect your eBay account first — the links are looked up through eBay." },
       { status: 400 }
@@ -84,13 +89,13 @@ export async function POST(req: NextRequest) {
     seen.add(itemId);
 
     try {
-      const detail = await fetchEbayItem(itemId);
+      const detail = await fetchEbayItem(userId, itemId);
       if (!detail.title) {
         results.push({ input, ok: false, error: "eBay returned no listing for that link" });
         continue;
       }
-      await addSeedListing({
-        id: crypto.randomUUID().slice(0, 8),
+      await addSeedListing(userId, {
+        id: crypto.randomUUID(),
         description: describe(detail),
         source: detail.url ?? `https://www.ebay.com/itm/${itemId}`,
         stats: stats(detail),
@@ -110,6 +115,6 @@ export async function POST(req: NextRequest) {
     added: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
     results,
-    seeds: await listSeedListings(),
+    seeds: await listSeedListings(userId),
   });
 }

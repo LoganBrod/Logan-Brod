@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing } from "@/lib/store";
 import { researchComps } from "@/lib/brain";
 
@@ -10,11 +11,15 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
-    await researchComps(listing.id);
-    return NextResponse.json(await getListing(listing.id));
+    await researchComps(userId, listing.id);
+    return NextResponse.json(await getListing(userId, listing.id));
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Comps research failed" },

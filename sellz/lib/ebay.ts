@@ -80,7 +80,15 @@ function ebayHeaders(tokens: EbayTokens): Record<string, string> {
   };
 }
 
-export function getAuthorizeUrl(opts?: { includeLogistics?: boolean }): string {
+export function getAuthorizeUrl(opts?: {
+  includeLogistics?: boolean;
+  /**
+   * Signed tenant marker echoed back by eBay to the callback. Required in
+   * practice — the callback has no other way to know whose account this is,
+   * since the RuName pins one callback URL for the whole app.
+   */
+  state?: string;
+}): string {
   requireCreds();
   const params = new URLSearchParams({
     client_id: process.env.EBAY_CLIENT_ID!,
@@ -88,6 +96,7 @@ export function getAuthorizeUrl(opts?: { includeLogistics?: boolean }): string {
     response_type: "code",
     scope: opts?.includeLogistics ? `${SCOPES} ${LOGISTICS_SCOPE}` : SCOPES,
   });
+  if (opts?.state) params.set("state", opts.state);
   return `${AUTH_BASE[env()]}/oauth2/authorize?${params.toString()}`;
 }
 
@@ -96,8 +105,8 @@ export function getAuthorizeUrl(opts?: { includeLogistics?: boolean }): string {
  * support existed, and any keyset eBay hasn't approved for the Limited
  * Release Logistics API, will not have it.
  */
-export async function hasLogisticsScope(): Promise<boolean> {
-  const tokens = await getEbayTokens();
+export async function hasLogisticsScope(userId: string): Promise<boolean> {
+  const tokens = await getEbayTokens(userId);
   return Boolean(tokens?.grantedScopes?.includes(LOGISTICS_SCOPE));
 }
 
@@ -130,7 +139,7 @@ export function missingPublishScopes(granted?: string): string[] {
   return PUBLISH_SCOPES.filter((s) => !granted.includes(s));
 }
 
-export async function exchangeCodeForTokens(code: string): Promise<void> {
+export async function exchangeCodeForTokens(userId: string, code: string): Promise<void> {
   requireCreds();
   const e = env();
   const res = await fetch(`${API_BASE[e]}/identity/v1/oauth2/token`, {
@@ -152,7 +161,7 @@ export async function exchangeCodeForTokens(code: string): Promise<void> {
   if (!data.refresh_token) {
     throw new Error("eBay didn't return a refresh token — check the app's requested scopes");
   }
-  await setEbayTokens({
+  await setEbayTokens(userId, {
     env: e,
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
@@ -164,7 +173,7 @@ export async function exchangeCodeForTokens(code: string): Promise<void> {
   });
 }
 
-async function refreshAccessToken(tokens: EbayTokens): Promise<EbayTokens> {
+async function refreshAccessToken(userId: string, tokens: EbayTokens): Promise<EbayTokens> {
   requireCreds();
   // A refresh token can only ever request the scopes it was granted at
   // consent. Sending the current SCOPES list means every connection made
@@ -201,21 +210,21 @@ async function refreshAccessToken(tokens: EbayTokens): Promise<EbayTokens> {
     accessToken: data.access_token,
     accessTokenExpiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
   };
-  await setEbayTokens(updated);
+  await setEbayTokens(userId, updated);
   return updated;
 }
 
 /** A valid access token, refreshing first if it's expired or about to be. */
-async function getValidTokens(): Promise<EbayTokens> {
-  const tokens = await getEbayTokens();
+async function getValidTokens(userId: string): Promise<EbayTokens> {
+  const tokens = await getEbayTokens(userId);
   if (!tokens) throw new Error("eBay account isn't connected yet");
   const expiresInMs = new Date(tokens.accessTokenExpiresAt).getTime() - Date.now();
   if (expiresInMs > 60_000) return tokens;
-  return refreshAccessToken(tokens);
+  return refreshAccessToken(userId, tokens);
 }
 
-export async function isEbayConnected(): Promise<boolean> {
-  return Boolean(await getEbayTokens());
+export async function isEbayConnected(userId: string): Promise<boolean> {
+  return Boolean(await getEbayTokens(userId));
 }
 
 export interface EbayListingStats {
@@ -285,8 +294,8 @@ async function fetchSale(
   return {};
 }
 
-export async function fetchListingStats(itemId: string): Promise<EbayListingStats> {
-  const tokens = await getValidTokens();
+export async function fetchListingStats(userId: string, itemId: string): Promise<EbayListingStats> {
+  const tokens = await getValidTokens(userId);
   const [views, sale] = await Promise.all([fetchViews(itemId, tokens), fetchSale(itemId, tokens)]);
   return { views, ...sale };
 }
@@ -352,8 +361,8 @@ async function browseActiveComps(query: string, tokens: EbayTokens): Promise<Eba
  * are not confident what the item is called, because eBay matches on the
  * picture and hands back what real sellers titled the same thing.
  */
-export async function compsByImage(base64Image: string): Promise<EbayComp[]> {
-  const tokens = await getValidTokens();
+export async function compsByImage(userId: string, base64Image: string): Promise<EbayComp[]> {
+  const tokens = await getValidTokens(userId);
   const res = await fetch(`${API_BASE[tokens.env]}/buy/browse/v1/item_summary/search_by_image`, {
     method: "POST",
     headers: { ...ebayHeaders(tokens), "Content-Type": "application/json" },
@@ -447,16 +456,17 @@ function median(nums: number[]): number | undefined {
  * otherwise falling back to asking prices from highly-rated sellers.
  */
 export async function researchEbayComps(
+  userId: string,
   query: string,
   base64Image?: string
 ): Promise<CompsResult> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   const [sold, active, visual] = await Promise.all([
     insightsSoldComps(query, tokens).catch(() => []),
     browseActiveComps(query, tokens).catch(() => []),
     // Visual matches are the strongest signal we have when the item is hard
     // to name, so they are gathered alongside the keyword search.
-    base64Image ? compsByImage(base64Image).catch(() => []) : Promise.resolve([]),
+    base64Image ? compsByImage(userId, base64Image).catch(() => []) : Promise.resolve([]),
   ]);
 
   const soldDataAvailable = sold.length > 0;
@@ -547,8 +557,8 @@ async function ebayGet<T>(pathname: string, tokens: EbayTokens): Promise<T | nul
  * fulfillment business policies plus an inventory location. Check up front so
  * we can tell the seller exactly what to set up instead of failing at publish.
  */
-export async function checkPublishReadiness(): Promise<PublishReadiness> {
-  const tokens = await getValidTokens();
+export async function checkPublishReadiness(userId: string): Promise<PublishReadiness> {
+  const tokens = await getValidTokens(userId);
   const q = `?marketplace_id=${MARKETPLACE_ID}`;
 
   const [payment, fulfillment, returnPol, locations] = await Promise.all([
@@ -586,7 +596,7 @@ interface PolicyIds {
   merchantLocationKey: string;
 }
 
-async function resolvePolicies(tokens: EbayTokens): Promise<PolicyIds> {
+async function resolvePolicies(userId: string, tokens: EbayTokens): Promise<PolicyIds> {
   const q = `?marketplace_id=${MARKETPLACE_ID}`;
   const [payment, fulfillment, returnPol, locations] = await Promise.all([
     ebayGet<{ paymentPolicies?: { paymentPolicyId: string }[] }>(
@@ -613,7 +623,7 @@ async function resolvePolicies(tokens: EbayTokens): Promise<PolicyIds> {
   const merchantLocationKey = locations?.locations?.[0]?.merchantLocationKey;
 
   if (!paymentPolicyId || !fulfillmentPolicyId || !returnPolicyId || !merchantLocationKey) {
-    const readiness = await checkPublishReadiness();
+    const readiness = await checkPublishReadiness(userId);
     throw new Error(
       `eBay needs these set up on your seller account before it can publish: ${readiness.missing.join(", ")}. Set them in My eBay > Account > Business Policies.`
     );
@@ -909,13 +919,13 @@ export interface PublishResult {
  * Create and publish a real, buyable eBay listing. Inventory item -> offer ->
  * publish. Anything already existing under this SKU is replaced.
  */
-export async function publishToEbay(input: PublishInput): Promise<PublishResult> {
-  const tokens = await getValidTokens();
+export async function publishToEbay(userId: string, input: PublishInput): Promise<PublishResult> {
+  const tokens = await getValidTokens(userId);
   if (input.imageUrls.length === 0) {
     throw new Error("eBay requires at least one photo URL to publish a listing");
   }
 
-  const policies = await resolvePolicies(tokens);
+  const policies = await resolvePolicies(userId, tokens);
 
   // Category first: it decides which conditions are even legal, and sending
   // one the category rejects fails the inventory item with an opaque error.
@@ -942,7 +952,7 @@ export async function publishToEbay(input: PublishInput): Promise<PublishResult>
   // Category-required aspects (e.g. Trading Cards' "Card Condition") fail the
   // whole publish if missing, so they're resolved here rather than trusting
   // whatever specifics the AI happened to extract.
-  const categoryAspects = categoryId ? await fetchCategoryAspects(categoryId).catch(() => []) : [];
+  const categoryAspects = categoryId ? await fetchCategoryAspects(userId, categoryId).catch(() => []) : [];
   const aspects = buildInventoryAspects(
     (input.itemSpecifics ?? []).map((s) => ({ ...s, source: "inferred" as const })),
     categoryAspects,
@@ -1173,8 +1183,8 @@ function mapTradingItem(it: TradingItem, status: EbayLiveListing["status"]): Eba
  * Every active, sold and unsold listing on the connected account.
  * Paged at 200 per list, which covers a normal reseller's inventory.
  */
-export async function fetchAllEbayListings(): Promise<EbayLiveListing[]> {
-  const tokens = await getValidTokens();
+export async function fetchAllEbayListings(userId: string): Promise<EbayLiveListing[]> {
+  const tokens = await getValidTokens(userId);
   const page = `<Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>1</PageNumber></Pagination>`;
   const root = await tradingCall(
     "GetMyeBaySelling",
@@ -1237,8 +1247,8 @@ interface GetItemResponseItem extends TradingItem {
  * image and no specifics, so anything that needs the real photo set or the
  * item specifics has to ask for the item itself.
  */
-export async function fetchEbayItem(itemId: string): Promise<EbayItemDetail> {
-  const tokens = await getValidTokens();
+export async function fetchEbayItem(userId: string, itemId: string): Promise<EbayItemDetail> {
+  const tokens = await getValidTokens(userId);
   const root = await tradingCall(
     "GetItem",
     `<ItemID>${itemId}</ItemID>
@@ -1338,6 +1348,7 @@ export function parseEbayItemId(input: string): string | null {
  * repeatedly recycling listings to reset their exposure as abuse.
  */
 export async function reviseEbayListing(
+  userId: string,
   itemId: string,
   changes: {
     price?: number;
@@ -1349,7 +1360,7 @@ export async function reviseEbayListing(
   },
   listingType?: string
 ): Promise<void> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   const parts: string[] = [`<ItemID>${itemId}</ItemID>`];
   if (changes.title) parts.push(`<Title><![CDATA[${changes.title.slice(0, 80)}]]></Title>`);
   if (changes.description)
@@ -1400,8 +1411,8 @@ interface TaxonomyAspect {
  * Returns required and recommended fields with example values so the AI
  * knows what to extract from photos.
  */
-export async function fetchCategoryAspects(categoryId: string): Promise<EbayAspect[]> {
-  const tokens = await getValidTokens();
+export async function fetchCategoryAspects(userId: string, categoryId: string): Promise<EbayAspect[]> {
+  const tokens = await getValidTokens(userId);
   // Get the default category tree for the US marketplace
   const tree = await ebayGet<{ categoryTreeId?: string }>(
     `/commerce/taxonomy/v1/get_default_category_tree_id?marketplace_id=${MARKETPLACE_ID}`,
@@ -1566,12 +1577,13 @@ export interface AspectGaps {
  * already approved the listing.
  */
 export async function resolveAspectGaps(
+  userId: string,
   title: string,
   itemSpecifics: ItemSpecific[]
 ): Promise<AspectGaps> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   const categoryId = await suggestCategoryId(title, tokens);
-  const aspects = categoryId ? await fetchCategoryAspects(categoryId).catch(() => []) : [];
+  const aspects = categoryId ? await fetchCategoryAspects(userId, categoryId).catch(() => []) : [];
   const mapped = mapSpecificsToAspects(itemSpecifics, aspects);
   const covered = new Set(mapped.map((m) => m.name));
   const missingRequired = aspects.filter((a) => a.required && !covered.has(a.name));
@@ -1617,8 +1629,8 @@ interface EbayOffer {
  * The same offer is reused rather than a new one created, because eBay allows
  * only one offer per SKU per marketplace.
  */
-export async function relistItem(offerId: string, newPrice: number): Promise<RelistResult> {
-  const tokens = await getValidTokens();
+export async function relistItem(userId: string, offerId: string, newPrice: number): Promise<RelistResult> {
+  const tokens = await getValidTokens(userId);
   const id = encodeURIComponent(offerId);
 
   // 1. Read the current offer. A miss here means the id is wrong (very often
@@ -1703,8 +1715,8 @@ export interface InventoryLocationSummary {
 /** The key we create ours under, so repeat calls update rather than duplicate. */
 const DEFAULT_LOCATION_KEY = "levoz-default";
 
-export async function listInventoryLocations(): Promise<InventoryLocationSummary[]> {
-  const tokens = await getValidTokens();
+export async function listInventoryLocations(userId: string): Promise<InventoryLocationSummary[]> {
+  const tokens = await getValidTokens(userId);
   const data = await ebayGet<{
     locations?: {
       merchantLocationKey: string;
@@ -1732,9 +1744,10 @@ export async function listInventoryLocations(): Promise<InventoryLocationSummary
  * state + country; a full street address is not needed for a warehouse.
  */
 export async function createInventoryLocation(
+  userId: string,
   input: InventoryLocationInput
 ): Promise<InventoryLocationSummary> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
 
   const country = input.country.trim().toUpperCase();
   if (country.length !== 2) {
@@ -1775,7 +1788,7 @@ export async function createInventoryLocation(
     throw ebayError("Creating the eBay inventory location", res);
   }
 
-  const locations = await listInventoryLocations();
+  const locations = await listInventoryLocations(userId);
   const mine = locations.find((l) => l.merchantLocationKey === DEFAULT_LOCATION_KEY);
   return (
     mine ?? {
@@ -1813,8 +1826,8 @@ interface TradingTransaction {
  * resale is quantity 1, so this is normally the only transaction; the most
  * recent one is used when there happen to be more.
  */
-async function getLatestTransactionId(itemId: string): Promise<string | null> {
-  const tokens = await getValidTokens();
+async function getLatestTransactionId(userId: string, itemId: string): Promise<string | null> {
+  const tokens = await getValidTokens(userId);
   const root = await tradingCall(
     "GetItemTransactions",
     `<ItemID>${itemId}</ItemID><NumberOfTransactions>10</NumberOfTransactions>`,
@@ -1833,12 +1846,13 @@ async function getLatestTransactionId(itemId: string): Promise<string | null> {
  * sees it and the order closes out properly — not just a note kept locally.
  */
 export async function markShipped(
+  userId: string,
   itemId: string,
   trackingNumber: string,
   carrier: ShippingCarrier
 ): Promise<void> {
-  const tokens = await getValidTokens();
-  const transactionId = await getLatestTransactionId(itemId);
+  const tokens = await getValidTokens(userId);
+  const transactionId = await getLatestTransactionId(userId, itemId);
   if (!transactionId) {
     throw new Error("Couldn't find the order for this listing on eBay to mark shipped");
   }
@@ -1867,8 +1881,8 @@ export async function markShipped(
  * not listings — an item id identifies what was sold, the order identifies
  * the sale that needs posting.
  */
-export async function findOrderIdForItem(itemId: string): Promise<string | null> {
-  const tokens = await getValidTokens();
+export async function findOrderIdForItem(userId: string, itemId: string): Promise<string | null> {
+  const tokens = await getValidTokens(userId);
   const data = await ebayGet<{ orders?: (Order & { orderId?: string })[] }>(
     `/sell/fulfillment/v1/order?limit=50`,
     tokens
@@ -1921,11 +1935,12 @@ function describeWindow(min?: string, max?: string): string | undefined {
  * reused.
  */
 export async function getShippingRates(
+  userId: string,
   orderId: string,
   packageWeightOz: number,
   dimensions?: { length: number; width: number; height: number }
 ): Promise<ShippingQuote> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   const res = await ebaySend(
     "POST",
     "/sell/logistics/v1/shipping_quote",
@@ -1973,10 +1988,11 @@ export interface PurchasedLabel {
  * side effect of anything else.
  */
 export async function buyShippingLabel(
+  userId: string,
   shippingQuoteId: string,
   rateId: string
 ): Promise<PurchasedLabel> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   const res = await ebaySend(
     "POST",
     "/sell/logistics/v1/shipment/create_from_shipping_quote",
@@ -2022,8 +2038,8 @@ function bestOfferPrice(p: TradingBestOffer["Price"]): number {
  * after 48 hours, so "Pending" is always a live, actionable list — nothing
  * here has already been settled one way or another.
  */
-export async function getPendingBestOffers(itemId: string): Promise<BestOfferSummary[]> {
-  const tokens = await getValidTokens();
+export async function getPendingBestOffers(userId: string, itemId: string): Promise<BestOfferSummary[]> {
+  const tokens = await getValidTokens(userId);
   const root = await tradingCall("GetBestOffers", `<ItemID>${itemId}</ItemID>`, tokens);
   const offers = asArray(
     (root.BestOfferArray as { BestOffer?: TradingBestOffer | TradingBestOffer[] } | undefined)
@@ -2042,11 +2058,12 @@ export async function getPendingBestOffers(itemId: string): Promise<BestOfferSum
 /** Accepts or declines a specific Best Offer. eBay settles the sale itself
  * once accepted — nothing further to publish or revise here. */
 export async function respondToBestOffer(
+  userId: string,
   itemId: string,
   bestOfferId: string,
   action: "Accept" | "Decline"
 ): Promise<void> {
-  const tokens = await getValidTokens();
+  const tokens = await getValidTokens(userId);
   await tradingCall(
     "RespondToBestOffer",
     `<ItemID>${itemId}</ItemID><BestOfferID>${bestOfferId}</BestOfferID><Action>${action}</Action>`,

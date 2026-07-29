@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing } from "@/lib/store";
 import { markShipped, SHIPPING_CARRIERS, type ShippingCarrier } from "@/lib/ebay";
 
@@ -12,7 +13,11 @@ export const maxDuration = 60;
  * would close the loop for us but not for them.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const listing = await getListing(params.id);
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
+  const listing = await getListing(userId, params.id);
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (listing.ebayItemId) {
     try {
-      await markShipped(listing.ebayItemId, trackingNumber, carrier);
+      await markShipped(userId, listing.ebayItemId, trackingNumber, carrier);
       syncedToEbay = true;
     } catch (err) {
       // Still record it locally — a failed eBay push shouldn't make the
@@ -38,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const shippedAt = new Date().toISOString();
-  await updateListing(listing.id, {
+  await updateListing(userId, listing.id, {
     shipping: { carrier, trackingNumber, shippedAt, syncedToEbay },
   });
 
@@ -46,6 +51,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ok: true,
     syncedToEbay,
     ebayError,
-    listing: await getListing(listing.id),
+    listing: await getListing(userId, listing.id),
   });
 }

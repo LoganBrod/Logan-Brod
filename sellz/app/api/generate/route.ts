@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth";
 import crypto from "crypto";
 import { addListing, type Listing } from "@/lib/store";
 import {
@@ -13,6 +14,10 @@ export const maxDuration = 600;
 
 /** Generate listing drafts for a described item; kicks scoring. */
 export async function POST(req: NextRequest) {
+  const userId = await currentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
+  }
   const body = await req.json().catch(() => ({}));
   const platform = ["ebay", "depop", "other"].includes(body.platform)
     ? body.platform
@@ -23,15 +28,15 @@ export async function POST(req: NextRequest) {
   try {
     const listings: Listing[] = [];
     for (let i = 0; i < count; i++) {
-      const experimentId = await pickExperiment();
-      const [gen] = await generateListings(
+      const experimentId = await pickExperiment(userId);
+      const [gen] = await generateListings(userId, 
         item,
         platform,
         1,
-        await experimentInstruction(experimentId)
+        await experimentInstruction(userId, experimentId)
       );
       const listing: Listing = {
-        id: crypto.randomUUID().slice(0, 8),
+        id: crypto.randomUUID(),
         platform,
         title: gen.title,
         description: gen.description,
@@ -45,8 +50,8 @@ export async function POST(req: NextRequest) {
         experimentId,
         createdAt: new Date().toISOString(),
       };
-      await addListing(listing);
-      void scoreListing(listing.id);
+      await addListing(userId, listing);
+      void scoreListing(userId, listing.id);
       listings.push(listing);
     }
     return NextResponse.json(listings);
