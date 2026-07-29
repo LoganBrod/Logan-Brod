@@ -199,6 +199,17 @@ export interface Experiment {
   instruction: string;
 }
 
+/**
+ * One playbook insight turned into something clickable: a concrete pattern
+ * tied to the specific listings it applies to, rather than prose the seller
+ * reads once and forgets.
+ */
+export interface ActionCard {
+  insight: string;
+  action: ProposalKind;
+  matchListingIds: string[];
+}
+
 export interface Playbook {
   updatedAt: string;
   summary: string;
@@ -209,6 +220,7 @@ export interface Playbook {
   avoid: string;
   experiments?: Experiment[];
   experimentResults?: string;
+  actionCards?: ActionCard[];
 }
 
 /** A reference listing (someone else's sale) fed to the Brain */

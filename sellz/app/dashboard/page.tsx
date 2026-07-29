@@ -17,7 +17,61 @@ interface Listing {
   source: "imported" | "generated";
   outcome?: { soldPrice?: number; listedAt?: string; soldAt?: string };
   brainScore?: { score: number };
+  lastRelistedAt?: string;
   createdAt: string;
+}
+
+interface Proposal {
+  listingId: string;
+  kind: string;
+  status: string;
+  resolvedAt?: string;
+}
+
+const LAST_VISIT_KEY = "levoz-dashboard-last-visit";
+
+function daysSince(iso?: string): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!isFinite(t)) return null;
+  return Math.round((Date.now() - t) / 86400000);
+}
+
+/**
+ * One line covering what happened since the seller last looked, computed
+ * entirely from data already on the page — no new backend endpoint, since
+ * "since last visit" is a client-local notion (there's one seller, one
+ * browser) tracked in localStorage rather than a server-side session.
+ */
+function buildPulse(listings: Listing[], proposals: Proposal[], since: number): string | null {
+  const soldSince = listings.filter(
+    (l) => l.status === "sold" && l.outcome?.soldAt && Date.parse(l.outcome.soldAt) > since
+  );
+  const revenueSince = soldSince.reduce((sum, l) => sum + (l.outcome?.soldPrice ?? 0), 0);
+  const autoAppliedSince = proposals.filter(
+    (p) => p.status === "auto-applied" && p.resolvedAt && Date.parse(p.resolvedAt) > since
+  );
+  const needsAttention = listings.filter((l) => {
+    if (l.status === "stale") return true;
+    if (l.status !== "active") return false;
+    const days = daysSince(l.lastRelistedAt);
+    return days !== null && days >= 60;
+  });
+
+  const parts: string[] = [];
+  if (soldSince.length > 0) {
+    parts.push(
+      `${soldSince.length} listing${soldSince.length === 1 ? "" : "s"} sold for $${revenueSince.toFixed(0)}`
+    );
+  }
+  if (autoAppliedSince.length > 0) {
+    parts.push(`${autoAppliedSince.length} change${autoAppliedSince.length === 1 ? "" : "s"} applied automatically`);
+  }
+  if (needsAttention.length > 0) {
+    parts.push(`${needsAttention.length} listing${needsAttention.length === 1 ? "" : "s"} need attention`);
+  }
+  if (parts.length === 0) return null;
+  return `Since your last visit: ${parts.join(", ")}.`;
 }
 
 interface Playbook {
@@ -47,6 +101,7 @@ export default function Dashboard() {
   const [ebayConnected, setEbayConnected] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [pulse, setPulse] = useState<string | null>(null);
 
   function loadListings() {
     return fetch("/api/listings", { cache: "no-store" })
@@ -70,6 +125,23 @@ export default function Dashboard() {
         if (connected) syncFromEbay({ silent: true });
       })
       .catch(() => {});
+
+    // The pulse compares "now" against whenever this browser last opened the
+    // dashboard — read the stored timestamp before this visit overwrites it.
+    const since = Number(localStorage.getItem(LAST_VISIT_KEY));
+    if (since) {
+      fetch("/api/listings", { cache: "no-store" })
+        .then((r) => r.json())
+        .then(async (ls: Listing[]) => {
+          const proposals: Proposal[] = await fetch("/api/proposals", { cache: "no-store" })
+            .then((r) => r.json())
+            .then((d) => d.proposals ?? [])
+            .catch(() => []);
+          setPulse(buildPulse(ls, proposals, since));
+        })
+        .catch(() => {});
+    }
+    localStorage.setItem(LAST_VISIT_KEY, String(Date.now()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -136,6 +208,13 @@ export default function Dashboard() {
       </div>
       {syncMsg && (
         <p className="rounded-xl bg-brand/10 px-4 py-2.5 text-sm text-brand-dim">{syncMsg}</p>
+      )}
+      {pulse && (
+        <Reveal>
+          <p className="rounded-xl border border-brand/30 bg-brand/5 px-4 py-2.5 text-sm text-brand-dim">
+            {pulse}
+          </p>
+        </Reveal>
       )}
 
       <ProposalsFeed ebayConnected={ebayConnected} />

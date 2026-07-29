@@ -7,6 +7,12 @@ import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
 
+interface ActionCard {
+  insight: string;
+  action: "reprice" | "retitle" | "rewrite" | "relist" | "hold";
+  matchListingIds: string[];
+}
+
 interface Playbook {
   updatedAt: string;
   summary: string;
@@ -15,7 +21,16 @@ interface Playbook {
   avoid: string;
   experiments?: { id: string; hypothesis: string; instruction: string }[];
   experimentResults?: string;
+  actionCards?: ActionCard[];
 }
+
+const ACTION_LABEL: Record<ActionCard["action"], string> = {
+  reprice: "Reprice",
+  retitle: "Retitle",
+  rewrite: "Rewrite",
+  relist: "Relist",
+  hold: "Review",
+};
 
 interface SeedListing {
   id: string;
@@ -786,6 +801,74 @@ const PLAYBOOK_TABS: { key: PlaybookTab; label: string }[] = [
   { key: "experiments", label: "Experiments" },
 ];
 
+/**
+ * Playbook insights are prose the seller reads once and forgets. Each card
+ * ties one insight to the exact listings it applies to, so acting on it is
+ * one click instead of remembering to go find them.
+ */
+function ActionCards({ cards }: { cards: ActionCard[] }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState<number | null>(null);
+  const [done, setDone] = useState<Set<number>>(new Set());
+
+  async function apply(index: number, card: ActionCard) {
+    setBusy(index);
+    try {
+      const res = await fetch("/api/evolve/apply-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          insight: card.insight,
+          action: card.action,
+          matchListingIds: card.matchListingIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't apply");
+      toast.push(
+        data.created > 0
+          ? `${data.created} proposal${data.created === 1 ? "" : "s"} added to the Insight report`
+          : "Nothing new to propose — already pending or not enough evidence yet"
+      );
+      setDone((prev) => new Set(prev).add(index));
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Couldn't apply", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {cards.map((card, i) => (
+        <div
+          key={i}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-border bg-ink p-3"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-fog/80">{card.insight}</p>
+            <p className="mt-0.5 text-xs text-fog/40">
+              {ACTION_LABEL[card.action]} · {card.matchListingIds.length} listing
+              {card.matchListingIds.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <button
+            onClick={() => apply(i, card)}
+            disabled={busy !== null || done.has(i)}
+            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+          >
+            {done.has(i)
+              ? "Sent to Insight report"
+              : busy === i
+                ? "Working…"
+                : `Apply to ${card.matchListingIds.length} listing${card.matchListingIds.length === 1 ? "" : "s"} →`}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BrainPanel() {
   const toast = useToast();
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
@@ -950,6 +1033,10 @@ function BrainPanel() {
               </h3>
               <p className="mt-1 text-fog/80">{playbook.summary}</p>
             </div>
+
+            {playbook.actionCards && playbook.actionCards.length > 0 && (
+              <ActionCards cards={playbook.actionCards} />
+            )}
 
             <div className="flex w-fit gap-1 rounded-lg border border-ink-border bg-ink p-1">
               {PLAYBOOK_TABS.map((t) => (

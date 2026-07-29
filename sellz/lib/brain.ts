@@ -12,6 +12,7 @@ import {
   setPlaybook,
   trafficTrend,
   updateListing,
+  type ActionCard,
   type BrainScore,
   type Comps,
   type Diagnosis,
@@ -166,8 +167,85 @@ export async function analyzePerformance(): Promise<Playbook> {
     })),
     updatedAt: new Date().toISOString(),
   };
+  playbook.actionCards = await suggestActionCards(playbook, await listListings()).catch(() => []);
   await setPlaybook(playbook);
   return playbook;
+}
+
+// ---------------------------------------------------------------------------
+// Action cards: turn playbook prose into "apply to N listings" buttons
+// ---------------------------------------------------------------------------
+
+const ActionCardSchema = z.object({
+  cards: z
+    .array(
+      z.object({
+        insight: z
+          .string()
+          .describe(
+            "One sentence, concrete and specific, e.g. 'Nike listings sell twice as fast when the title leads with the model name.'"
+          ),
+        action: z
+          .enum(["retitle", "reprice", "rewrite", "relist"])
+          .describe("The kind of change that would apply this insight"),
+        matchingIds: z
+          .array(z.string())
+          .describe(
+            "IDs copied exactly from the roster below that this insight applies to. Never invent an id that wasn't given."
+          ),
+      })
+    )
+    .describe(
+      "Up to 4 patterns from the playbook specific enough to point at real listings by id. Skip anything too vague to act on directly."
+    ),
+});
+
+const ACTION_CARD_PROMPT = `You turn a seller's playbook into a short list of concrete actions tied to their actual current listings, not just prose they'll read once and forget. Given the playbook and a roster of their live/stale listings (id, title, category, price, tags), find up to 4 patterns specific enough to act on right now — a brand or category that shares a fixable problem, a pricing pattern that applies to a identifiable group. For each, list exactly which listing ids (from the roster given, verbatim) it applies to. If a playbook guideline is too generic to tie to specific listings, leave it out rather than forcing a match.`;
+
+/**
+ * Cross-references the playbook against the current listing roster so the
+ * Brain page can show "Apply to 12 Nike listings" instead of a paragraph the
+ * seller has to remember to act on manually. Matching ids are validated
+ * against the roster actually given — a hallucinated id would otherwise
+ * silently no-op when the seller clicks apply.
+ */
+export async function suggestActionCards(
+  playbook: Playbook,
+  listings: Listing[]
+): Promise<ActionCard[]> {
+  if (!process.env.ANTHROPIC_API_KEY) return [];
+  const roster = listings.filter((l) => l.status === "active" || l.status === "stale").slice(0, 80);
+  if (roster.length === 0) return [];
+
+  const rosterText = roster
+    .map((l) => `${l.id}: "${l.title.slice(0, 80)}" | ${l.category || "uncategorized"} | $${l.price} | tags=${l.tags.join(",") || "none"}`)
+    .join("\n");
+
+  const client = new Anthropic();
+  const response = await client.messages.parse({
+    model: "claude-opus-4-8",
+    max_tokens: 2000,
+    thinking: { type: "adaptive" },
+    system: ACTION_CARD_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Playbook:\nListing guidelines: ${playbook.listingGuidelines}\nPricing: ${playbook.pricingGuidelines}\nAvoid: ${playbook.avoid}\n\nCurrent roster (${roster.length} listings):\n${rosterText}`,
+      },
+    ],
+    output_config: { format: zodOutputFormat(ActionCardSchema) },
+  });
+
+  if (!response.parsed_output) return [];
+  const validIds = new Set(roster.map((l) => l.id));
+  return response.parsed_output.cards
+    .map((c) => ({
+      insight: c.insight,
+      action: c.action,
+      matchListingIds: c.matchingIds.filter((id) => validIds.has(id)),
+    }))
+    .filter((c) => c.matchListingIds.length > 0)
+    .slice(0, 4);
 }
 
 // ---------------------------------------------------------------------------

@@ -62,6 +62,7 @@ interface Listing {
     at: string;
   };
   experimentId?: string;
+  createdAt: string;
 }
 
 const field =
@@ -100,10 +101,23 @@ function needsAttention(l: Listing): boolean {
   return since !== null && since >= 60;
 }
 
+type ViewMode = "cards" | "table";
+
 export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     const res = await fetch("/api/listings");
@@ -161,9 +175,25 @@ export default function ListingsPage() {
           <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
             {listings ? `${listings.length} listing${listings.length === 1 ? "" : "s"}` : "Listings"}
           </h2>
-          {listings && listings.length > 0 && (
-            <QuickFilters listings={listings} value={quickFilter} onChange={setQuickFilter} />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {listings && listings.length > 0 && (
+              <QuickFilters listings={listings} value={quickFilter} onChange={setQuickFilter} />
+            )}
+            <div className="flex gap-1 rounded-lg border border-ink-border bg-ink p-0.5">
+              {(["cards", "table"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setViewMode(m)}
+                  className={
+                    "rounded-md px-2.5 py-1 text-xs font-semibold capitalize transition " +
+                    (viewMode === m ? "bg-brand text-ink" : "text-fog/50 hover:text-fog")
+                  }
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         {!listings ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -177,24 +207,48 @@ export default function ListingsPage() {
           </p>
         ) : (
           (() => {
-            const filtered = listings.filter((l) => {
-              if (quickFilter === "attention") return needsAttention(l);
-              if (quickFilter === "ready") return l.status === "sold";
-              if (quickFilter === "missingCost") return l.cost?.purchasePrice === undefined;
-              return true;
-            });
-            return filtered.length === 0 ? (
-              <p className="text-sm text-fog/40">Nothing matches this filter.</p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {[...filtered]
-                  .sort((a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1))
-                  .map((l, i) => (
-                    <Reveal key={l.id} index={i}>
-                      <ListingCard listing={l} onChanged={load} />
-                    </Reveal>
-                  ))}
-              </div>
+            const filtered = [...listings]
+              .filter((l) => {
+                if (quickFilter === "attention") return needsAttention(l);
+                if (quickFilter === "ready") return l.status === "sold";
+                if (quickFilter === "missingCost") return l.cost?.purchasePrice === undefined;
+                return true;
+              })
+              .sort((a, b) => (b.brainScore?.score ?? -1) - (a.brainScore?.score ?? -1));
+
+            if (filtered.length === 0) return <p className="text-sm text-fog/40">Nothing matches this filter.</p>;
+
+            return (
+              <>
+                <BulkActionBar
+                  listings={filtered}
+                  selected={selected}
+                  onClear={() => setSelected(new Set())}
+                  onChanged={load}
+                />
+                {viewMode === "table" ? (
+                  <ListingsTable
+                    listings={filtered}
+                    selected={selected}
+                    onToggle={toggleSelect}
+                    onSelectAll={(ids) => setSelected(new Set(ids))}
+                    onChanged={load}
+                  />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {filtered.map((l, i) => (
+                      <Reveal key={l.id} index={i}>
+                        <ListingCard
+                          listing={l}
+                          onChanged={load}
+                          selected={selected.has(l.id)}
+                          onToggleSelect={() => toggleSelect(l.id)}
+                        />
+                      </Reveal>
+                    ))}
+                  </div>
+                )}
+              </>
             );
           })()
         )}
@@ -246,6 +300,239 @@ function QuickFilters({
           {c.key !== "all" && <span className="ml-1 text-fog/30">{counts[c.key]}</span>}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Compact rows for a shop with more than a handful of listings — a card per
+ * item stops being scannable well before 200 does. Deliberately terse: the
+ * card view is still where the detail tabs (comps, outcome, cost, diagnosis)
+ * live, this is a bird's-eye pass to select and triage.
+ */
+function ListingsTable({
+  listings,
+  selected,
+  onToggle,
+  onSelectAll,
+  onChanged,
+}: {
+  listings: Listing[];
+  selected: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
+  onChanged: () => void;
+}) {
+  const allIds = listings.map((l) => l.id);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+
+  function setStatus(id: string, status: string) {
+    fetch(`/api/listings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).then(onChanged);
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-card shadow-card">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-ink-border text-xs font-bold uppercase tracking-wider text-fog/40">
+            <th className="w-8 px-3 py-2">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={() => onSelectAll(allSelected ? [] : allIds)}
+                className="h-3.5 w-3.5 accent-brand"
+              />
+            </th>
+            <th className="px-2 py-2">Title</th>
+            <th className="px-2 py-2">Status</th>
+            <th className="px-2 py-2">Price</th>
+            <th className="px-2 py-2">Score</th>
+            <th className="px-2 py-2">Age</th>
+            <th className="px-2 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {listings.map((l) => {
+            const since = daysSince(l.outcome?.listedAt ?? l.createdAt);
+            return (
+              <tr key={l.id} className="border-b border-ink-border/60 last:border-b-0 hover:bg-ink/40">
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(l.id)}
+                    onChange={() => onToggle(l.id)}
+                    className="h-3.5 w-3.5 accent-brand"
+                  />
+                </td>
+                <td className="max-w-[280px] truncate px-2 py-2 font-medium text-fog">{l.title}</td>
+                <td className="px-2 py-2">
+                  <select
+                    value={l.status}
+                    onChange={(e) => setStatus(l.id, e.target.value)}
+                    className={`rounded border border-ink-border bg-ink px-1.5 py-0.5 text-xs ${STATUS_COLOR[l.status]}`}
+                  >
+                    <option value="draft">draft</option>
+                    <option value="active">active</option>
+                    <option value="sold">sold</option>
+                    <option value="stale">stale</option>
+                    <option value="ended">ended</option>
+                  </select>
+                </td>
+                <td className="px-2 py-2 text-fog/70">
+                  ${l.price}
+                  {l.outcome?.soldPrice !== undefined && (
+                    <span className="text-brand"> → ${l.outcome.soldPrice}</span>
+                  )}
+                </td>
+                <td className="px-2 py-2">
+                  {l.brainScore ? (
+                    <ScoreBar compact score={l.brainScore.score} reason={l.brainScore.reason} />
+                  ) : (
+                    <span className="text-fog/30">—</span>
+                  )}
+                </td>
+                <td className="px-2 py-2 text-fog/50">
+                  {since !== null ? `${since}d` : "—"}
+                  {needsAttention(l) && <span className="ml-1 text-amber-400">●</span>}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  <button
+                    onClick={() => {
+                      if (confirm("Delete this listing?")) {
+                        fetch(`/api/listings/${l.id}`, { method: "DELETE" }).then(onChanged);
+                      }
+                    }}
+                    className="text-xs text-fog/40 hover:text-red-400"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Acting on 30 stale listings one at a time is what makes a Brain feel like
+ * homework. Select a pile, then reprice or apply what the Brain already
+ * proposed for them in one shot.
+ */
+function BulkActionBar({
+  listings,
+  selected,
+  onClear,
+  onChanged,
+}: {
+  listings: Listing[];
+  selected: Set<string>;
+  onClear: () => void;
+  onChanged: () => void;
+}) {
+  const toast = useToast();
+  const [pct, setPct] = useState("-10");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  if (selected.size === 0) return null;
+  const selectedListings = listings.filter((l) => selected.has(l.id));
+
+  async function repriceSelected() {
+    const delta = Number(pct);
+    if (!isFinite(delta) || delta === 0) return;
+    setBusy("reprice");
+    let applied = 0;
+    for (const l of selectedListings) {
+      const next = Math.max(0.01, Math.round(l.price * (1 + delta / 100) * 100) / 100);
+      try {
+        const res = await fetch(`/api/listings/${l.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ price: next }),
+        });
+        if (res.ok) applied++;
+      } catch {
+        // One failure shouldn't stop the rest of the batch.
+      }
+    }
+    toast.push(`Repriced ${applied} of ${selectedListings.length} listing${selectedListings.length === 1 ? "" : "s"}`);
+    setBusy(null);
+    onChanged();
+    onClear();
+  }
+
+  async function applyBrainSuggestions() {
+    setBusy("apply");
+    try {
+      const res = await fetch("/api/proposals", { cache: "no-store" });
+      const data = await res.json();
+      const ids = new Set(selectedListings.map((l) => l.id));
+      const pending: { id: string }[] = (data.proposals ?? []).filter(
+        (p: { listingId: string; status: string }) => p.status === "pending" && ids.has(p.listingId)
+      );
+      if (pending.length === 0) {
+        toast.push("No pending Brain proposals for the selected listings");
+        setBusy(null);
+        return;
+      }
+      let applied = 0;
+      for (const p of pending) {
+        try {
+          const r = await fetch(`/api/proposals/${p.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "approve" }),
+          });
+          if (r.ok) applied++;
+        } catch {
+          // Continue the batch even if one proposal fails to apply.
+        }
+      }
+      toast.push(`Applied ${applied} of ${pending.length} proposal${pending.length === 1 ? "" : "s"}`);
+      onChanged();
+      onClear();
+    } catch {
+      toast.push("Couldn't load proposals", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-2.5 text-sm">
+      <span className="font-semibold text-brand">{selected.size} selected</span>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          value={pct}
+          onChange={(e) => setPct(e.target.value)}
+          className="w-16 rounded-lg border border-ink-border bg-ink px-2 py-1 text-xs text-fog focus:border-brand focus:outline-none"
+        />
+        <span className="text-xs text-fog/40">%</span>
+        <button
+          onClick={repriceSelected}
+          disabled={busy !== null}
+          className="rounded-lg bg-ink-border px-3 py-1.5 text-xs font-semibold text-fog transition hover:bg-brand hover:text-ink disabled:opacity-50"
+        >
+          {busy === "reprice" ? "Repricing…" : "Reprice selected"}
+        </button>
+      </div>
+      <button
+        onClick={applyBrainSuggestions}
+        disabled={busy !== null}
+        className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+      >
+        {busy === "apply" ? "Applying…" : "Apply Brain suggestions"}
+      </button>
+      <button onClick={onClear} className="ml-auto text-xs font-semibold text-fog/40 hover:text-fog">
+        Clear selection
+      </button>
     </div>
   );
 }
@@ -467,7 +754,17 @@ function ImportForm({ onDone }: { onDone: () => void }) {
 
 type TabKey = "listing" | "comps" | "outcome" | "cost" | "diagnosis";
 
-function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: () => void }) {
+function ListingCard({
+  listing: l,
+  onChanged,
+  selected,
+  onToggleSelect,
+}: {
+  listing: Listing;
+  onChanged: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const toast = useToast();
   const [tab, setTab] = useState<TabKey>("listing");
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -531,7 +828,17 @@ function ListingCard({ listing: l, onChanged }: { listing: Listing; onChanged: (
       className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card transition-colors hover:border-brand/30"
     >
       <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="min-w-0 truncate font-semibold text-fog">{l.title}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={Boolean(selected)}
+              onChange={onToggleSelect}
+              className="h-3.5 w-3.5 shrink-0 accent-brand"
+            />
+          )}
+          <span className="min-w-0 truncate font-semibold text-fog">{l.title}</span>
+        </span>
         <span className="flex shrink-0 items-center gap-2">
           {l.brainScore && <ScoreBar compact score={l.brainScore.score} reason={l.brainScore.reason} />}
           <select
