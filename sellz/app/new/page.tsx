@@ -6,6 +6,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PageHeader from "@/components/PageHeader";
 import StepRail, { type RailStep } from "@/components/StepRail";
+import AnalyzingScreen from "@/components/AnalyzingScreen";
+import { useQuip, QuipLine } from "@/components/LoadingQuips";
 import { useToast } from "@/components/Toast";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -278,49 +280,65 @@ export default function NewListingPage() {
 
   // Held until the setup check lands, so the flow never flashes "connect eBay"
   // at someone who connected it weeks ago.
+  let viewKey: string;
+  let content: JSX.Element;
+
   if (!draft && (phase === null || setup === null)) {
-    return (
+    viewKey = "setup";
+    content = (
       <div className="space-y-5">
         <PageHeader title="New listing" subtitle="Getting your setup…" />
         <div className="h-24 animate-pulse bg-ink-deep" />
       </div>
     );
-  }
-
-  if (draft) {
-    return (
+  } else if (analyzing && !draft) {
+    // The full pipeline takeover: replaces what used to be just a spinner in
+    // the submit button below, and is the actual bridge between the photo
+    // step and the review page appearing.
+    viewKey = "analyzing";
+    content = (
       <div className="space-y-5">
-        <StepRail steps={rail} current="review" />
-        <ReviewStep
-        draft={draft}
-        setDraft={setDraft}
-        analysis={analysis}
-        comps={comps}
-        retail={retail}
-        specifics={specifics}
-        setSpecifics={setSpecifics}
-        stage={stage}
-        onDone={() => router.push("/listings")}
-        onRestart={() => {
-          setDraft(null);
-          setAnalysis(null);
-          setComps(null);
-          setRetail(null);
-          setSpecifics([]);
-          setSlots([
-            { label: "Front", id: null, preview: null, uploading: false },
-            { label: "Back", id: null, preview: null, uploading: false },
-          ]);
-          setNotes("");
-          setPhase("photos");
-        }}
+        <StepRail steps={rail} current="photos" />
+        <AnalyzingScreen
+          stage={stage}
+          photoPreview={slots.find((s) => s.preview)?.preview ?? null}
         />
       </div>
     );
-  }
-
-  if (phase === "connect") {
-    return (
+  } else if (draft) {
+    viewKey = "review";
+    content = (
+      <div className="space-y-5">
+        <StepRail steps={rail} current="review" />
+        <ReviewStep
+          draft={draft}
+          setDraft={setDraft}
+          analysis={analysis}
+          comps={comps}
+          retail={retail}
+          specifics={specifics}
+          setSpecifics={setSpecifics}
+          stage={stage}
+          onDone={() => router.push("/listings")}
+          onRestart={() => {
+            setDraft(null);
+            setAnalysis(null);
+            setComps(null);
+            setRetail(null);
+            setSpecifics([]);
+            setSlots([
+              { label: "Front", id: null, preview: null, uploading: false },
+              { label: "Back", id: null, preview: null, uploading: false },
+            ]);
+            setNotes("");
+            setPhase("photos");
+          }}
+        />
+      </div>
+    );
+  } else if (phase === "connect") {
+    viewKey = "connect";
+    content = (
       <div className="space-y-5">
         <StepRail steps={rail} current="connect" onJump={(k) => setPhase(k as Phase)} />
         <ConnectStep
@@ -330,10 +348,9 @@ export default function NewListingPage() {
         />
       </div>
     );
-  }
-
-  if (phase === "teach") {
-    return (
+  } else if (phase === "teach") {
+    viewKey = "teach";
+    content = (
       <div className="space-y-5">
         <StepRail steps={rail} current="teach" onJump={(k) => setPhase(k as Phase)} />
         <TeachStep
@@ -347,66 +364,74 @@ export default function NewListingPage() {
         />
       </div>
     );
+  } else {
+    viewKey = "photos";
+    content = (
+      <div className="space-y-5">
+        <StepRail steps={rail} current="photos" onJump={(k) => setPhase(k as Phase)} />
+        <PageHeader
+          title="Photograph the item"
+          subtitle="Front and back is enough. The Brain writes the listing from what it can see."
+        />
+
+        {/* Capped width: the photo slots are square, so on a wide screen an
+            unconstrained grid turns them into oversized empty boxes. */}
+        <section className="max-w-3xl rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {slots.map((slot, i) => (
+              <PhotoSlot key={i} slot={slot} onFile={(f) => upload(i, f)} />
+            ))}
+          </div>
+          <button
+            onClick={addSlot}
+            className="mt-3 text-xs font-semibold text-brand hover:underline"
+          >
+            + Add another angle
+          </button>
+
+          <label className="mt-5 block space-y-1 text-sm">
+            <span className="text-fog/50">
+              Anything the photos don&apos;t show{" "}
+              <span className="text-fog/30">(optional: measurements, flaws, history)</span>
+            </span>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. pit to pit 22in, small mark inside collar, smoke-free home"
+              className={field}
+            />
+          </label>
+
+          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={analyze}
+            disabled={analyzing || photoIds.length === 0}
+            className="mt-5 w-full rounded-xl bg-brand py-3 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
+          >
+            {photoIds.length === 0
+              ? "Add a photo to start"
+              : `Analyze ${photoIds.length} photo${photoIds.length === 1 ? "" : "s"} & write listing`}
+          </motion.button>
+        </section>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-5">
-      <StepRail steps={rail} current="photos" onJump={(k) => setPhase(k as Phase)} />
-      <PageHeader
-        title="Photograph the item"
-        subtitle="Front and back is enough. The Brain writes the listing from what it can see."
-      />
-
-      {/* Capped width: the photo slots are square, so on a wide screen an
-          unconstrained grid turns them into oversized empty boxes. */}
-      <section className="max-w-3xl rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {slots.map((slot, i) => (
-            <PhotoSlot key={i} slot={slot} onFile={(f) => upload(i, f)} />
-          ))}
-        </div>
-        <button
-          onClick={addSlot}
-          className="mt-3 text-xs font-semibold text-brand hover:underline"
-        >
-          + Add another angle
-        </button>
-
-        <label className="mt-5 block space-y-1 text-sm">
-          <span className="text-fog/50">
-            Anything the photos don&apos;t show{" "}
-            <span className="text-fog/30">(optional: measurements, flaws, history)</span>
-          </span>
-          <textarea
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. pit to pit 22in, small mark inside collar, smoke-free home"
-            className={field}
-          />
-        </label>
-
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          onClick={analyze}
-          disabled={analyzing || photoIds.length === 0}
-          className="mt-5 w-full rounded-xl bg-brand py-3 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-40"
-        >
-          {analyzing ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
-              Identifying, pricing against comps…
-            </span>
-          ) : photoIds.length === 0 ? (
-            "Add a photo to start"
-          ) : (
-            `Analyze ${photoIds.length} photo${photoIds.length === 1 ? "" : "s"} & write listing`
-          )}
-        </motion.button>
-      </section>
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={viewKey}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {content}
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -631,6 +656,28 @@ function PhotoSlot({ slot, onFile }: { slot: Slot; onFile: (f: File) => void }) 
   );
 }
 
+/**
+ * The enrichment stages (comps, retail, refine) run after a usable draft is
+ * already on screen, so they get this inline banner rather than the full
+ * AnalyzingScreen takeover — the seller has something to read while it works.
+ */
+function ReviewStageBanner({ stage }: { stage: string }) {
+  const quip = useQuip(stage, true);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3"
+    >
+      <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+      <div>
+        <p className="text-sm font-semibold text-brand">{stage}</p>
+        <QuipLine quip={quip} className="mt-0.5" />
+      </div>
+    </motion.div>
+  );
+}
+
 function ReviewStep({
   draft,
   setDraft,
@@ -762,16 +809,7 @@ function ReviewStep({
     <div className="space-y-6">
       <PageHeader title="Review before listing" subtitle="Everything here is editable." />
 
-      {stage && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-brand"
-        >
-          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
-          {stage}
-        </motion.div>
-      )}
+      {stage && <ReviewStageBanner stage={stage} />}
 
       {analysis && (
         <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">

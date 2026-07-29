@@ -2,21 +2,32 @@ import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import HeroBanner from "@/components/HeroBanner";
 
+/**
+ * Four steps rather than three: the point of the product isn't just writing
+ * a listing, it's that the listing keeps getting optimized after it's live —
+ * so that has to be on the landing page, not just something the app does
+ * quietly after signup.
+ */
 const STEPS = [
   {
     n: "01",
     title: "Photograph it",
-    desc: "Front and back. Vision reads the item, the brand, the size, and any wear that is actually visible.",
+    desc: "Front and back. Vision reads the brand, size, materials, and any wear that's actually visible — nothing invented, nothing assumed.",
   },
   {
     n: "02",
-    title: "It prices it",
-    desc: "Comped against what comparable items sold for, weighted to sellers with strong feedback, plus your own history.",
+    title: "It prices and lists it",
+    desc: "Priced against what comparable items really sold for, not what someone's still hoping to get for theirs, then published straight to your eBay account.",
   },
   {
     n: "03",
-    title: "You approve",
-    desc: "Review the draft, change anything, and publish straight to eBay. Nothing goes live without you.",
+    title: "It grades the listing",
+    desc: "Every listing is scored 0–100 on the things that actually move a sale: title keywords, price against comps, photo coverage, category fit, how clearly the condition reads.",
+  },
+  {
+    n: "04",
+    title: "It proposes the fix",
+    desc: "Anything scoring under 70 gets a concrete repair — more photos, a sharper title, a different price — not just a lower number. You approve it, it relists.",
   },
 ];
 
@@ -24,12 +35,22 @@ const FEATURES = [
   {
     icon: CameraIcon,
     title: "Photo to listing",
-    desc: "Title, description, condition, and price written from the photos themselves, with a confidence score and an honest list of what the photos could not show.",
+    desc: "Title, description, condition, and price written from the photos themselves, with a confidence score and an honest list of what the photos couldn't show.",
   },
   {
     icon: TagIcon,
-    title: "Real comparables",
-    desc: "Sold prices where your eBay account has access, otherwise active listings from sellers above 98% feedback. Always labelled so you know which you are seeing.",
+    title: "Priced by what sold",
+    desc: "Sold prices where your eBay account has access, otherwise active listings from sellers above 98% feedback. Always labelled so you know which you're seeing — never a guess dressed up as data.",
+  },
+  {
+    icon: GaugeIcon,
+    title: "Graded on signals, not vibes",
+    desc: "Title keywords, item specifics, price vs. comps, description trust, condition clarity, photo coverage, category fit — seven dimensions, scored every time, not a vague sense of \"looks fine.\"",
+  },
+  {
+    icon: WrenchIcon,
+    title: "It fixes what it finds",
+    desc: "A weak score names the exact weak spot and proposes the exact repair — a rewrite, a reprice, more photos — instead of leaving you to guess why something isn't moving.",
   },
   {
     icon: ProfitIcon,
@@ -38,8 +59,8 @@ const FEATURES = [
   },
   {
     icon: BrainIcon,
-    title: "It learns from outcomes",
-    desc: "Sold and stuck listings both teach it. The playbook rewrites itself as your results come in, and running experiments get judged on real numbers.",
+    title: "It learns from your outcomes",
+    desc: "Sold and stuck listings both teach it. The playbook rewrites itself as your results come in, so the grading gets sharper the more you sell — not a static checklist.",
   },
 ];
 
@@ -60,13 +81,14 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
-              Three steps, start to listed
+              It doesn&apos;t stop at &quot;listed&quot;
             </h2>
             <p className="mt-3 text-base text-fog/55">
-              The whole loop runs from your phone camera to a live eBay listing.
+              Publishing is step two of four. The other half of the job is noticing when a
+              listing isn&apos;t working and fixing it — automatically, on your approval.
             </p>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s, i) => (
               <Reveal key={s.n} index={i}>
                 <div className="h-full rounded-3xl border border-ink-border bg-ink-card p-6">
@@ -85,11 +107,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
-              Everything the listing needs
+              Built to keep optimizing
             </h2>
             <p className="mt-3 text-base text-fog/55">
-              Not a template filler. It reads the item, checks the market, and tracks
-              what each sale actually earned.
+              Not a one-shot generator. It grades every listing against real signals, tracks
+              what your own sales reveal, and proposes the exact fix when something isn&apos;t
+              working — instead of leaving a stale draft to quietly not sell.
             </p>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -117,7 +140,8 @@ export default function LandingPage() {
               Point a camera at it
             </h2>
             <p className="mt-3 text-base text-white/55">
-              Two photos is enough to get a priced, written, ready to publish listing.
+              Two photos is enough to get a priced, written, ready-to-publish listing — graded
+              and kept sharp after that, not left to fend for itself.
             </p>
           </div>
           <Link
@@ -171,6 +195,26 @@ function TagIcon() {
         strokeLinejoin="round"
       />
       <circle cx="8.5" cy="8.5" r="1.25" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function GaugeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 15a8 8 0 1 1 16 0" strokeLinecap="round" />
+      <path d="M12 15 16 9" strokeLinecap="round" />
+      <path d="M4 15h1M19 15h1M6.5 8.5l.7.7M17.5 8.5l-.7.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+function WrenchIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path
+        d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2Z"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
