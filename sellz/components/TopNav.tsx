@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSession, signOut } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface NavChild {
@@ -149,6 +150,7 @@ export default function TopNav() {
           >
             Start a listing
           </Link>
+          <AccountMenu />
           <button
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -203,6 +205,98 @@ export default function TopNav() {
             >
               Start a listing
             </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Account control. Renders a "Sign in" link when there's no session, and the
+ * user's initial with a small menu when there is. Kept in this file because it
+ * shares the bar's open/close behaviour and nothing else uses it.
+ */
+function AccountMenu() {
+  const { data: session, status } = useSession();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  // Render nothing at all while the session resolves, rather than flashing
+  // "Sign in" at someone who is already signed in.
+  if (status === "loading") return <span className="h-9 w-9" />;
+
+  if (status !== "authenticated") {
+    return (
+      <Link
+        href="/login"
+        className="border border-ink-border px-3 py-2 text-sm font-semibold text-fog/80 transition hover:border-brand/50 hover:text-fog"
+      >
+        Sign in
+      </Link>
+    );
+  }
+
+  const user = session.user;
+  const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Account menu"
+        aria-expanded={open}
+        className="flex h-9 w-9 items-center justify-center border border-ink-border bg-ink-card text-sm font-bold text-fog transition hover:border-brand/50"
+      >
+        {user?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.image} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initial
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.14 }}
+            className="absolute right-0 top-full z-50 mt-1 w-56 border border-ink-border bg-ink-card p-1.5"
+          >
+            <div className="border-b border-ink-border px-3 py-2">
+              <p className="truncate text-sm font-semibold text-fog">
+                {user?.name || user?.email}
+              </p>
+              <p className="mt-0.5 text-xs capitalize text-brand">{user?.plan ?? "free"} plan</p>
+            </div>
+            <Link
+              href="/brain"
+              className="block px-3 py-2 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/settings/billing"
+              className="block px-3 py-2 text-sm font-semibold text-fog transition-colors hover:bg-ink-deep"
+            >
+              Billing
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="block w-full px-3 py-2 text-left text-sm font-semibold text-fog/60 transition-colors hover:bg-ink-deep hover:text-fog"
+            >
+              Sign out
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

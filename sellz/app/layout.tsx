@@ -5,6 +5,7 @@ import TopNav from "@/components/TopNav";
 import SiteFooter from "@/components/SiteFooter";
 import PageTransition from "@/components/PageTransition";
 import { ToastProvider } from "@/components/Toast";
+import { SessionProvider } from "next-auth/react";
 
 // Self-hosted at build time by next/font, so no render-blocking Google link
 // and no layout shift while the face loads.
@@ -42,13 +43,15 @@ export default function RootLayout({
           every surface and made the whole app read as floating. The page is a
           flat white sheet, and the banner carries the colour. */}
       <body className="min-h-screen antialiased">
-        <ToastProvider>
-          <TopNav />
-          <main className="relative">
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <SiteFooter />
-        </ToastProvider>
+        <SessionProvider>
+          <ToastProvider>
+            <TopNav />
+            <main className="relative">
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <SiteFooter />
+          </ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );

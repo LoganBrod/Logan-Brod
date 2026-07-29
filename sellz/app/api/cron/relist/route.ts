@@ -3,6 +3,7 @@ import { listListings, getSellerSettings, updateListing, type RelistRecord } fro
 import { relistItem, researchEbayComps } from "@/lib/ebay";
 import { getPhoto } from "@/lib/photos";
 import { cronAuthorized, tenantsWithEbay } from "@/lib/cron";
+import { planAllows } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
   for (const userId of await tenantsWithEbay()) {
     let candidates;
     try {
+      // Paid feature, and the seller's own toggle on top of that.
+      if (!(await planAllows(userId, "autoRelist"))) continue;
       const settings = await getSellerSettings(userId);
       if (!settings.relistEnabled) continue;
       const defaultDays = settings.defaultRelistDays ?? 10;

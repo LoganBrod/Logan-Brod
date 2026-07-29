@@ -4,6 +4,7 @@ import { getListing, updateListing, getEbayTokens, getSellerSettings, type ItemS
 import { generateFromPhotos, scoreListing, fillMissingAspects } from "@/lib/brain";
 import { resolveAspectGaps } from "@/lib/ebay";
 import { publishListing } from "@/lib/publishListing";
+import { planAllows } from "@/lib/usage";
 import { getPhoto } from "@/lib/photos";
 
 export const runtime = "nodejs";
@@ -196,7 +197,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     let autoPublished = false;
     let autoPublishError: string | undefined;
     const settings = await getSellerSettings(userId);
-    if (settings.autoPublishThreshold > 0 && (score?.score ?? 0) >= settings.autoPublishThreshold) {
+    if (
+      settings.autoPublishThreshold > 0 &&
+      (score?.score ?? 0) >= settings.autoPublishThreshold &&
+      // Paid feature. Checked against the plan in the database rather than a
+      // stored setting, so a downgraded account stops auto-publishing at once
+      // instead of when it next happens to reload its settings.
+      (await planAllows(userId, "autoPublish"))
+    ) {
       const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
       const outcome = await publishListing(userId, listing.id, origin);
       autoPublished = outcome.ok;

@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { getPhoto } from "@/lib/photos";
 import { generateFromPhotos, pickExperiment } from "@/lib/brain";
 import { addListing, getEbayTokens, type Listing } from "@/lib/store";
+import { checkUsage, incrementUsage } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -12,16 +13,34 @@ export const maxDuration = 300;
  * Stage 1 of analysis: identify the item from its photos and save a draft.
  *
  * Deliberately ONE model call. Comps, retail research and the refine pass
- * each run as their own request afterwards — together they need far longer
- * than a serverless function is allowed to run (Netlify cuts off around 26s
- * and returns an HTML error page), so doing it all here made the whole
- * feature fail rather than just be slow.
+ * each run as their own request afterwards. The split was forced by a
+ * serverless timeout originally; it is kept because it also lets the client
+ * show real progress per stage instead of one long spinner.
  */
 export async function POST(req: NextRequest) {
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
   }
+  // Checked before any model call, because this route is the entry point to
+  // the most expensive thing the platform does on a seller's behalf: one
+  // "analysis" fans out into identify, comps, retail, refine and score.
+  const quota = await checkUsage(userId, "listing");
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error:
+          quota.plan === "free"
+            ? `You've used all ${quota.limit} free listings this month. Upgrade to Pro for more.`
+            : `You've used all ${quota.limit} listings on your ${quota.plan} plan this month.`,
+        upgrade: true,
+        used: quota.used,
+        limit: quota.limit,
+      },
+      { status: 402 }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const photoIds: string[] = Array.isArray(body.photoIds)
     ? body.photoIds.filter((p: unknown) => typeof p === "string").slice(0, 8)
@@ -67,6 +86,9 @@ export async function POST(req: NextRequest) {
     };
 
     await addListing(userId, listing);
+    // Counted only once the analysis actually produced a draft, so a failed
+    // call doesn't spend a seller's monthly allowance.
+    await incrementUsage(userId, "listing");
 
     return NextResponse.json({
       listing,

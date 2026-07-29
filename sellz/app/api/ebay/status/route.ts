@@ -30,7 +30,6 @@ export async function GET() {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
         "CDN-Cache-Control": "no-store",
-        "Netlify-CDN-Cache-Control": "no-store",
       },
     }
   );

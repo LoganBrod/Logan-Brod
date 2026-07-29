@@ -6,14 +6,16 @@
   "scripts": {
     "dev": "next dev -p 3002",
     "build": "next build",
-    "start": "next start -p 3002",
-    "lint": "next lint"
+    "start": "next start -p ${PORT:-3002}",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.110.0",
     "@auth/prisma-adapter": "^2.11.3",
     "@aws-sdk/client-s3": "^3.1098.0",
-    "@netlify/blobs": "^10.7.9",
     "@prisma/client": "^6.19.3",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
@@ -28,7 +30,6 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@netlify/functions": "^5.3.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
