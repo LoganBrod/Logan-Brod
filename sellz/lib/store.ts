@@ -306,6 +306,13 @@ export interface SellerSettings {
    * it starts off like auto-publish does.
    */
   autoAcceptOfferPct: number;
+  /**
+   * Nightly email summarising changes the Brain applied by itself. On by
+   * default: those edits reach the seller's live eBay listings while they are
+   * not looking, so silence is the wrong default. Purely a notification —
+   * turning it off changes nothing about what the automation does.
+   */
+  emailDigest: boolean;
 }
 
 export const DEFAULT_AUTO_RULES: AutoApplyRules = {
@@ -326,6 +333,7 @@ export const DEFAULT_SELLER: SellerSettings = {
   relistEnabled: false,
   autoPublishThreshold: 0,
   autoAcceptOfferPct: 0,
+  emailDigest: true,
 };
 
 export type ProposalKind = "reprice" | "retitle" | "rewrite" | "relist" | "hold";
@@ -608,6 +616,7 @@ function toSettings(r: SellerSettingsRow): SellerSettings {
     defaultPackageWeightOz: nn(r.defaultPackageWeightOz),
     autoPublishThreshold: r.autoPublishThreshold,
     autoAcceptOfferPct: r.autoAcceptOfferPct,
+    emailDigest: r.emailDigest,
   };
 }
 
@@ -645,6 +654,7 @@ export async function updateSellerSettings(
     defaultPackageWeightOz: next.defaultPackageWeightOz ?? null,
     autoPublishThreshold: next.autoPublishThreshold,
     autoAcceptOfferPct: next.autoAcceptOfferPct,
+    emailDigest: next.emailDigest,
   };
 
   await prisma.sellerSettings.upsert({

@@ -483,6 +483,7 @@ interface AutomationState {
   defaultPackageWeightOz: number | "";
   autoPublishThreshold: number;
   autoAcceptOfferPct: number;
+  emailDigest: boolean;
 }
 
 const DEFAULT_RULES: AutoApplyRules = {
@@ -538,6 +539,7 @@ function AutomationPanel() {
           defaultPackageWeightOz: d.defaultPackageWeightOz ?? "",
           autoPublishThreshold: d.autoPublishThreshold ?? 0,
           autoAcceptOfferPct: d.autoAcceptOfferPct ?? 0,
+          emailDigest: d.emailDigest !== false,
         })
       )
       .catch((err) =>
@@ -709,6 +711,20 @@ function AutomationPanel() {
                 eBay won&apos;t publish a listing without a packed weight. This one fills in
                 the box for every new listing so you only correct it when an item is unusual —
                 it is a starting point, not a substitute for weighing.
+              </p>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-ink-border bg-ink p-4">
+              <Toggle
+                checked={s.emailDigest}
+                onChange={(v) => setS({ ...s, emailDigest: v })}
+                label="Email me what the Brain changed overnight"
+              />
+              <p className="text-xs leading-relaxed text-fog/40">
+                A short summary, only on nights when something was actually applied to your
+                live listings. It reports changes rather than asking for anything, and turning
+                it off changes nothing about what the automation does — only whether you hear
+                about it.
               </p>
             </div>
 

@@ -20,6 +20,8 @@ import { getPhoto } from "@/lib/photos";
 import { currentUserId } from "@/lib/auth";
 import { cronAuthorized, tenantsWithEbay } from "@/lib/cron";
 import { checkUsage, incrementUsage, planAllows } from "@/lib/usage";
+import { sendDigest, type DigestChange } from "@/lib/digest";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 800;
@@ -37,6 +39,8 @@ interface TenantResult {
   considered: number;
   proposed: number;
   autoApplied: number;
+  /** Whether a digest email actually went out for this seller. */
+  emailed?: boolean;
   skipped?: string;
 }
 
@@ -45,7 +49,10 @@ interface TenantResult {
  * as it is now and files a proposal per listing. Nothing here touches eBay
  * unless that seller's own automation settings say it may.
  */
-async function researchForUser(userId: string): Promise<TenantResult> {
+async function researchForUser(
+  userId: string,
+  opts?: { notify?: boolean; appUrl?: string }
+): Promise<TenantResult> {
   if (!(await planAllows(userId, "proposals"))) {
     return { userId, considered: 0, proposed: 0, autoApplied: 0, skipped: "plan" };
   }
@@ -79,6 +86,9 @@ async function researchForUser(userId: string): Promise<TenantResult> {
 
   let proposed = 0;
   let autoApplied = 0;
+  // Collected as changes land so the digest reports what actually reached
+  // eBay, rather than what was proposed.
+  const applied: DigestChange[] = [];
 
   for (const listing of candidates) {
     try {
@@ -158,6 +168,12 @@ async function researchForUser(userId: string): Promise<TenantResult> {
                 lastRelistedAt: record.at,
               });
               finalStatus = "auto-applied";
+              applied.push({
+                kind: "relist",
+                listingTitle: listing.title,
+                oldPrice: listing.price,
+                newPrice,
+              });
             } else {
               const changes: { price?: number; title?: string; description?: string } = {};
               if (draft.kind === "reprice" && draft.proposedPrice > 0) {
@@ -187,6 +203,14 @@ async function researchForUser(userId: string): Promise<TenantResult> {
                   ...(changes.description ? { description: changes.description } : {}),
                 });
                 finalStatus = "auto-applied";
+                applied.push({
+                  kind: draft.kind as DigestChange["kind"],
+                  listingTitle: listing.title,
+                  ...(changes.price !== undefined
+                    ? { oldPrice: listing.price, newPrice: changes.price }
+                    : {}),
+                  ...(changes.title ? { newTitle: changes.title } : {}),
+                });
               }
             }
           } catch (err) {
@@ -212,7 +236,16 @@ async function researchForUser(userId: string): Promise<TenantResult> {
   }
 
   await setLastResearchAt(userId, new Date().toISOString());
-  return { userId, considered: candidates.length, proposed, autoApplied };
+
+  // Only the scheduled sweep emails. A seller who pressed "Run research"
+  // themselves is already looking at the result, and mailing them about it
+  // would train them to ignore the digest that matters.
+  let emailed = false;
+  if (opts?.notify && settings.emailDigest !== false && applied.length > 0) {
+    emailed = await sendDigest(userId, applied, opts.appUrl ?? "");
+  }
+
+  return { userId, considered: candidates.length, proposed, autoApplied, emailed };
 }
 
 /**
@@ -226,9 +259,10 @@ async function researchForUser(userId: string): Promise<TenantResult> {
 export async function POST(req: NextRequest) {
   if (cronAuthorized(req)) {
     const results: TenantResult[] = [];
+    const appUrl = publicOrigin(req.nextUrl.origin);
     for (const userId of await tenantsWithEbay()) {
       try {
-        results.push(await researchForUser(userId));
+        results.push(await researchForUser(userId, { notify: true, appUrl }));
       } catch (err) {
         results.push({
           userId,
@@ -245,6 +279,7 @@ export async function POST(req: NextRequest) {
       tenants: results.length,
       proposed: results.reduce((n, r) => n + r.proposed, 0),
       autoApplied: results.reduce((n, r) => n + r.autoApplied, 0),
+      emailed: results.filter((r) => r.emailed).length,
       results,
     });
   }

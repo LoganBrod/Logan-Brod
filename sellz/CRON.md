@@ -16,7 +16,7 @@ them on a schedule is safe regardless of who has what enabled.
 |---|---|---|---|
 | Scheduled publish | `*/15 * * * *` | `POST /api/cron/publish` | Publishes listings whose scheduled time has passed |
 | Best offers | `*/30 * * * *` | `POST /api/cron/offers` | Auto-accepts offers above each seller's threshold (eBay expires them after 48h) |
-| Research | `0 6 * * *` | `POST /api/research` | Nightly re-comp + proposals for live listings (Pro and above) |
+| Research | `0 6 * * *` | `POST /api/cron/research` | Nightly re-comp + proposals for live listings (Pro and above), then emails each seller a digest of what was auto-applied |
 | Relist | `0 8 * * *` | `POST /api/cron/relist` | Cycles stale listings past their cadence (Pro and above) |
 | Usage reset | `0 3 1 * *` | `POST /api/cron/reset-usage` | Rolls monthly allowances over |
 
@@ -39,6 +39,18 @@ failed run rather than a silent success.
 
 Any scheduler works — GitHub Actions, cron-job.org, a system crontab. There is
 nothing Railway-specific in the routes.
+
+## Note on the digest email
+
+The research job emails each seller a summary of the changes it applied to
+their live listings by itself — and only those. Proposals still waiting for a
+decision are visible next time they open the app; a price that already changed
+on eBay is not, and that is the one worth a message.
+
+It sends only on the scheduled sweep, never when someone presses "Run research"
+themselves, and only on nights when something was actually applied. Sellers can
+turn it off on the Brain page. Without `RESEND_API_KEY` and `EMAIL_FROM` the
+send is skipped and the rest of the job is unaffected.
 
 ## Note on the usage reset
 

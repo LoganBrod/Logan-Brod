@@ -173,6 +173,10 @@ model SellerSettings {
   autoPublishThreshold   Int @default(0)
   autoAcceptOfferPct     Int @default(0)
 
+  /// Nightly email about changes the Brain applied on its own. Defaults on,
+  /// because those changes go live on eBay without the seller present.
+  emailDigest Boolean @default(true)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

@@ -87,6 +87,7 @@ export async function PUT(req: NextRequest) {
       body.autoAcceptOfferPct === undefined
         ? undefined
         : num(body.autoAcceptOfferPct, 0, 100, 0),
+    emailDigest: typeof body.emailDigest === "boolean" ? body.emailDigest : undefined,
   });
   return NextResponse.json({
     ...updated,

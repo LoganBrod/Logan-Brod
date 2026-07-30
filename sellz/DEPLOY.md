@@ -152,6 +152,18 @@ URL. The tenant travels in an HMAC-signed `state` parameter instead
 (`lib/oauthState.ts`), which is why `AUTH_SECRET` must be set before anyone can
 connect eBay.
 
+## 6b. Email digest (optional)
+
+Only used for the nightly summary of changes the Brain applied on its own.
+Skip it and everything else still works.
+
+1. Create an account at [resend.com](https://resend.com) and verify a domain
+   under **Domains** — Resend rejects sends from unverified domains, so this
+   step is not optional if you want the email to arrive.
+2. **API Keys → Create API Key**, with send permission.
+3. Set `RESEND_API_KEY`, and `EMAIL_FROM` to an address on that verified
+   domain (e.g. `LevoZ <listings@levoz.app>`).
+
 ## 7. App origin
 
 Set `PUBLIC_SITE_URL` to the public origin (`https://levoz.app`).
