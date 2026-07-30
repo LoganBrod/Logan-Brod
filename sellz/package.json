@@ -21,7 +21,7 @@
     "bcryptjs": "^3.0.3",
     "fast-xml-parser": "^5.10.1",
     "framer-motion": "^11.18.2",
-    "next": "14.2.3",
+    "next": "^14.2.35",
     "next-auth": "^5.0.0-beta.32",
     "prisma": "^6.19.3",
     "react": "^18",
