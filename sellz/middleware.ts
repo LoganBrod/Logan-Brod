@@ -5,8 +5,14 @@ import { authConfig } from "./auth.config";
 // Edge-safe config only — see the comment in auth.config.ts.
 const { auth } = NextAuth(authConfig);
 
-/** Exact paths anyone may reach. */
-const PUBLIC_PATHS = new Set(["/", "/pricing", "/login", "/signup"]);
+/**
+ * Exact paths anyone may reach.
+ *
+ * /api/health is here because the platform healthcheck runs with no session —
+ * behind the session check it would 401, the deploy would never be marked
+ * healthy, and the release would roll back.
+ */
+const PUBLIC_PATHS = new Set(["/", "/pricing", "/login", "/signup", "/api/health"]);
 
 /**
  * Path prefixes that authenticate themselves rather than by session:

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe, PLAN_PRICES } from "@/lib/stripe";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     select: { email: true, stripeCustomerId: true },
   });
 
-  const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
+  const origin = publicOrigin(req.nextUrl.origin);
 
   try {
     const session = await stripe().checkout.sessions.create({

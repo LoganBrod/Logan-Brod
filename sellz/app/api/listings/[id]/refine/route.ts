@@ -6,6 +6,7 @@ import { resolveAspectGaps } from "@/lib/ebay";
 import { publishListing } from "@/lib/publishListing";
 import { planAllows } from "@/lib/usage";
 import { getPhoto } from "@/lib/photos";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       // instead of when it next happens to reload its settings.
       (await planAllows(userId, "autoPublish"))
     ) {
-      const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
+      const origin = publicOrigin(req.nextUrl.origin);
       const outcome = await publishListing(userId, listing.id, origin);
       autoPublished = outcome.ok;
       if (!outcome.ok) autoPublishError = outcome.error;

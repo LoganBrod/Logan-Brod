@@ -3,6 +3,7 @@ import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, getSellerSettings } from "@/lib/store";
 import { publishToEbay } from "@/lib/ebay";
 import { photoUrl } from "@/lib/photos";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // eBay fetches images by URL, so they must be absolute and publicly reachable.
-  const origin = process.env.PUBLIC_SITE_URL || req.nextUrl.origin;
+  const origin = publicOrigin(req.nextUrl.origin);
   const imageUrls = listing.photos.map((p) => photoUrl(p, origin));
 
   try {

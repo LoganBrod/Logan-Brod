@@ -19,7 +19,14 @@ const field =
  * only export a default plus a few reserved fields — a second export there is
  * a build error.
  */
-export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
+export default function AuthForm({
+  mode,
+  googleEnabled,
+}: {
+  mode: "signin" | "signup";
+  /** False when the app has no Google credentials — see auth.config.ts. */
+  googleEnabled: boolean;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
@@ -77,22 +84,28 @@ export default function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       />
 
       <section className="mt-6 rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-        <button
-          onClick={() => {
-            setBusy("google");
-            signIn("google", { callbackUrl: isSignup ? "/onboarding" : next });
-          }}
-          disabled={busy !== null}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
-        >
-          {busy === "google" ? "Redirecting…" : "Continue with Google"}
-        </button>
+        {googleEnabled && (
+          <>
+            <button
+              onClick={() => {
+                setBusy("google");
+                signIn("google", { callbackUrl: isSignup ? "/onboarding" : next });
+              }}
+              disabled={busy !== null}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 font-bold text-ink transition hover:bg-brand-dim disabled:opacity-50"
+            >
+              {busy === "google" ? "Redirecting…" : "Continue with Google"}
+            </button>
 
-        <div className="my-5 flex items-center gap-3">
-          <span className="h-px flex-1 bg-ink-border" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-fog/30">or</span>
-          <span className="h-px flex-1 bg-ink-border" />
-        </div>
+            <div className="my-5 flex items-center gap-3">
+              <span className="h-px flex-1 bg-ink-border" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-fog/30">
+                or
+              </span>
+              <span className="h-px flex-1 bg-ink-border" />
+            </div>
+          </>
+        )}
 
         <div className="space-y-3 text-sm">
           {isSignup && (

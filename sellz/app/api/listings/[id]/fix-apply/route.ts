@@ -3,6 +3,7 @@ import { currentUserId } from "@/lib/auth";
 import { getListing, updateListing, type RelistRecord } from "@/lib/store";
 import { relistItem, reviseEbayListing } from "@/lib/ebay";
 import { photoUrl } from "@/lib/photos";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -49,11 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Photos live on our own domain and eBay fetches them by URL, so the public
   // origin has to be right or the revise silently drops them.
-  const origin =
-    process.env.PUBLIC_SITE_URL ||
-    process.env.URL ||
-    process.env.DEPLOY_URL ||
-    new URL(req.url).origin;
+  const origin = publicOrigin(new URL(req.url).origin);
   const allImageUrls = [
     ...photos.map((id) => photoUrl(id, origin)),
     ...(listing.imageUrls ?? []),

@@ -21,14 +21,41 @@ Third sibling of the Brain family (the LevoZ clipper, AdZ ads) — this one grad
 
 ```bash
 cd sellz
-cp .env.local.example .env.local   # add ANTHROPIC_API_KEY
+cp .env.local.example .env.local
 npm install
+npx prisma db push        # needs DATABASE_URL + DIRECT_URL
 npm run dev
 ```
 
 Open [http://localhost:3002](http://localhost:3002) (the clipper is 3000, AdZ is 3001).
 
-Only `ANTHROPIC_API_KEY` is needed — it powers grading, analysis, comps research (via Claude's web search), diagnosis, and generation.
+To get a signed-in seller and a working analysis you need `DATABASE_URL`,
+`DIRECT_URL`, `AUTH_SECRET` and `ANTHROPIC_API_KEY`. Everything else — Google
+sign-in, eBay, R2, Stripe — is optional and degrades with a clear message rather
+than crashing, so you can add each one when you need it. `.env.local.example`
+documents all of them.
+
+`ANTHROPIC_API_KEY` is the *platform's* key: it powers grading, analysis, comps
+research, diagnosis and generation for every seller. Sellers never supply one,
+which is what the plan limits in `lib/usage.ts` are there to bound.
+
+## Architecture
+
+Multi-tenant SaaS. Every row belongs to a `User`, and every data function in
+`lib/store.ts` takes a `userId` and filters on it, so an id belonging to another
+seller resolves to nothing rather than to their row.
+
+| Concern | Choice |
+|---|---|
+| Database | Postgres (Supabase) via Prisma — `prisma/schema.prisma` |
+| Auth | NextAuth v5, Google + email/password — `lib/auth.ts`, split from the edge-safe `auth.config.ts` for middleware |
+| Photos | Cloudflare R2, keys namespaced per seller — `lib/photos.ts` |
+| Payments | Stripe Checkout + billing portal — `app/api/stripe/*` |
+| Plan limits | `lib/usage.ts`, always enforced from the `User` row, never from the session token |
+| Hosting | Any long-lived Node host. Not serverless — photo analysis runs up to 600s |
+
+Plans: Free (10 analyses/month), Pro $29 (100/month, proposals + automation),
+Business $79 (unlimited, 3 eBay accounts).
 
 ## eBay auto-sync (optional)
 
@@ -36,7 +63,7 @@ Connecting an eBay Developer app lets the Brain page pull each listing's views a
 
 1. In the [eBay Developer Portal](https://developer.ebay.com/), grab your app's **App ID (Client ID)** and **Cert ID (Client Secret)**.
 2. Under your app's **User Tokens** settings, create a **RuName**. Set its "Your auth accepted URL" to `https://<your-deployed-domain>/api/ebay/callback` — this has to be a real `https://` address; eBay won't redirect to `localhost`. If you're testing locally, tunnel your dev server with something like [ngrok](https://ngrok.com) and use that tunnel's URL here instead.
-3. Add to `.env.local` (and to the same names in your host's environment variables, e.g. Netlify's site settings):
+3. Add to `.env.local` (and to the same names in your host's environment variables):
    ```
    EBAY_CLIENT_ID=...
    EBAY_CLIENT_SECRET=...
@@ -66,12 +93,21 @@ The "Approve & list on eBay" button uses the Inventory API, which has requiremen
 - **Sold-price comps are not available on a normal keyset.** eBay's Marketplace Insights API (actual sold prices) is a *Limited Release* that eBay approves case by case, and their docs state it is closed to new users. A standard developer account does not have it, and there is no self-serve way to turn it on. Comps therefore use active listings from sellers with 98%+ feedback, which are asking prices, and the UI says so rather than implying they are sales. If you are ever granted access, set `EBAY_MARKETPLACE_INSIGHTS=true`; note it also needs a client-credentials app token scoped to `buy.marketplace.insights`, which is separate from the user token everything else uses.
 - **Scopes changed.** Publishing needs `sell.inventory` and `sell.account.readonly`, so if you connected eBay before this feature existed, disconnect and reconnect to re-consent with the new scopes.
 
-## Deploying (Netlify)
+## Deploying
 
-This repo includes `netlify.toml` wired for Netlify's official Next.js runtime. One thing to know: local dev stores data in `./data/store.json` on disk, but Netlify's functions have no persistent disk, so the deployed app automatically switches to [Netlify Blobs](https://docs.netlify.com/blobs/overview/) instead (see `lib/db.ts`) — no setup needed beyond deploying normally, Blobs works out of the box on Netlify.
+See **[DEPLOY.md](./DEPLOY.md)** for the full runbook — Supabase, Google OAuth,
+R2, Stripe, eBay, custom domain, and a post-deploy checklist.
+
+The one thing worth knowing before you start: this repository contains three
+Next.js apps (the clipper at the repo root, `adz/`, and `sellz/`). A host pointed
+at the repository root will build and serve the wrong one, successfully. Set the
+service's **root directory to `sellz`**.
+
+Scheduled jobs — publish, relist, best offers, research, usage reset — are
+host-agnostic HTTP endpoints guarded by `CRON_SECRET`. See [CRON.md](./CRON.md).
 
 ## Notes
 
-- Local data lives in `./data` (gitignored) — your sales numbers stay on your machine. On Netlify it lives in Netlify Blobs instead (see above).
+- Each seller's data is isolated at the query level, and their photos are stored under a per-seller key prefix in R2.
 - The generator/diagnoser never invents brands, sizes, measurements, or condition details you didn't state.
 - Comps research depends on what web search can reach; sold-price data is patchy for some categories — the paste-your-own-comps field covers the gap (checking eBay's sold filter yourself takes 30 seconds and is the best data).

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { listListings, updateListing } from "@/lib/store";
 import { publishListing } from "@/lib/publishListing";
 import { cronAuthorized, tenantsWithEbay } from "@/lib/cron";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -19,10 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const origin =
-    process.env.PUBLIC_SITE_URL ||
-    process.env.RAILWAY_PUBLIC_DOMAIN_URL ||
-    req.nextUrl.origin;
+  const origin = publicOrigin(req.nextUrl.origin);
 
   const now = Date.now();
   const results: { userId: string; listingId: string; ok: boolean; error?: string }[] = [];
