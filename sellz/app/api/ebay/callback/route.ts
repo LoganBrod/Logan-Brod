@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@/lib/ebay";
 import { decodeState } from "@/lib/oauthState";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 
@@ -14,8 +15,15 @@ export const runtime = "nodejs";
  * by editing the URL, so a state we did not sign is rejected outright.
  */
 export async function GET(req: NextRequest) {
+  // These redirects are followed by the seller's browser, so they have to name
+  // the app's public origin. `req.url` is the address the container itself is
+  // listening on, which behind a proxy is something like localhost:8080 — a
+  // real address on the *user's* machine, where the browser then fails to
+  // connect. eBay redirects here from its own domain, so there is no earlier
+  // navigation to fall back on.
+  const origin = publicOrigin(req.nextUrl.origin);
   const fail = (msg: string) =>
-    NextResponse.redirect(new URL(`/brain?ebayError=${encodeURIComponent(msg)}`, req.url));
+    NextResponse.redirect(new URL(`/brain?ebayError=${encodeURIComponent(msg)}`, origin));
 
   const code = req.nextUrl.searchParams.get("code");
   if (!code) return fail("No authorization code returned");
@@ -29,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await exchangeCodeForTokens(state.userId, code);
-    return NextResponse.redirect(new URL("/brain?ebay=connected", req.url));
+    return NextResponse.redirect(new URL("/brain?ebay=connected", origin));
   } catch (err) {
     return fail(err instanceof Error ? err.message : "eBay connection failed");
   }

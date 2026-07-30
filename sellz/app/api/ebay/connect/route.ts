@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthorizeUrl } from "@/lib/ebay";
 import { currentUserId } from "@/lib/auth";
 import { encodeState } from "@/lib/oauthState";
+import { publicOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 
@@ -17,9 +18,14 @@ export const runtime = "nodejs";
  * whole consent — taking publishing and syncing down with it.
  */
 export async function GET(req: NextRequest) {
+  // See the note in the callback: `req.url` is the container's own listening
+  // address behind a proxy, so browser-facing redirects must use the public
+  // origin instead.
+  const origin = publicOrigin(req.nextUrl.origin);
+
   const userId = await currentUserId();
   if (!userId) {
-    return NextResponse.redirect(new URL("/login?next=/brain", req.url));
+    return NextResponse.redirect(new URL("/login?next=/brain", origin));
   }
   try {
     const includeLogistics = req.nextUrl.searchParams.get("labels") === "1";
@@ -27,6 +33,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(getAuthorizeUrl({ includeLogistics, state }));
   } catch (err) {
     const message = encodeURIComponent(err instanceof Error ? err.message : "eBay connect failed");
-    return NextResponse.redirect(new URL(`/brain?ebayError=${message}`, req.url));
+    return NextResponse.redirect(new URL(`/brain?ebayError=${message}`, origin));
   }
 }
