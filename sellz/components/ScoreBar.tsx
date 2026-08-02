@@ -33,7 +33,7 @@ export default function ScoreBar({
   return (
     <div title={reason} className="w-full">
       <div className="flex items-baseline justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-fog/40">
+        <span className="text-xs font-semibold text-fog/55">
           {label}
         </span>
         <span className="text-sm font-extrabold tabular-nums text-fog">{pct}</span>

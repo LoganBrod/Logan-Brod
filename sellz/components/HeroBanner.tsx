@@ -105,7 +105,7 @@ export default function HeroBanner() {
         {/* Left: the claim */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            {["ebay", "depop"].map((t) => (
+            {["depop", "ebay"].map((t) => (
               <span
                 key={t}
                 className="border border-white/25 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white/70"
@@ -116,30 +116,30 @@ export default function HeroBanner() {
           </div>
 
           <h1 className="mt-5 text-[2.5rem] font-extrabold leading-[0.98] tracking-tight sm:text-[3.4rem] lg:text-[4rem]">
-            Priced by what
+            Turn your thrift
             <br />
-            <span className="text-brand">actually sold</span>
+            finds into
             <br />
-            Listed in minutes
+            <span className="text-brand">actual money</span>
           </h1>
 
           <p className="mt-5 max-w-md text-sm leading-relaxed text-white/55 sm:text-base">
-            Photograph an item and LevoZ writes the listing, prices it against real
-            sales, and posts it to eBay once you approve.
+            Take a photo. It works out what the thing is worth, writes the listing,
+            and hands you a Depop post ready to paste &mdash; or puts it on eBay for you.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href="/new"
-              className="bg-brand px-6 py-3 text-sm font-bold text-[#0d1112] transition hover:bg-brand-dim"
+              className="rounded-lg bg-brand px-6 py-3 text-sm font-bold text-[#0d1112] transition hover:bg-brand-dim"
             >
-              Start a listing &rarr;
+              Sell something &rarr;
             </Link>
             <Link
               href="/analytics"
-              className="border border-white/25 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/60"
+              className="rounded-lg border border-white/25 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/60"
             >
-              See your numbers
+              See what you made
             </Link>
           </div>
         </div>

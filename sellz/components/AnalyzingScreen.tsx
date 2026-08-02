@@ -100,7 +100,7 @@ export default function AnalyzingScreen({
             </div>
           ))}
         </div>
-        <div className="mt-2 flex justify-center gap-6 text-[10px] font-bold uppercase tracking-wider text-fog/30">
+        <div className="mt-2 flex justify-center gap-6 text-xs font-medium text-fog/50">
           {ORDER.map((key) => (
             <span key={key} className={key === activeKey ? "text-brand" : ""}>
               {STEP_LABEL[key]}

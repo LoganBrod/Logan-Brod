@@ -39,7 +39,7 @@ export default function SiteFooter() {
         </div>
         {GROUPS.map((g) => (
           <div key={g.title}>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">{g.title}</p>
+            <p className="text-sm font-semibold text-fog/60">{g.title}</p>
             <ul className="mt-3 space-y-2">
               {g.links.map((l) => (
                 <li key={l.label}>

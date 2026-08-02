@@ -88,7 +88,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">
+    <h3 className="text-sm font-semibold text-fog/60">
       {children}
     </h3>
   );
@@ -187,7 +187,7 @@ export default function ListingsPage() {
 
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+          <h2 className="text-sm font-semibold text-fog/60">
             {listings ? `${listings.length} listing${listings.length === 1 ? "" : "s"}` : "Listings"}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -353,7 +353,7 @@ function ListingsTable({
     <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-card shadow-card">
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead>
-          <tr className="border-b border-ink-border text-xs font-bold uppercase tracking-wider text-fog/40">
+          <tr className="border-b border-ink-border text-xs font-semibold text-fog/55">
             <th className="w-8 px-3 py-2">
               <input
                 type="checkbox"
@@ -714,7 +714,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
           onClick={() => setOutcomeOpen(!outcomeOpen)}
           className="flex w-full items-center justify-between text-left"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-fog/40">
+          <span className="text-sm font-semibold text-fog/60">
             Outcome data <span className="font-normal normal-case text-fog/30">· optional, add if you have it</span>
           </span>
           <span className="text-fog/40">{outcomeOpen ? "▲" : "▼"}</span>
@@ -739,7 +739,7 @@ function ImportForm({ onDone }: { onDone: () => void }) {
                   ] as const
                 ).map(([k, label]) => (
                   <label key={k} className="space-y-0.5">
-                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">{label}</span>
+                    <span className="block text-xs font-medium text-fog/55">{label}</span>
                     <input
                       type={k === "listedAt" || k === "soldAt" ? "date" : "number"}
                       min={0}
@@ -1009,12 +1009,12 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
     <div className="mt-3 border-t border-ink-border pt-3">
       <SectionLabel>Shipping</SectionLabel>
       <BuyLabelBox listing={l} onChanged={onChanged} />
-      <p className="mt-3 text-[10px] uppercase tracking-wider text-fog/30">
+      <p className="mt-3 text-xs font-medium text-fog/50">
         Or record tracking you bought elsewhere
       </p>
       <div className="mt-2 flex flex-wrap items-end gap-2 text-xs">
         <label className="space-y-0.5">
-          <span className="block text-[10px] uppercase tracking-wider text-fog/40">Carrier</span>
+          <span className="block text-xs font-medium text-fog/55">Carrier</span>
           <select
             value={carrier}
             onChange={(e) => setCarrier(e.target.value as (typeof SHIPPING_CARRIERS)[number])}
@@ -1028,7 +1028,7 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
           </select>
         </label>
         <label className="min-w-0 flex-1 space-y-0.5">
-          <span className="block text-[10px] uppercase tracking-wider text-fog/40">Tracking number</span>
+          <span className="block text-xs font-medium text-fog/55">Tracking number</span>
           <input
             value={tracking}
             onChange={(e) => setTracking(e.target.value)}
@@ -1273,7 +1273,7 @@ function ListingCard({
               {l.platform === "ebay" && (
                 <div className="mt-2 flex flex-wrap items-end gap-2 border-b border-ink-border pb-3">
                   <label className="min-w-0 flex-1 space-y-0.5">
-                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">
+                    <span className="block text-xs font-medium text-fog/55">
                       eBay item ID
                     </span>
                     <input
@@ -1323,7 +1323,7 @@ function ListingCard({
                   ] as const
                 ).map(([k, label]) => (
                   <label key={k} className="space-y-0.5">
-                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">{label}</span>
+                    <span className="block text-xs font-medium text-fog/55">{label}</span>
                     <input
                       type="number"
                       min={0}
@@ -1379,7 +1379,7 @@ function ListingCard({
                   ] as const
                 ).map(([k, label]) => (
                   <label key={k} className="space-y-0.5">
-                    <span className="block text-[10px] uppercase tracking-wider text-fog/40">
+                    <span className="block text-xs font-medium text-fog/55">
                       {label}
                     </span>
                     <input
@@ -1427,7 +1427,7 @@ function ListingCard({
 
           {tab === "diagnosis" && l.diagnosis && (
             <div className="rounded-xl border border-amber-400/30 bg-ink p-3 text-sm">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">
+              <h3 className="text-sm font-semibold text-amber-400">
                 Why it isn't selling
               </h3>
               <p className="mt-1 text-xs text-fog/80">{l.diagnosis.text}</p>

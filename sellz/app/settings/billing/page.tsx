@@ -54,7 +54,7 @@ export default function BillingPage() {
       ) : (
         <>
           <section className="rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">Current plan</p>
+            <p className="text-sm font-semibold text-fog/60">Current plan</p>
             <p className="mt-1 text-xl font-extrabold text-fog">{PLAN_LABEL[usage.plan]}</p>
 
             <div className="mt-5 space-y-4">

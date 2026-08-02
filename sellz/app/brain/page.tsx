@@ -625,7 +625,7 @@ function AutomationPanel() {
 
             {s.automationLevel === "semi" && (
               <div className="space-y-3 rounded-xl border border-ink-border bg-ink p-4">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                <h3 className="text-sm font-semibold text-fog/60">
                   Limits for automatic changes
                 </h3>
                 <div className="grid gap-3 text-sm sm:grid-cols-3">
@@ -1098,7 +1098,7 @@ function BrainPanel() {
         {playbook && (
           <div className="mt-4 space-y-3 text-sm">
             <div className="rounded-xl border border-brand/20 bg-ink p-4">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+              <h3 className="text-sm font-semibold text-brand">
                 Why things sell (and don't)
               </h3>
               <p className="mt-1 text-fog/80">{playbook.summary}</p>
@@ -1140,7 +1140,7 @@ function BrainPanel() {
                 {tab === "guidelines" && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl bg-ink p-3">
-                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                      <h3 className="text-sm font-semibold text-fog/60">
                         Listings
                       </h3>
                       <p className="mt-1 whitespace-pre-wrap text-fog/70">
@@ -1148,7 +1148,7 @@ function BrainPanel() {
                       </p>
                     </div>
                     <div className="rounded-xl bg-ink p-3">
-                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                      <h3 className="text-sm font-semibold text-fog/60">
                         Pricing
                       </h3>
                       <p className="mt-1 whitespace-pre-wrap text-fog/70">
@@ -1168,7 +1168,7 @@ function BrainPanel() {
                   <div className="space-y-3">
                     {playbook.experiments && playbook.experiments.length > 0 ? (
                       <div className="rounded-xl border border-brand/30 bg-ink p-3">
-                        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+                        <h3 className="text-sm font-semibold text-brand">
                           🧪 Running experiments
                         </h3>
                         <ul className="mt-1 space-y-1.5">
@@ -1194,7 +1194,7 @@ function BrainPanel() {
                     )}
                     {playbook.experimentResults && (
                       <div className="rounded-xl bg-ink p-3">
-                        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+                        <h3 className="text-sm font-semibold text-fog/60">
                           Last experiment results
                         </h3>
                         <p className="mt-1 whitespace-pre-wrap text-fog/70">
@@ -1260,7 +1260,7 @@ function SeedFromLinks({
 
   return (
     <div className="border border-ink-border bg-ink-card p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-fog/40">
+      <p className="text-sm font-semibold text-fog/60">
         Paste eBay links
       </p>
       <p className="mt-1 text-xs text-fog/40">

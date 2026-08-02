@@ -107,6 +107,10 @@ export default function AnalyticsPage() {
       profit,
       spend,
       avgMargin,
+      // Shown instead of the margin percentage. Nobody decides whether a $12
+      // jacket was worth buying by reading a percentage — they want to know
+      // they made nine dollars on it.
+      avgProfit: priced.length ? profit / priced.length : null,
       avgDays: sellTimes.length ? sellTimes.reduce((a, b) => a + b, 0) / sellTimes.length : null,
     };
   }, [rows, priced]);
@@ -118,7 +122,7 @@ export default function AnalyticsPage() {
   if (!listings) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Analytics" subtitle="Profit, margins, and what's actually worth sourcing." />
+        <PageHeader title="Analytics" subtitle="What you made, and which finds were worth it." />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
@@ -134,7 +138,7 @@ export default function AnalyticsPage() {
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Analytics" subtitle="Profit, margins, and what's actually worth sourcing." />
+        <PageHeader title="Analytics" subtitle="What you made, and which finds were worth it." />
         <p className="rounded-2xl border border-ink-border bg-ink-card p-6 text-sm text-fog/50 shadow-card">
           No sold items yet. Once a listing is marked <span className="text-fog">sold</span> with a
           sale price, it shows up here.{" "}
@@ -149,29 +153,29 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Analytics" subtitle="Profit, margins, and what's actually worth sourcing." />
+      <PageHeader title="Analytics" subtitle="What you made, and which finds were worth it." />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="Revenue" value={<AnimatedNumber value={totals.revenue} prefix="$" decimals={2} />} index={0} />
+        <Stat label="Made" value={<AnimatedNumber value={totals.revenue} prefix="$" decimals={2} />} index={0} />
         <Stat
-          label="Profit"
+          label="Kept"
           value={<AnimatedNumber value={totals.profit} prefix="$" decimals={2} />}
-          sub={missingCost > 0 ? `${priced.length} of ${rows.length} priced` : undefined}
+          sub={missingCost > 0 ? `${priced.length} of ${rows.length} with costs` : "after what you paid"}
           positive={totals.profit >= 0}
           index={1}
         />
         <Stat
-          label="Avg. margin"
-          value={totals.avgMargin !== null ? <AnimatedNumber value={totals.avgMargin} suffix="%" decimals={1} /> : "n/a"}
+          label="Per item"
+          value={totals.avgProfit !== null ? <AnimatedNumber value={totals.avgProfit} prefix="$" decimals={2} /> : "n/a"}
           index={2}
         />
-        <Stat label="Spent on stock" value={<AnimatedNumber value={totals.spend} prefix="$" decimals={2} />} index={3} />
+        <Stat label="Spent buying" value={<AnimatedNumber value={totals.spend} prefix="$" decimals={2} />} index={3} />
       </div>
 
       {missingCost > 0 && (
         <p className="rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
           {missingCost} sold {missingCost === 1 ? "item has" : "items have"} no purchase price
-          recorded, so {missingCost === 1 ? "it's" : "they're"} left out of profit and margin.
+          recorded, so {missingCost === 1 ? "it's" : "they're"} left out of what you kept.
           Add what you paid on the{" "}
           <Link href="/listings" className="underline">
             Listings
@@ -182,8 +186,8 @@ export default function AnalyticsPage() {
 
       {byMargin.length > 0 && (
         <section>
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-            Best margins
+          <h2 className="mb-3 text-sm font-semibold text-fog/60">
+            Best flips
           </h2>
           <div className="space-y-2">
             {byMargin.slice(0, 5).map((r, i) => (
@@ -199,8 +203,8 @@ export default function AnalyticsPage() {
           worst ones aren't already listed above as "best". */}
       {byMargin.length > 6 && (
         <section>
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-            Thinnest margins
+          <h2 className="mb-3 text-sm font-semibold text-fog/60">
+            Barely worth it
           </h2>
           <div className="space-y-2">
             {byMargin
@@ -219,21 +223,21 @@ export default function AnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {byCategory.length > 0 && (
           <GroupTable
-            title="Margin by category"
+            title="Which kinds of things pay"
             empty="No categories recorded yet."
             rows={byCategory}
           />
         )}
         {bySource.length > 0 ? (
-          <GroupTable title="Margin by source" empty="" rows={bySource} />
+          <GroupTable title="Where your best finds come from" empty="" rows={bySource} />
         ) : (
           <section>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
-              Margin by source
+            <h2 className="mb-3 text-sm font-semibold text-fog/60">
+              Where your best finds come from
             </h2>
             <p className="rounded-2xl border border-ink-border bg-ink-card p-5 text-sm text-fog/40 shadow-card">
-              Record where you sourced items (Cost tab on a listing) and this will show which
-              suppliers, thrift spots, or wholesalers actually pay off.
+              Note where you found things (Cost tab on a listing) and this will show which
+              shops and spots are actually worth the trip.
             </p>
           </section>
         )}
@@ -258,7 +262,7 @@ function Stat({
   return (
     <Reveal index={index}>
       <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-fog/40">{label}</p>
+        <p className="text-sm font-semibold text-fog/60">{label}</p>
         <p
           className={
             "mt-1 text-2xl font-extrabold " +
@@ -318,7 +322,7 @@ function GroupTable({
 }) {
   return (
     <section>
-      <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">{title}</h2>
+      <h2 className="mb-3 text-sm font-semibold text-fog/60">{title}</h2>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-ink-border bg-ink-card p-5 text-sm text-fog/40 shadow-card">
           {empty}

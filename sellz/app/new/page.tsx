@@ -696,7 +696,7 @@ function PhotoSlot({ slot, onFile }: { slot: Slot; onFile: (f: File) => void }) 
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.15em] text-fog/40">
+      <p className="mb-1.5 text-sm font-semibold text-fog/60">
         {slot.label}
       </p>
       <button
@@ -937,7 +937,7 @@ function ReviewStep({
 
       {retail && (
         <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
-          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">
+          <h2 className="text-sm font-semibold text-fog/60">
             Retail and demand
           </h2>
           <p className="mt-1 font-semibold text-fog">
@@ -971,7 +971,7 @@ function ReviewStep({
       {comps && (
         <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+            <h2 className="text-sm font-semibold text-brand">
               What comparable items go for
             </h2>
             {(comps.visualMatchCount ?? 0) > 0 && (
@@ -1062,7 +1062,7 @@ function ReviewStep({
       {/* Item Specifics Editor */}
       <section className="rounded-2xl border border-ink-border bg-ink-card p-5 shadow-card">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">
+          <h2 className="text-sm font-semibold text-fog/60">
             Item Specifics
           </h2>
           <span className="text-xs font-semibold text-brand">
@@ -1131,7 +1131,7 @@ function ReviewStep({
       </section>
 
       <section className="rounded-2xl border border-ink-border bg-ink-card p-5">
-        <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-fog/40">
+        <h3 className="mb-1 text-sm font-semibold text-fog/60">
           Shipping weight
         </h3>
         <p className="mb-3 text-xs text-fog/50">

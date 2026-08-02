@@ -10,6 +10,20 @@ const config: Config = {
           DEFAULT: "#2dd4bf",
           dim: "#14b8a6",
         },
+        /**
+         * Second accent, for money earned, goals and milestones.
+         *
+         * Deliberately not the action colour: `brand` is light enough to carry
+         * dark button text everywhere it is used, and re-hueing it would mean
+         * re-checking contrast on every button in the app. A separate warm
+         * accent buys the energy this audience wants without that risk — and
+         * keeping "money" visually distinct from "do this" is worth having
+         * anyway.
+         */
+        pop: {
+          DEFAULT: "#ff6b5b",
+          dim: "#f0503f",
+        },
         ink: {
           DEFAULT: "rgb(var(--color-ink) / <alpha-value>)",
           deep: "rgb(var(--color-ink-deep) / <alpha-value>)",
@@ -19,20 +33,25 @@ const config: Config = {
         fog: "rgb(var(--color-fog) / <alpha-value>)",
       },
       /**
-       * Squared-off geometry. The radius names are kept so existing markup
-       * doesn't need rewriting — they just resolve to sharp values now, which
-       * is what turns the whole app square in one place. `full` is left alone
-       * because spinners, avatars and toggles are genuinely circular.
+       * Rounded geometry. Every radius resolves here, so the whole app changes
+       * shape from this one block — the names are kept so markup never needs
+       * rewriting. `full` is left alone because spinners, avatars and toggles
+       * are genuinely circular.
+       *
+       * Previously these were 1-4px, which read as a trading terminal. Cards at
+       * 20px and buttons at 12px read as something you'd use on your phone,
+       * which is where this audience is. Stopping well short of pill-shaped
+       * keeps it from tipping into a kids' app.
        */
       borderRadius: {
         none: "0",
-        sm: "1px",
-        DEFAULT: "2px",
-        md: "2px",
-        lg: "2px",
-        xl: "3px",
-        "2xl": "3px",
-        "3xl": "4px",
+        sm: "6px",
+        DEFAULT: "8px",
+        md: "10px",
+        lg: "12px",
+        xl: "16px",
+        "2xl": "20px",
+        "3xl": "28px",
       },
       boxShadow: {
         card: "var(--shadow-card)",

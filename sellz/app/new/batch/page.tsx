@@ -239,7 +239,7 @@ export default function BatchModePage() {
 
       {!showReview && (
         <section className="max-w-2xl rounded-2xl border border-ink-border bg-ink-card p-6 shadow-card">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-fog/45">
+          <p className="text-sm font-semibold text-fog/60">
             {queuedCount} item{queuedCount === 1 ? "" : "s"} queued
           </p>
           <div className="mt-3 grid grid-cols-2 gap-4">
@@ -314,7 +314,7 @@ export default function BatchModePage() {
           <div className="overflow-x-auto rounded-2xl border border-ink-border bg-ink-card shadow-card">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-ink-border text-xs font-bold uppercase tracking-wider text-fog/40">
+                <tr className="border-b border-ink-border text-xs font-semibold text-fog/55">
                   <th className="w-8 px-3 py-2" />
                   <th className="px-2 py-2">Photo</th>
                   <th className="px-2 py-2">Title</th>
@@ -424,7 +424,7 @@ function BatchSlot({
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.15em] text-fog/40">{label}</p>
+      <p className="mb-1.5 text-sm font-semibold text-fog/60">{label}</p>
       <button
         onClick={() => inputRef.current?.click()}
         className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-ink-border bg-ink transition hover:border-brand/50"

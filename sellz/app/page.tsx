@@ -11,56 +11,56 @@ import HeroBanner from "@/components/HeroBanner";
 const STEPS = [
   {
     n: "01",
-    title: "Photograph it",
-    desc: "Front and back. Vision reads the brand, size, materials, and any wear that's actually visible — nothing invented, nothing assumed.",
+    title: "Take a photo",
+    desc: "Front and back is enough. It reads the brand, the size, the material and any wear it can actually see — it won't make things up to fill gaps.",
   },
   {
     n: "02",
-    title: "It prices and lists it",
-    desc: "Priced against what comparable items really sold for, not what someone's still hoping to get for theirs, then published straight to your eBay account.",
+    title: "It tells you what it's worth",
+    desc: "Based on what ones like it actually sold for, not what people are still hoping to get. You get a price you can defend, and the listing written for you.",
   },
   {
     n: "03",
-    title: "It grades the listing",
-    desc: "Every listing is scored 0–100 on the things that actually move a sale: title keywords, price against comps, photo coverage, category fit, how clearly the condition reads.",
+    title: "Post it wherever you sell",
+    desc: "A Depop version ready to copy and paste, hashtags and all — or one tap to put it live on eBay.",
   },
   {
     n: "04",
-    title: "It proposes the fix",
-    desc: "Anything scoring under 70 gets a concrete repair — more photos, a sharper title, a different price — not just a lower number. You approve it, it relists.",
+    title: "It tells you why it isn't selling",
+    desc: "If something sits, it says what's wrong and fixes it — better photos, a sharper title, a different price. Not just \"try lowering it.\"",
   },
 ];
 
 const FEATURES = [
   {
     icon: CameraIcon,
-    title: "Photo to listing",
-    desc: "Title, description, condition, and price written from the photos themselves, with a confidence score and an honest list of what the photos couldn't show.",
+    title: "Photo in, listing out",
+    desc: "Title, description, condition and price, written from the photo. It also tells you how sure it is, and what it couldn't work out from the pictures.",
   },
   {
     icon: TagIcon,
-    title: "Priced by what sold",
-    desc: "Sold prices where your eBay account has access, otherwise active listings from sellers above 98% feedback. Always labelled so you know which you're seeing — never a guess dressed up as data.",
+    title: "A price you can back up",
+    desc: "Based on real sales where we can see them, and on what similar things are currently going for otherwise. It always says which — never a guess dressed up as data.",
   },
   {
     icon: GaugeIcon,
-    title: "Graded on signals, not vibes",
-    desc: "Title keywords, item specifics, price vs. comps, description trust, condition clarity, photo coverage, category fit — seven dimensions, scored every time, not a vague sense of \"looks fine.\"",
+    title: "Ready to paste into Depop",
+    desc: "A shorter, punchier version with hashtags and the right condition wording, plus your photos in one tap. Depop has no API, so nobody can post for you — this gets it down to about ten seconds.",
   },
   {
     icon: WrenchIcon,
-    title: "It fixes what it finds",
-    desc: "A weak score names the exact weak spot and proposes the exact repair — a rewrite, a reprice, more photos — instead of leaving you to guess why something isn't moving.",
+    title: "It fixes what's not working",
+    desc: "Something sitting for weeks gets a specific fix — a rewrite, a new price, better photos — instead of leaving you to guess what's wrong with it.",
   },
   {
     icon: ProfitIcon,
-    title: "Profit, not just revenue",
-    desc: "Record what you paid, what shipping and fees cost, and where you sourced it. See margins per item, per category, and per supplier.",
+    title: "What you actually made",
+    desc: "Put in what you paid for something and it works out what you really kept after shipping and fees. Plus which places you find stuff are worth going back to.",
   },
   {
     icon: BrainIcon,
-    title: "It learns from your outcomes",
-    desc: "Sold and stuck listings both teach it. The playbook rewrites itself as your results come in, so the grading gets sharper the more you sell — not a static checklist.",
+    title: "It learns what you sell",
+    desc: "The things that sell and the things that don't both teach it. It gets better at pricing your kind of stuff the more you sell.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function LandingPage() {
       {/* Marketplaces */}
       <section className="border-b border-ink-border bg-ink-deep px-5 py-4">
         <p className="text-center text-sm font-semibold text-fog/50">
-          Built for eBay and Depop sellers, from one-off flips to full-time shops
+          For anyone flipping thrift finds on Depop or eBay
         </p>
       </section>
 
@@ -81,11 +81,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
-              It doesn&apos;t stop at &quot;listed&quot;
+              From your floor to sold
             </h2>
             <p className="mt-3 text-base text-fog/55">
-              Publishing is step two of four. The other half of the job is noticing when a
-              listing isn&apos;t working and fixing it — automatically, on your approval.
+              Posting it is the easy half. The other half is noticing when something
+              isn&apos;t selling and doing something about it — which is where most stuff
+              quietly dies.
             </p>
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -107,12 +108,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold tracking-tight text-fog sm:text-[2.6rem] sm:leading-[1.05]">
-              Built to keep optimizing
+              It keeps working after you post
             </h2>
             <p className="mt-3 text-base text-fog/55">
-              Not a one-shot generator. It grades every listing against real signals, tracks
-              what your own sales reveal, and proposes the exact fix when something isn&apos;t
-              working — instead of leaving a stale draft to quietly not sell.
+              Not just a caption generator. It checks how each listing is doing, learns from
+              what you actually sell, and tells you exactly what to change when something
+              sits — instead of leaving it there to go stale.
             </p>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -137,11 +138,11 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-xl">
             <h2 className="text-3xl font-extrabold tracking-tight sm:text-[2.6rem] sm:leading-[1.05]">
-              Point a camera at it
+              Got something to sell?
             </h2>
             <p className="mt-3 text-base text-white/55">
-              Two photos is enough to get a priced, written, ready-to-publish listing — graded
-              and kept sharp after that, not left to fend for itself.
+              Two photos and you&apos;ll have a priced, written listing ready to go — and
+              something keeping an eye on it after that.
             </p>
           </div>
           <Link

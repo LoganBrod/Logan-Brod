@@ -276,7 +276,7 @@ export default function Dashboard() {
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Recent listings */}
         <section className="min-w-0 lg:col-span-3">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+          <h2 className="mb-3 text-sm font-semibold text-fog/60">
             Recent listings
           </h2>
           {!listings ? (
@@ -335,7 +335,7 @@ export default function Dashboard() {
 
         {/* Playbook teaser */}
         <section className="min-w-0 lg:col-span-2">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fog/50">
+          <h2 className="mb-3 text-sm font-semibold text-fog/60">
             The Brain
           </h2>
           <Reveal>
@@ -381,7 +381,7 @@ function StatCard({
   return (
     <Reveal index={index}>
       <div className="rounded-2xl border border-ink-border bg-ink-card p-4 shadow-card">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-fog/40">{label}</p>
+        <p className="text-sm font-semibold text-fog/60">{label}</p>
         <p className="mt-1 text-2xl font-extrabold text-fog">{value}</p>
         {sub && <p className="mt-0.5 text-xs text-brand">{sub}</p>}
       </div>

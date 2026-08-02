@@ -3,36 +3,39 @@
 @tailwind utilities;
 
 :root {
-  /* Solid white page. Surfaces are separated by crisp borders rather than
-     tints and soft shadows, which is what made everything read as floating. */
-  --color-ink: 255 255 255;
-  --color-ink-deep: 247 248 248;
+  /* Warm off-white rather than pure white, and cards sit on it in true white
+     with a soft shadow. The previous flat-white-with-hairlines treatment was
+     chosen to stop things reading as "floating"; the cost was that it read as
+     a spreadsheet. On a phone, a card that lifts slightly is easier to parse
+     as a tappable thing. */
+  --color-ink: 252 251 249;
+  --color-ink-deep: 246 243 239;
   --color-ink-card: 255 255 255;
-  --color-ink-border: 219 224 225;
-  --color-fog: 17 24 26;
-  --shadow-card: none;
-  --shadow-glow: none;
-  --shadow-pop: 0 30px 60px -18px rgba(15, 30, 30, 0.35), 0 8px 20px -8px rgba(15, 30, 30, 0.2);
-  --scrollbar-track: 240 242 242;
-  --scrollbar-thumb: 211 217 218;
-  --skeleton-a: rgba(15, 30, 30, 0.04);
-  --skeleton-b: rgba(15, 30, 30, 0.08);
+  --color-ink-border: 231 226 219;
+  --color-fog: 26 22 20;
+  --shadow-card: 0 1px 2px rgba(40, 30, 25, 0.05), 0 8px 24px -12px rgba(40, 30, 25, 0.16);
+  --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.16);
+  --shadow-pop: 0 30px 60px -18px rgba(40, 30, 25, 0.3), 0 8px 20px -8px rgba(40, 30, 25, 0.18);
+  --scrollbar-track: 243 240 236;
+  --scrollbar-thumb: 214 208 200;
+  --skeleton-a: rgba(40, 30, 25, 0.04);
+  --skeleton-b: rgba(40, 30, 25, 0.08);
 }
 
 .dark {
-  /* Solid black surface. Cards lift off it with a slightly raised grey
-     rather than a tint, so the palette stays neutral and the teal accent
-     is the only colour doing work. */
-  --color-ink: 0 0 0;
-  --color-ink-deep: 8 8 9;
-  --color-ink-card: 18 18 20;
-  --color-ink-border: 42 42 46;
-  --color-fog: 237 238 240;
+  /* Off-black with a faint warm cast, not #000. True black plus a cool accent
+     is what made this read as a trading terminal; a few points of warmth costs
+     nothing and stops the dark theme feeling clinical. */
+  --color-ink: 13 11 12;
+  --color-ink-deep: 19 16 18;
+  --color-ink-card: 27 24 27;
+  --color-ink-border: 51 46 51;
+  --color-fog: 240 237 236;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 30px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.14);
+  --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.18);
   --shadow-pop: 0 30px 60px -18px rgba(0, 0, 0, 0.9), 0 8px 20px -8px rgba(0, 0, 0, 0.7);
-  --scrollbar-track: 8 8 9;
-  --scrollbar-thumb: 48 48 52;
+  --scrollbar-track: 19 16 18;
+  --scrollbar-thumb: 58 52 58;
   --skeleton-a: rgba(255, 255, 255, 0.04);
   --skeleton-b: rgba(255, 255, 255, 0.09);
 }

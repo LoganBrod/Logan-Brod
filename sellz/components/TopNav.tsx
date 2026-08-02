@@ -22,16 +22,16 @@ const NAV: NavItem[] = [
   {
     label: "Sell",
     children: [
-      { href: "/new", label: "New listing", desc: "Photograph an item and get a finished listing" },
-      { href: "/generate", label: "Write from text", desc: "Describe the item instead of shooting it" },
-      { href: "/listings", label: "All listings", desc: "Grades, comps, costs, and what is stuck" },
+      { href: "/new", label: "Sell something", desc: "Take a photo and get a finished listing" },
+      { href: "/generate", label: "Write from text", desc: "Describe it instead of photographing it" },
+      { href: "/listings", label: "Your stuff", desc: "Everything you've listed, and what's not moving" },
     ],
   },
   {
-    label: "Insights",
+    label: "Money",
     children: [
-      { href: "/dashboard", label: "Dashboard", desc: "Sold, revenue, sell-through, recent activity" },
-      { href: "/analytics", label: "Profit and margins", desc: "What each item made and which sources pay off" },
+      { href: "/dashboard", label: "Dashboard", desc: "What's sold, what it made, what's happening" },
+      { href: "/analytics", label: "What you made", desc: "Profit per item, and which finds were worth it" },
     ],
   },
   { label: "Brain", href: "/brain" },
@@ -176,7 +176,7 @@ export default function TopNav() {
               <div key={item.label} className="py-1">
                 {item.children ? (
                   <>
-                    <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-fog/40">
+                    <p className="px-3 pb-1 pt-2 text-xs font-semibold text-fog/55">
                       {item.label}
                     </p>
                     {item.children.map((c) => (
