@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { DenimJacket, Hoodie, Tee, Jeans, type Palette } from "@/components/GarmentArt";
+import PrimaryButton from "@/components/PrimaryButton";
 
 /**
  * The landing banner: a full-bleed dark block with the headline on the left
@@ -129,12 +130,7 @@ export default function HeroBanner() {
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link
-              href="/new"
-              className="rounded-lg bg-brand px-6 py-3 text-sm font-bold text-[#0d1112] transition hover:bg-brand-dim"
-            >
-              Sell something &rarr;
-            </Link>
+            <PrimaryButton href="/new">Sell something &rarr;</PrimaryButton>
             <Link
               href="/analytics"
               className="rounded-lg border border-white/25 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/60"

@@ -5,6 +5,21 @@ import { motion } from "framer-motion";
 
 const STORAGE_KEY = "levoz-theme";
 
+/** Page background per theme, kept in step with the tokens in globals.css. */
+const CHROME_COLOR = { dark: "#0f0f11", light: "#fcfbf9" };
+
+/**
+ * Point the browser chrome at the theme the user just chose.
+ *
+ * The tag is rendered server-side for the dark default; without updating it
+ * here, switching to light leaves a phone with a dark status bar above a light
+ * page, which looks broken in a way that is hard to attribute.
+ */
+function syncChrome(dark: boolean) {
+  const tag = document.querySelector('meta[name="theme-color"]');
+  if (tag) tag.setAttribute("content", dark ? CHROME_COLOR.dark : CHROME_COLOR.light);
+}
+
 function SunIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -37,6 +52,7 @@ export default function ThemeToggle() {
       const next = !prev;
       document.documentElement.classList.toggle("dark", next);
       localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
+      syncChrome(next);
       return next;
     });
   }

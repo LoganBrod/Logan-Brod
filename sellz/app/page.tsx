@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import HeroBanner from "@/components/HeroBanner";
+import PrimaryButton from "@/components/PrimaryButton";
 
 /**
  * Four steps rather than three: the point of the product isn't just writing
@@ -145,12 +146,9 @@ export default function LandingPage() {
               something keeping an eye on it after that.
             </p>
           </div>
-          <Link
-            href="/new"
-            className="shrink-0 self-start bg-brand px-7 py-3.5 text-sm font-bold text-[#0d1112] transition hover:bg-brand-dim"
-          >
-            Start a listing &rarr;
-          </Link>
+          <div className="shrink-0 self-start">
+            <PrimaryButton href="/new">Sell something &rarr;</PrimaryButton>
+          </div>
         </div>
       </section>
     </div>

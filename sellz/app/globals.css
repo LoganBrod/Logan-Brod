@@ -23,14 +23,15 @@
 }
 
 .dark {
-  /* Off-black with a faint warm cast, not #000. True black plus a cool accent
-     is what made this read as a trading terminal; a few points of warmth costs
-     nothing and stops the dark theme feeling clinical. */
-  --color-ink: 13 11 12;
-  --color-ink-deep: 19 16 18;
-  --color-ink-card: 27 24 27;
-  --color-ink-border: 51 46 51;
-  --color-fog: 240 237 236;
+  /* The default theme. A deep near-black with a faint cool-violet cast rather
+     than true #000: pure black makes translucent surfaces impossible to layer,
+     because a blurred panel over it has nothing to pick up. The slight lift in
+     ink-card is what lets the glass utility below read as glass. */
+  --color-ink: 15 15 17;
+  --color-ink-deep: 20 19 24;
+  --color-ink-card: 30 29 36;
+  --color-ink-border: 55 52 64;
+  --color-fog: 240 238 244;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 30px rgba(0, 0, 0, 0.6);
   --shadow-glow: 0 0 40px rgba(45, 212, 191, 0.18);
   --shadow-pop: 0 30px 60px -18px rgba(0, 0, 0, 0.9), 0 8px 20px -8px rgba(0, 0, 0, 0.7);
@@ -158,6 +159,53 @@ body {
 }
 .garment-string-b {
   animation-delay: -1.6s;
+}
+
+/**
+ * Translucent panel, for surfaces that should feel like they float above the
+ * page: score and feedback cards, the sticky review bar, the nav on scroll.
+ *
+ * Deliberately NOT applied to list rows or table rows. backdrop-filter is
+ * composited per element, so its cost scales with how many are on screen —
+ * on a mid-range Android a list of thirty blurred rows drops frames while a
+ * handful of blurred cards does not.
+ */
+.glass {
+  background-color: rgb(var(--color-ink-card) / 0.62);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), var(--shadow-card);
+}
+
+/* Light mode has no dark page behind it to blur, so glass there is just a
+   slightly muddy card. Fall back to the solid surface instead. */
+:root:not(.dark) .glass {
+  background-color: rgb(var(--color-ink-card));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgb(var(--color-ink-border));
+}
+
+/**
+ * Primary-action gradient. One definition so the gradient and the text colour
+ * it requires can never drift apart — gradient buttons need white text, while
+ * the flat `bg-brand` buttons elsewhere use dark text.
+ */
+.grad-primary {
+  background-image: linear-gradient(105deg, #3b82f6 0%, #8b5cf6 48%, #ec4899 100%);
+  color: #fff;
+}
+.grad-primary:hover {
+  background-image: linear-gradient(105deg, #2f74e8 0%, #7c47ef 48%, #e0338a 100%);
+}
+
+/* Same ramp as text, for scores and headline numbers. */
+.grad-text {
+  background-image: linear-gradient(105deg, #60a5fa 0%, #a78bfa 48%, #f472b6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* Anyone who asks for less motion gets a static, readable page instead. */
