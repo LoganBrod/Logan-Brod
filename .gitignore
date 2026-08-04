@@ -6,8 +6,9 @@ node_modules/
 .pnp.js
 
 # Next.js
-/.next/
-/out/
+# Unanchored, so this also covers dashboard/.next — same trap as node_modules.
+.next/
+out/
 
 # production
 /build

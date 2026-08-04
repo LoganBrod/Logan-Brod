@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+  background: theme("colors.base");
+  color: #e8eefc;
+  overflow: hidden; /* a wall display never scrolls */
+}
+
+/* Hide the cursor. This screen is looked at, not clicked — a mouse pointer
+   parked in the middle of a projection is the giveaway that it is "just a
+   web page". Re-enable while developing if it gets annoying. */
+body {
+  cursor: none;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-edge bg-panel/70 p-6 backdrop-blur;
+  }
+  .panel-title {
+    @apply mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-accent/70;
+  }
+}
+
+/* Slow ambient pulse for the "live" dot. Kept subtle: motion on a projected
+   wall in peripheral vision is distracting long before it is pretty. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe {
+    animation: none;
+  }
+}
