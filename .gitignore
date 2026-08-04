@@ -1,5 +1,7 @@
 # dependencies
-/node_modules
+# NOTE: no leading slash. "/node_modules" would only match at the repo root and
+# would miss mcp/context-server/node_modules.
+node_modules/
 /.pnp
 .pnp.js
 
@@ -27,3 +29,25 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# credentials — deny broadly, then re-allow the checked-in example file.
+# Order matters: a later "!" rule un-ignores something an earlier rule caught.
+.env*
+!.env*.example
+*.key
+*.p12
+*.pfx
+credentials.json
+client_secret*.json
+service-account*.json
+token.json
+secrets.*
+*.secret
+
+# local MCP / editor config that can hold tokens
+.mcp.local.json
+.claude/settings.local.json
+
+# build output for the MCP server
+mcp/context-server/build/
+mcp/context-server/dist/

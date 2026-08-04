@@ -1,3 +1,8 @@
+> **Note:** this repo also contains a personal AI assistant workspace
+> (`CLAUDE.md`, `memory/`, `mcp/`, `dashboard/`). It is a separate project that
+> shares this repo — see [WORKSPACE.md](WORKSPACE.md). Everything below is about
+> the sports card app.
+
 # Sports Card Tools
 
 A small Next.js app with a few independent tools:
