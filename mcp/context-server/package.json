@@ -1,0 +1,27 @@
+{
+  "name": "@logan/context-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server exposing the memory/ folder as structured tools",
+  "type": "module",
+  "bin": {
+    "context-server": "build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js",
+    "watch": "tsc --watch",
+    "start": "node build/index.js",
+    "test": "tsc && node --test build/*.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

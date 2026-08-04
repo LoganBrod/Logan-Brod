@@ -6,6 +6,17 @@ This folder is the long-term memory for an AI assistant. Claude is the brain;
 these files are what it remembers between sessions. A session starts with no
 recollection of the last one — everything it knows about me comes from here.
 
+## Where this is going
+
+Logan's stated goal (2026-08-04) is a "Jarvis" — Iron Man's assistant — that
+can brainstorm with him, dispatch agents to handle tasks, and surface
+information he needs without being asked.
+
+This repo is the memory layer of that, and deliberately only that, for now. An
+assistant that forgets everything between sessions cannot be Jarvis regardless
+of how capable it is in the moment, so persistent memory comes before agent
+orchestration. Order chosen on purpose.
+
 ## Why files instead of a database
 
 Because I can read them, `git diff` them, and fix them by hand when they're

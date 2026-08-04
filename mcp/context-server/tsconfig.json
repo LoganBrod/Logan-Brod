@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    // NodeNext makes TypeScript resolve imports the way Node's ESM loader
+    // actually does — which is why relative imports below end in ".js" even
+    // though the source files are ".ts". Node resolves the emitted filename.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "outDir": "build",
+    "rootDir": "src",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "declaration": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts"]
+}
