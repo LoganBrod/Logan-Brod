@@ -20,6 +20,72 @@ Open it on the projector display and press <kbd>F11</kbd> for fullscreen. The
 page reloads itself every 60 seconds, so editing a file in `memory/` updates
 the wall without touching a keyboard.
 
+## Voice
+
+**Hold space to talk.** Release to get an answer, spoken back.
+
+Push-to-talk rather than a wake word, on purpose: a wall-mounted microphone
+that records continuously is a materially different thing to have in your room
+than one that records while you hold a key. It also removes wake-word
+detection, false triggers from the TV, and any need to stream audio anywhere.
+
+### Speech in — Whisper, locally
+
+Recording, decoding and resampling happen in the browser; transcription runs in
+this app's own Node process via `/api/transcribe`. "Server-side" here means
+*your machine* — the dashboard is local-only, so audio goes to localhost and no
+further.
+
+The split exists because each side has the better tool. The Web Audio API is an
+excellent audio decoder that Node lacks without ffmpeg, and Node has the native
+ONNX runtime that browsers only have as WebAssembly. It also sidesteps bundling
+an ML runtime into the browser, which fights Next's webpack over prebuilt
+`.node` binaries.
+
+First request downloads the model (~80 MB from Hugging Face) and caches it.
+Everything after that is local and works offline. Override with `WHISPER_MODEL`
+— `whisper-small.en` is more accurate and slower, `whisper-tiny.en` the reverse.
+
+Warm it up before first use so the first sentence isn't slow:
+
+```bash
+curl localhost:3001/api/transcribe     # {"ready":true,...}
+```
+
+### Engines
+
+| URL | Engine | Audio goes to |
+|---|---|---|
+| default | Whisper, local | your machine only |
+| `?speech=web` | Web Speech API | **Google's servers** |
+| `?speech=mock` | type instead of talk | nowhere |
+
+Web Speech is the fallback for machines that can't run the model. It is not the
+default because "runs in the browser" is not the same as "stays on your
+machine" — Chrome streams the audio to Google. The engine in use is shown on
+screen for that reason.
+
+`?speech=mock` types instead of talking. It exists so the loop is testable
+without a microphone, which is how the states here were verified.
+
+### Speech out
+
+The browser's built-in `speechSynthesis`, using voices already on your OS.
+Genuinely local, no download, works offline. Talking over an answer cuts it off
+rather than queueing behind it.
+
+### What it can answer
+
+A keyword matcher over `memory/` — projects, open questions, bottlenecks,
+recent decisions, the time. **Not a language model.** Anything it doesn't
+recognise gets "I can't answer that yet", never an improvised reply.
+
+That restraint is the point. This workspace exists so the assistant doesn't
+fabricate things about your businesses, and a voice interface that guessed
+would undo it — spoken answers carry more authority than written ones and leave
+no transcript to check. Real understanding arrives when the Claude API is
+wired in; until then it says what it doesn't know.
+
 ## Local only — do not deploy this
 
 There is no auth on this page. It renders business notes, decisions and open

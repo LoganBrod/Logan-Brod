@@ -1,4 +1,5 @@
 import Clock from "@/components/Clock";
+import VoicePanel from "@/components/VoicePanel";
 import {
   getBusinesses,
   getOpenQuestions,
@@ -22,7 +23,10 @@ export default async function Page() {
     // Flex column rather than a fixed 6-row grid. Grid rows sized by fraction
     // clipped the header the moment the clock grew — flex lets the header take
     // exactly what it needs and gives the rest to the panels.
-    <main className="flex h-screen flex-col gap-5 p-8">
+    // Bottom padding reserves the strip the voice panel occupies, so an answer
+    // never covers the panels. Reserved permanently rather than only while
+    // active — content jumping up mid-sentence is worse than a quiet margin.
+    <main className="flex h-screen flex-col gap-5 px-8 pb-36 pt-8">
       <header className="flex shrink-0 items-start justify-between">
         <Clock />
         <div className="flex items-center gap-3 pt-3 text-sm uppercase tracking-[0.3em] text-accent/60">
@@ -136,6 +140,10 @@ export default async function Page() {
           )}
         </Panel>
       </div>
+
+      {/* Serialised to the client so voice answers come from the same data the
+          panels show — one source of truth, no second fetch to drift from it. */}
+      <VoicePanel snapshot={{ businesses, questions, decisions }} />
     </main>
   );
 }
