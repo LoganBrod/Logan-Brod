@@ -16,10 +16,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { memoryRoot } from "./paths.js";
+import { memoryRoot, businessSlug } from "./paths.js";
 import {
   searchMemory,
   appendToMemoryFile,
+  readMemoryFile,
+  listBusinesses,
+  parseOpenQuestions,
   today,
   MemoryMissingError,
 } from "./memory.js";
@@ -242,6 +245,156 @@ server.registerTool(
             text:
               `Added to memory/open-questions.md${created ? " (file created)" : ""}:\n\n` +
               `[ ] ${date} — ${question}`,
+          },
+        ],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.registerTool(
+  "get_business",
+  {
+    title: "Get a business file",
+    description:
+      "Return the full context file for a named business from " +
+      "memory/businesses/. Read this before advising on that business — the " +
+      "file records what Logan actually said, including what is still unknown.",
+    inputSchema: {
+      name: z
+        .string()
+        .trim()
+        .min(1, "Give a business name.")
+        .max(64)
+        .describe('Business name, e.g. "Levoz". Case and spaces are fine.'),
+    },
+  },
+  async ({ name }) => {
+    try {
+      // businessSlug throws on anything that could express a path, before the
+      // value is ever joined onto a directory.
+      const slug = businessSlug(name);
+      const relative = `businesses/${slug}.md`;
+
+      let content: string;
+      try {
+        content = await readMemoryFile(relative);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          const available = await listBusinesses();
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text" as const,
+                text:
+                  `No file for "${name}" (looked for memory/${relative}).\n` +
+                  (available.length
+                    ? `Known businesses: ${available.join(", ")}.`
+                    : `No business files exist yet.`) +
+                  `\nDo not describe this business from memory — it is not recorded.`,
+              },
+            ],
+          };
+        }
+        throw err;
+      }
+
+      if (content.trim() === "") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `memory/${relative} exists but is empty. Nothing is recorded about ${name}.`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          { type: "text" as const, text: `# memory/${relative}\n\n${content}` },
+        ],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.registerTool(
+  "list_open_questions",
+  {
+    title: "List open questions",
+    description:
+      "Return unresolved items from memory/open-questions.md — things Logan " +
+      "is stuck on or has not decided. Resolved items are excluded.",
+    inputSchema: {
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .max(200)
+        .default(50)
+        .describe("Maximum number of questions to return."),
+    },
+  },
+  async ({ limit }) => {
+    try {
+      let content: string;
+      try {
+        content = await readMemoryFile("open-questions.md");
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "memory/open-questions.md does not exist yet. No open questions recorded.",
+              },
+            ],
+          };
+        }
+        throw err;
+      }
+
+      const all = parseOpenQuestions(content);
+      if (all.length === 0) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              // Distinguish "nothing open" from "file is not in the expected
+              // shape" — otherwise a broken file looks like good news.
+              text: content.includes("- [")
+                ? "No unresolved questions — every item in memory/open-questions.md is checked off."
+                : "No questions found in memory/open-questions.md. Expected checklist items like `- [ ] question`.",
+            },
+          ],
+        };
+      }
+
+      const shown = all.slice(0, limit);
+      const rendered = shown
+        .map(
+          (q) =>
+            `- ${q.question}  (open-questions.md:${q.line})` +
+            (q.detail.length ? `\n    ${q.detail.join("\n    ")}` : ""),
+        )
+        .join("\n");
+
+      const more =
+        all.length > shown.length
+          ? `\n\n(${all.length - shown.length} more not shown)`
+          : "";
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `${all.length} open question(s):\n\n${rendered}${more}`,
           },
         ],
       };

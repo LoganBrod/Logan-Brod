@@ -65,6 +65,87 @@ export async function listMarkdownFiles(): Promise<string[]> {
   return found.sort();
 }
 
+export interface OpenQuestion {
+  line: number;
+  question: string;
+  detail: string[];
+}
+
+/**
+ * Business slugs that actually have a file, for "did you mean" messages.
+ * A README lives in that folder as documentation, so it is not a business.
+ */
+export async function listBusinesses(): Promise<string[]> {
+  const dir = path.resolve(memoryRoot(), "businesses");
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md"))
+      .map((e) => e.name.replace(/\.md$/i, ""))
+      .filter((n) => n.toLowerCase() !== "readme")
+      .sort();
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+/**
+ * Pull unresolved items out of open-questions.md.
+ *
+ * Tolerant by design. The file is hand-editable, so this accepts "-", "*" and
+ * "+" bullets and any amount of leading whitespace, and treats anything it
+ * cannot parse as prose to skip rather than an error. A notes file that has
+ * drifted from the template should still yield its questions — refusing to
+ * parse would make the tool useless exactly when the file is messiest.
+ *
+ * "[ ]" is unresolved; "[x]" is resolved and excluded.
+ *
+ * Fenced code blocks are skipped. The file documents its own format with an
+ * example checklist item inside a ``` fence, and without this the parser
+ * reports that template line as a real open question — which is worse than a
+ * cosmetic bug, because the whole point of the file is telling Logan what is
+ * genuinely unresolved.
+ */
+export function parseOpenQuestions(markdown: string): OpenQuestion[] {
+  const lines = markdown.split(/\r?\n/);
+  const questions: OpenQuestion[] = [];
+  const ITEM = /^\s*[-*+]\s*\[( |x|X)\]\s*(.+)$/;
+  const FENCE = /^\s*(```|~~~)/;
+
+  let inFence = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (FENCE.test(lines[i] ?? "")) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+
+    const match = ITEM.exec(lines[i] ?? "");
+    if (!match) continue;
+    if ((match[1] ?? "").toLowerCase() === "x") continue;
+
+    // Indented, non-blank lines below an item belong to it.
+    const detail: string[] = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const next = lines[j] ?? "";
+      if (next.trim() === "") break;
+      if (ITEM.test(next)) break;
+      if (!/^\s+\S/.test(next)) break;
+      detail.push(next.trim());
+    }
+
+    questions.push({
+      line: i + 1,
+      question: (match[2] ?? "").trim(),
+      detail,
+    });
+  }
+
+  return questions;
+}
+
 /** Read a file already proven to be inside memory/. */
 export async function readMemoryFile(relative: string): Promise<string> {
   const full = path.resolve(memoryRoot(), relative);
