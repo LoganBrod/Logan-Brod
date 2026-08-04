@@ -9,9 +9,12 @@ been answered yet — they are questions, not gaps to be guessed at. See
 
 ---
 
-**What it is:** UNKNOWN — not yet described beyond the activities below.
+**What it is:** A listing builder and selling automator — it creates listings
+and automates the selling process across resale marketplaces (eBay, Depop, and
+others).
 
-**Who it's for:** UNKNOWN — no customer or user described yet.
+**Who it's for:** People aged roughly 16–30 who sell or resell items on eBay,
+Depop, and similar platforms.
 
 **Stage:** Building. Nothing launched. No users, no revenue.
 
@@ -29,12 +32,31 @@ UNKNOWN.
 - It is his biggest project and takes the most of his time (as of 2026-08-04).
 - Two workstreams he named himself:
   - **Growing social media** — platform, audience, and purpose not yet stated.
-  - **Building more API** — unclear whether Levoz *consumes* third-party APIs,
-    *exposes* an API as the product, or both. Not yet resolved.
+    Plausibly the distribution channel, given the 16–30 target, but he has not
+    said so.
+  - **Building more API** — given the product is a cross-platform listing tool,
+    this most likely means *integrating with* marketplace APIs. Not confirmed.
+
+## Constraints worth checking before building further
+
+Raised by Claude on 2026-08-04, not yet confirmed by Logan. These are flagged
+because they affect architecture, not because they are known to be true.
+
+- **Depop has no public listing API** (as far as Claude knows). Automated
+  listing there may mean scraping or browser automation, which typically
+  violates platform terms. If true, "eBay + Depop" are not equal-effort
+  integrations and the roadmap should not treat them as such.
+- **Creating eBay listings is a different API from searching them.** The Browse
+  API is read-only and uses app-level credentials; creating listings needs the
+  Sell/Inventory APIs and *user-delegated* OAuth, where each seller authorises
+  Levoz against their own account. That is a materially bigger build, and it
+  makes Levoz a custodian of other people's marketplace access.
+- **The 16–30 age range crosses marketplace age floors.** eBay and Depop
+  generally require sellers to be 18+. The under-18 slice of the target market
+  may not be able to hold an account in their own name.
 
 ## What is deliberately not written here
 
-No product description, market, or business model has been recorded, because
-none has been stated. Two named workstreams are not a description of a
-business, and inferring one from them would put a guess in the file that every
-future session would then treat as fact.
+No business model, pricing, or revenue plan has been recorded — none has been
+stated. Nor has the competitive landscape, though this is a category with
+established players.

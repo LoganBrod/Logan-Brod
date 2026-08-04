@@ -14,16 +14,41 @@ Format:
 
 ---
 
-- [ ] 2026-08-04 — What does Levoz actually do, and who is it for?
+- [x] 2026-08-04 — What does Levoz actually do, and who is it for?
   **Context:** The two workstreams named are "growing social media" and
   "building more API." Those are activities, not a product or a customer.
   Blocks writing anything useful in `memory/businesses/levoz.md`.
+  **Resolved 2026-08-04:** A listing builder and selling automator for 16–30
+  year olds selling/reselling on eBay, Depop and similar platforms.
 
 - [ ] 2026-08-04 — Is Levoz's API the product, or plumbing for the product?
   **Context:** "Building more API" is ambiguous. If Levoz *sells* API access,
   the customer is developers and the bottleneck is probably docs/reliability.
   If it *consumes* APIs, that's internal tooling and the customer is someone
   else entirely. These lead to opposite advice.
+  **Update 2026-08-04:** Now that the product is known to be a cross-platform
+  listing tool, "integrating with marketplace APIs" is the likely reading —
+  but still unconfirmed, so left open.
+
+- [ ] 2026-08-04 — Does Depop actually have a usable listing API?
+  **Context:** Claude believes it does not, which would mean automated Depop
+  listing requires scraping or browser automation and likely breaches their
+  terms. If correct, this is a load-bearing constraint on the whole product,
+  not a detail — Depop is named as a launch platform. Needs verifying against
+  Depop's current developer docs, not assumed either way.
+
+- [ ] 2026-08-04 — Which eBay API tier is Levoz building against?
+  **Context:** Creating listings requires the Sell/Inventory APIs with
+  user-delegated OAuth (each seller authorises Levoz on their own account),
+  not the app-credential Browse API. Determines the auth architecture and
+  makes Levoz responsible for holding other people's marketplace access.
+
+- [ ] 2026-08-04 — How does the under-18 part of the target market hold a
+  marketplace account?
+  **Context:** Target is 16–30, but eBay and Depop generally require sellers
+  to be 18+. Either the real target skews older than stated, or the youngest
+  users are selling under a parent's account — which changes onboarding, and
+  carries obligations that come with minors as users.
 
 - [ ] 2026-08-04 — What's the relationship between the social media growth and
   the product?
