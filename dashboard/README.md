@@ -8,17 +8,78 @@ Display only so far — no voice, no calendar, no hand tracking yet.
 
 ## Run it
 
+Needs Node 18.17 or newer (`node --version`).
+
 ```bash
+git clone https://github.com/LoganBrod/Logan-Brod.git
+cd Logan-Brod
+git checkout claude/personal-assistant-workspace-2tmcfw
+
 cd dashboard
 npm install
-npm run dev        # http://localhost:3001
+npm run dev                              # http://localhost:3001
+curl http://localhost:3001/api/transcribe   # warms Whisper, ~80 MB first time
 ```
 
 Port 3001 on purpose: the sports-card app uses 3000, and both may run at once.
 
-Open it on the projector display and press <kbd>F11</kbd> for fullscreen. The
-page reloads itself every 60 seconds, so editing a file in `memory/` updates
-the wall without touching a keyboard.
+Leave that terminal open — closing it stops the display.
+
+## Putting it on the projector
+
+1. **Connect the projector and set displays to Extend, not Mirror.** Mirroring
+   gives you the same image at your monitor's aspect ratio, usually letterboxed.
+   - Windows: <kbd>Win</kbd>+<kbd>P</kbd> → *Extend*
+   - macOS: System Settings → Displays → arrange, uncheck *Mirror*
+2. **Open `http://localhost:3001` and drag the window onto the projected
+   screen.**
+3. **Press <kbd>F11</kbd>** (macOS: <kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>F</kbd>)
+   for fullscreen. The cursor is already hidden by CSS.
+
+To skip the dragging, launch Chrome straight onto the second display in kiosk
+mode — no tabs, no address bar. Adjust `1920` to your primary display's width,
+since the second screen starts where the first one ends:
+
+```bash
+# macOS
+open -na "Google Chrome" --args --kiosk --window-position=1920,0 http://localhost:3001
+
+# Windows (PowerShell)
+Start-Process chrome '--kiosk --window-position=1920,0 http://localhost:3001'
+
+# Linux
+google-chrome --kiosk --window-position=1920,0 http://localhost:3001
+```
+
+Exit kiosk mode with <kbd>Alt</kbd>+<kbd>F4</kbd> (macOS: <kbd>Cmd</kbd>+<kbd>Q</kbd>).
+
+### The focus problem
+
+**Push-to-talk only works while the dashboard window has keyboard focus.** The
+space bar is captured by a `keydown` listener on that page, and a browser page
+cannot see keystrokes while you are typing in another app.
+
+So while testing, click the projected window first. For real daily use — where
+you are working on your monitor and want to talk to the wall — this needs a
+global hotkey from outside the browser, which a web page cannot register. That
+is a genuine gap, not an oversight; see `../WORKSPACE.md`.
+
+### Practical notes
+
+- **Microphone position matters more than the projector.** The mic should be
+  near you, not near the wall. A laptop mic across the room transcribes badly
+  and Whisper will confidently invent words to fill gaps.
+- **Permissions:** the browser prompts for the microphone on first use. Allow
+  it once. `getUserMedia` needs a secure context, and `localhost` counts as one
+   — no HTTPS certificate needed.
+- **Stop the screen sleeping.** A projected display will blank on your normal
+  idle timeout. Set the power profile to never sleep while plugged in, or the
+  wall goes dark mid-session.
+- **Projector brightness:** the design assumes a dimmed room. In daylight, a
+  dark background on a projector reads as grey. Change `base` in
+  `tailwind.config.ts` if you need a lighter theme for a bright room.
+- The page reloads itself every 60 seconds, so editing a file in `memory/`
+  updates the wall without touching a keyboard.
 
 ## Voice
 
