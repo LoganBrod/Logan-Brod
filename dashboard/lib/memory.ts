@@ -48,15 +48,25 @@ export function parseOpenQuestions(markdown: string): OpenQuestion[] {
     const m = ITEM.exec(lines[i] ?? "");
     if (!m || (m[1] ?? "").toLowerCase() === "x") continue;
 
+    // A question can wrap onto following lines before any **Label:** appears.
+    // Treating every indented line as context split questions mid-sentence on
+    // screen — "How does the under-18 part of the target market hold a" with
+    // "marketplace account?" rendered underneath as though it were commentary.
+    const questionParts = [stripDate(m[2] ?? "")];
     const detail: string[] = [];
+    let inDetail = false;
+
     for (let j = i + 1; j < lines.length; j++) {
       const next = lines[j] ?? "";
       if (next.trim() === "" || ITEM.test(next) || !/^\s+\S/.test(next)) break;
-      detail.push(next.trim());
+
+      if (next.trim().startsWith("**")) inDetail = true;
+      if (inDetail) detail.push(next.trim());
+      else questionParts.push(next.trim());
     }
 
     out.push({
-      question: stripMarkdown(stripDate(m[2] ?? "")),
+      question: stripMarkdown(questionParts.join(" ")),
       context: stripMarkdown(
         detail.join(" ").replace(/^\*\*Context:\*\*\s*/, ""),
       ),

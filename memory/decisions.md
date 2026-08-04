@@ -35,6 +35,27 @@ deploy pipeline that can leak it, rather than a rule someone has to remember.
 Traded away: a second `node_modules` and a second dev server to start.
 **Revisit by:** n/a
 
+## 2026-08-04 — Wake word "Jarvis", overriding the push-to-talk-only recommendation
+**Reasoning:** Claude recommended against a wake word because it means an
+always-open microphone, and proposed a global hotkey daemon instead. Logan
+chose the wake word anyway, and was right on the merits: push-to-talk only
+works while the dashboard window holds keyboard focus, which fails the actual
+use case of talking to the wall while working on the monitor. The wake word
+needs no focus at all.
+
+The privacy cost is real and was reduced rather than waved away: audio lives
+only in a memory ring buffer, voice-activity detection discards silence,
+transcription runs locally via Whisper on this machine, and any transcript not
+beginning with "Jarvis" is dropped without being displayed or stored. Nothing
+is uploaded and nothing is written to disk. What remains true is that
+everything said near the mic *is* transcribed locally, which costs CPU. Wake
+word is unavailable when the cloud engine is selected, because that would mean
+streaming the room to Google.
+
+Push-to-talk is kept and switchable, so the always-on mic is a choice rather
+than the only option.
+**Revisit by:** n/a
+
 ## 2026-08-04 — Dashboard reads memory/ directly, not through the MCP server
 **Reasoning:** MCP servers are launched and driven by MCP *clients* — Claude
 Code, Claude Desktop. A web page is not one, so `context-server` cannot simply

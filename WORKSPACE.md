@@ -33,24 +33,19 @@ moment, so persistence precedes voice, agents and gestures.
 Each step is usable on its own. That is the point of the ordering: if Logan
 stops after step 2 he has a working wall display, not a half-built Jarvis.
 
-### Known gap: talking to the wall from another app
+### Solved: talking to the wall from another app
 
-Push-to-talk only works while the dashboard window has keyboard focus, because
-a web page cannot see keystrokes while another application is focused. That is
-fine for testing and wrong for daily use, where the whole point is talking to
-the wall while working on the monitor.
+Push-to-talk only worked while the dashboard window held keyboard focus, since
+a web page cannot see keystrokes belonging to another application — fine for
+testing, wrong for the actual use case of talking to the wall while working on
+the monitor.
 
-A browser page cannot register a global hotkey — the fix has to live outside
-it. Realistic options, cheapest first:
+The wake word fixes this properly. It listens through the microphone, so
+focus is irrelevant and no global hotkey daemon is needed. Say "Jarvis".
 
-1. **A small local hotkey daemon** that listens for a key combination and pings
-   the dashboard over a websocket. Least surprising, no new hardware.
-2. **A physical button** (a foot pedal or macro key) mapped to that hotkey.
-3. **A wake word** — rejected for now: it means always-on recording, which is
-   the thing push-to-talk deliberately avoids.
-
-Worth solving before step 4, since a display you cannot talk to from your desk
-is not the thing being built.
+Both modes remain available and the choice is remembered, so the always-on
+microphone is a decision rather than the only way to use it. See
+`memory/decisions.md` for the tradeoff that was accepted.
 
 ## Why files instead of a database
 

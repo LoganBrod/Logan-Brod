@@ -53,16 +53,15 @@ google-chrome --kiosk --window-position=1920,0 http://localhost:3001
 
 Exit kiosk mode with <kbd>Alt</kbd>+<kbd>F4</kbd> (macOS: <kbd>Cmd</kbd>+<kbd>Q</kbd>).
 
-### The focus problem
+### Talking to it from your desk
 
-**Push-to-talk only works while the dashboard window has keyboard focus.** The
-space bar is captured by a `keydown` listener on that page, and a browser page
-cannot see keystrokes while you are typing in another app.
+Just say **"Jarvis"** — the default mode listens through the microphone, so it
+works with the projected window in the background while you work on your main
+monitor.
 
-So while testing, click the projected window first. For real daily use — where
-you are working on your monitor and want to talk to the wall — this needs a
-global hotkey from outside the browser, which a web page cannot register. That
-is a genuine gap, not an oversight; see `../WORKSPACE.md`.
+Push-to-talk is the exception: the space bar is a `keydown` listener on the
+page, and a browser page cannot see keystrokes while another app is focused. In
+that mode you have to click the projected window first.
 
 ### Practical notes
 
@@ -83,12 +82,60 @@ is a genuine gap, not an oversight; see `../WORKSPACE.md`.
 
 ## Voice
 
-**Hold space to talk.** Release to get an answer, spoken back.
+**Say "Jarvis".** Either in one breath — *"Jarvis, what are my open questions"*
+— or on its own, which gets a "Yes?" and then listens for eight seconds.
 
-Push-to-talk rather than a wake word, on purpose: a wall-mounted microphone
-that records continuously is a materially different thing to have in your room
-than one that records while you hold a key. It also removes wake-word
-detection, false triggers from the TV, and any need to stream audio anywhere.
+Two modes, switchable from the link in the voice bar and remembered between
+sessions:
+
+| Mode | Trigger | Needs window focus? |
+|---|---|---|
+| **Wake word** (default) | say "Jarvis" | no |
+| **Push to talk** | hold <kbd>space</kbd> | yes |
+
+Push-to-talk only works while the dashboard window has keyboard focus, because
+a web page cannot see keystrokes belonging to another application. That is the
+reason the wake word exists — it makes focus irrelevant, so you can talk to the
+wall while working on your monitor.
+
+### What the microphone actually does
+
+The mic is genuinely always open in wake-word mode. Precisely what that means:
+
+1. Audio lives only in a **memory ring buffer** a few hundred milliseconds
+   long, overwritten continuously. Nothing is written to disk.
+2. **Voice activity detection** cuts out only the stretches where someone is
+   speaking. Silence never goes any further.
+3. Each speech segment is transcribed **on this machine** by the local Whisper
+   route. No audio is uploaded.
+4. If the text does not start with "Jarvis", the text and the audio are
+   **discarded** — not displayed, not stored, not logged.
+
+What that does not do is upload audio, keep a history, or write anything down.
+What it does do is transcribe everything said near the mic, locally, which
+costs CPU. That is a real cost and a different bargain from a cloud assistant,
+but it is not "off". Switch to push-to-talk if you want the mic genuinely
+closed.
+
+Wake word is unavailable when the Web Speech engine is selected, and
+deliberately so: always-on listening through a cloud recogniser would stream
+your room to Google.
+
+### Detection details
+
+The wake word is matched against a list of spellings Whisper actually produces
+for the name — "Jervis", "Javis", "Jarviss" — within an edit distance of 1. A
+looser distance of 2 accepted "carbis", which a test caught. Matching is
+anchored to the first token or two, so *"I was telling Dave about Jarvis"* does
+not fire; an assistant that joins conversations about itself is the false
+positive people find genuinely unnerving.
+
+Replies are ignored by the detector while the assistant is speaking, plus a
+400 ms tail. Without that, echo cancellation is not reliable enough to stop it
+hearing its own voice through the speakers and waking itself up.
+
+`npm test` covers the matcher — both directions, since too strict feels broken
+and too loose interrupts conversations.
 
 ### Speech in — Whisper, locally
 
