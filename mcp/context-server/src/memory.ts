@@ -73,6 +73,62 @@ export async function readMemoryFile(relative: string): Promise<string> {
 }
 
 /**
+ * Append text to a file in memory/. The only write path in this server.
+ *
+ * Uses the "a" flag, which opens the file in append mode: every write goes to
+ * the current end of file, and the kernel will not let it land anywhere else.
+ * There is deliberately no equivalent of writeFile here — not "we avoid
+ * calling it", but no code path that can truncate a file at all. That is what
+ * makes "append-only" a property of the program rather than a promise.
+ *
+ * Why it matters: an assistant that can rewrite its own memory can quietly
+ * revise history, and Logan would have no way to notice. With appends only,
+ * the worst a bug or a bad model turn can do is add noise to the bottom of a
+ * file — which is visible, and revertible with git.
+ *
+ * If the file does not exist it is created with `header`, so a fresh clone or
+ * a deleted file recovers instead of producing a headerless fragment.
+ */
+export async function appendToMemoryFile(
+  relative: string,
+  text: string,
+  header: string,
+): Promise<{ path: string; created: boolean }> {
+  const full = path.resolve(memoryRoot(), relative);
+  await assertRealPathInside(full);
+
+  let created = false;
+  try {
+    await fs.access(full);
+  } catch {
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    // "wx" fails if another process created the file in the meantime, so we
+    // never clobber a file that appeared between the access() and here.
+    try {
+      await fs.writeFile(full, header, { flag: "wx" });
+      created = true;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+    }
+  }
+
+  await fs.appendFile(full, text, "utf8");
+  return { path: relative, created };
+}
+
+/**
+ * Today as YYYY-MM-DD in the local timezone.
+ *
+ * Not toISOString().slice(0,10) — that is UTC, so anyone logging a decision
+ * late in the evening west of Greenwich would have it dated tomorrow.
+ */
+export function today(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/**
  * Case-insensitive substring search across every markdown file.
  *
  * Substring, not regex: the query arrives from an LLM, and an unanchored
