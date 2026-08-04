@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context-server": {
+      "command": "node",
+      "args": ["mcp/context-server/build/index.js"]
+    }
+  }
+}
