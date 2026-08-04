@@ -69,3 +69,6 @@ Format:
   rename, which is already settled (sellz → Levoz). This session is required
   to push to `claude/personal-assistant-workspace-2tmcfw`, so if a branch
   rename was intended, it needs Logan's explicit say-so.
+
+- [ ] 2026-08-04 — What VAD thresholds actually work in Logan's room?
+  **Context:** The voice-activity-detection defaults in dashboard/lib/speech/vad.ts (noise floor multiplier 2.6, 750ms silence hangover, 350ms minimum utterance) are reasoned guesses that have never been tested against a real microphone — no mic exists in the build container. Needs tuning against Logan's actual room noise, mic placement and speaking pace. Symptoms to watch: triggering on background noise means raising the threshold; being cut off mid-sentence means raising hangoverMs.

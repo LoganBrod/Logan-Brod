@@ -36,22 +36,43 @@ Leave that terminal open — closing it stops the display.
 3. **Press <kbd>F11</kbd>** (macOS: <kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>F</kbd>)
    for fullscreen. The cursor is already hidden by CSS.
 
-To skip the dragging, launch Chrome straight onto the second display in kiosk
-mode — no tabs, no address bar. Adjust `1920` to your primary display's width,
-since the second screen starts where the first one ends:
+### One command instead
+
+With the server already running in another terminal:
 
 ```bash
-# macOS
-open -na "Google Chrome" --args --kiosk --window-position=1920,0 http://localhost:3001
-
-# Windows (PowerShell)
-Start-Process chrome '--kiosk --window-position=1920,0 http://localhost:3001'
-
-# Linux
-google-chrome --kiosk --window-position=1920,0 http://localhost:3001
+npm run projector
 ```
 
-Exit kiosk mode with <kbd>Alt</kbd>+<kbd>F4</kbd> (macOS: <kbd>Cmd</kbd>+<kbd>Q</kbd>).
+That opens the dashboard fullscreen on the projector — no tabs, no address bar,
+no dragging — and leaves your monitor free. Quit with <kbd>Alt</kbd>+<kbd>F4</kbd>
+(macOS: <kbd>Cmd</kbd>+<kbd>Q</kbd>).
+
+**If it opens on the wrong screen,** one number needs changing. Chrome places
+windows by absolute desktop coordinates, and an extended display starts where
+the primary one ends — so the offset is your primary monitor's width:
+
+```bash
+PROJECTOR_X=2560 npm run projector    # 1440p primary
+PROJECTOR_X=-1920 npm run projector   # projector arranged on the LEFT
+```
+
+The script refuses to launch if nothing is serving the port, rather than
+opening a blank window on the wall. Set `BROWSER_PATH` if Chrome, Chromium or
+Edge is somewhere unusual.
+
+Two details in it that are not obvious:
+
+- **It uses its own Chrome profile** (`.projector-profile/`, gitignored). If
+  Chrome is already running, launching it again just hands the URL to the
+  existing process and *silently ignores every flag* — no kiosk, no window
+  position, no error. A separate profile forces a new instance that honours
+  them. Being persistent, it also means you grant the microphone permission
+  once rather than every launch.
+- **Background throttling is disabled.** Chrome slows timers and rendering in
+  unfocused windows, which for a wall display is the normal state — the clock
+  would stop ticking and the refresh would stall the moment you clicked back to
+  your editor.
 
 ### Talking to it from your desk
 
