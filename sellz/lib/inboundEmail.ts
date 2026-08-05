@@ -245,9 +245,27 @@ export async function ingestSaleEmail(
  */
 export async function userForInboundToken(token: string): Promise<string | null> {
   if (!token || token.length < 16) return null;
-  const user = await prisma.user.findUnique({
+  // findFirst rather than findUnique because the column carries a plain index
+  // rather than a unique constraint — see the note in schema.prisma. Uniqueness
+  // is guaranteed by the 192-bit token plus the check in tokenIsTaken below.
+  const user = await prisma.user.findFirst({
     where: { inboundToken: token },
     select: { id: true },
   });
   return user?.id ?? null;
+}
+
+/**
+ * Whether a freshly generated token already belongs to someone.
+ *
+ * Vanishingly unlikely with 24 random bytes, but the failure mode if it ever
+ * happened is one seller's sales landing in another seller's account, so it is
+ * worth one query at mint time.
+ */
+export async function tokenIsTaken(token: string): Promise<boolean> {
+  const existing = await prisma.user.findFirst({
+    where: { inboundToken: token },
+    select: { id: true },
+  });
+  return existing !== null;
 }

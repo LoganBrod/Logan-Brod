@@ -47,7 +47,16 @@ model User {
   /// Unguessable component of this seller's inbound forwarding address, e.g.
   /// sale-<token>@in.example.com. Depop publishes no API, so a forwarded sale
   /// email is how a Depop sale reaches us. Null until they set forwarding up.
-  inboundToken String? @unique
+  ///
+  /// Indexed but deliberately NOT @unique. `prisma db push` treats adding a
+  /// unique constraint to a populated table as potentially destructive and
+  /// refuses without --accept-data-loss — and arming that flag permanently in
+  /// the deploy would mean a future schema edit could silently drop a column
+  /// of customer data. The constraint was only ever defence in depth: the
+  /// token is 24 bytes of CSPRNG output, so collision is not a real failure
+  /// mode, and lib/inboundEmail checks for one before minting anyway. Worth
+  /// restoring as a real migration once this project moves off db push.
+  inboundToken String?
 
   createdAt DateTime @default(now())
 
@@ -61,6 +70,8 @@ model User {
   settings     SellerSettings?
   playbook     Playbook?
   ebayTokens   EbayTokens?
+
+  @@index([inboundToken])
 }
 
 model Account {

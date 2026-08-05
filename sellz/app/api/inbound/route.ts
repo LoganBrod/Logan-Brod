@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { currentUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getListing, updateListing } from "@/lib/store";
+import { tokenIsTaken } from "@/lib/inboundEmail";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,20 @@ export async function POST() {
     return NextResponse.json({ address: addressFor(existing.inboundToken) });
   }
 
-  const token = crypto.randomBytes(24).toString("base64url");
+  // Retry on the astronomically unlikely collision rather than assigning a
+  // token that already routes somebody else's sales.
+  let token = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = crypto.randomBytes(24).toString("base64url");
+    if (!(await tokenIsTaken(candidate))) {
+      token = candidate;
+      break;
+    }
+  }
+  if (!token) {
+    return NextResponse.json({ error: "Could not allocate an address" }, { status: 500 });
+  }
+
   await prisma.user.update({ where: { id: userId }, data: { inboundToken: token } });
   return NextResponse.json({ address: addressFor(token) });
 }
