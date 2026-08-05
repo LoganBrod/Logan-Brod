@@ -118,6 +118,10 @@ model Listing {
   source      String
 
   outcome   Json?
+  /// Depop draft plus the manual tracking state that stands in for the API
+  /// Depop doesn't offer. Metrics themselves live in `outcome`, shared with
+  /// eBay, so analytics and the playbook treat both platforms alike.
+  depop     Json?
   cost      Json?
   comps     Json?
   brainScore Json?

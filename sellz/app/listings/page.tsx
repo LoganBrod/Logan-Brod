@@ -7,6 +7,8 @@ import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
 import ListingPreview from "@/components/ListingPreview";
 import FixPanel from "@/components/FixPanel";
+import DepopPanel from "@/components/DepopPanel";
+import type { DepopState } from "@/lib/store";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -29,7 +31,10 @@ interface Listing {
     soldPrice?: number;
     listedAt?: string;
     soldAt?: string;
+    updatedAt?: string;
   };
+  /** Depop draft + manual tracking; Depop has no API to sync from. */
+  depop?: DepopState;
   comps?: {
     summary: string;
     priceLow?: number;
@@ -1048,7 +1053,7 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
   );
 }
 
-type TabKey = "listing" | "comps" | "outcome" | "cost" | "diagnosis";
+type TabKey = "listing" | "depop" | "comps" | "outcome" | "cost" | "diagnosis";
 
 function ListingCard({
   listing: l,
@@ -1106,6 +1111,9 @@ function ListingCard({
 
   const TABS: { key: TabKey; label: string; dot?: boolean }[] = [
     { key: "listing", label: "Listing" },
+    // Depop is a separately written draft rather than a view of the eBay one,
+    // so it earns its own tab instead of sitting under Listing.
+    { key: "depop", label: "Depop", dot: !!l.depop?.draft },
     { key: "comps", label: "Comps", dot: !!l.comps?.summary },
     { key: "outcome", label: "Outcome" },
     { key: "cost", label: "Cost", dot: l.cost?.purchasePrice !== undefined },
@@ -1212,6 +1220,17 @@ function ListingCard({
                 {copied === "copy" ? "Copied!" : "Copy listing"}
               </button>
             </div>
+          )}
+
+          {tab === "depop" && (
+            <DepopPanel
+              listingId={l.id}
+              ebayPrice={l.price}
+              depop={l.depop}
+              outcome={l.outcome}
+              status={l.status}
+              onChanged={onChanged}
+            />
           )}
 
           {tab === "comps" && (
