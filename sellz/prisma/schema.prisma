@@ -44,9 +44,15 @@ model User {
   /// Was a single global value in the old store; it is per-seller now.
   lastResearchAt DateTime?
 
+  /// Unguessable component of this seller's inbound forwarding address, e.g.
+  /// sale-<token>@in.example.com. Depop publishes no API, so a forwarded sale
+  /// email is how a Depop sale reaches us. Null until they set forwarding up.
+  inboundToken String? @unique
+
   createdAt DateTime @default(now())
 
   accounts     Account[]
+  inboundSales InboundSale[]
   sessions     Session[]
   listings     Listing[]
   proposals    Proposal[]
@@ -270,4 +276,36 @@ model Photo {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// A sale parsed out of a forwarded marketplace email.
+///
+/// Kept as its own row rather than written straight onto a Listing because
+/// matching an email to a listing is a guess. A wrong guess marks the wrong
+/// item sold, which both lies to the seller about their money and poisons the
+/// playbook's training data — so anything short of a confident, unique match
+/// waits here for a human.
+model InboundSale {
+  id     String @id @default(cuid())
+  userId String
+
+  itemTitle String  @db.Text
+  price     Float?
+  soldAt    DateTime?
+  platform  String  @default("depop")
+
+  /// Listing this was matched to, once matched.
+  listingId String?
+  /// "applied" when auto-matched and written through, "pending" when it needs
+  /// a human to pick the listing, "dismissed" when the seller rejected it.
+  status String @default("pending")
+  /// Whether the forwarded mail actually looked like it came from the
+  /// marketplace. False means treat the contents as unverified user input.
+  verified Boolean @default(false)
+
+  receivedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
 }

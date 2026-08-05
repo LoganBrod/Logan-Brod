@@ -8,6 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import ListingPreview from "@/components/ListingPreview";
 import FixPanel from "@/components/FixPanel";
 import DepopPanel from "@/components/DepopPanel";
+import DepopCard from "@/components/DepopCard";
 import type { DepopState } from "@/lib/store";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
@@ -238,8 +239,39 @@ export default function ListingsPage() {
 
             if (filtered.length === 0) return <p className="text-sm text-fog/40">Nothing matches this filter.</p>;
 
+            // Depop gives us no dashboard to embed, so this grid is the only
+            // place a seller sees their Depop shop outside the Depop app.
+            // Drawn Depop-style because an eBay-style row reads as a note they
+            // typed rather than something that is live somewhere.
+            const depopListings = filtered.filter((l) => l.platform === "depop");
+
             return (
               <>
+                {depopListings.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="mb-3 text-sm font-bold text-fog">Your Depop shop</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                      {depopListings.map((l) => (
+                        <DepopCard
+                          key={l.id}
+                          title={l.title}
+                          price={l.price}
+                          photos={l.photos}
+                          imageUrls={l.imageUrls}
+                          status={l.status}
+                          likes={l.outcome?.watchers}
+                          views={l.outcome?.views}
+                          soldPrice={l.outcome?.soldPrice}
+                          onClick={() =>
+                            document
+                              .getElementById(`listing-${l.id}`)
+                              ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                          }
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <BulkActionBar
                   listings={filtered}
                   selected={selected}
@@ -258,12 +290,15 @@ export default function ListingsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     {filtered.map((l, i) => (
                       <Reveal key={l.id} index={i}>
+                        {/* Anchor for the Depop grid above to scroll to. */}
+                        <div id={`listing-${l.id}`}>
                         <ListingCard
                           listing={l}
                           onChanged={load}
                           selected={selected.has(l.id)}
                           onToggleSelect={() => toggleSelect(l.id)}
                         />
+                        </div>
                       </Reveal>
                     ))}
                   </div>

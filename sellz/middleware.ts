@@ -23,6 +23,12 @@ const PUBLIC_PATHS = new Set(["/", "/pricing", "/login", "/signup", "/api/health
  *                     inside the route because both callers are legitimate
  * - /api/ebay/callback eBay redirects the browser here; the tenant travels in
  *                     a signed state parameter, not a session
+ * - /api/inbound/email an email provider posts forwarded mail here with no
+ *                     session; it is guarded by INBOUND_EMAIL_SECRET, and the
+ *                     seller is identified by the token in the recipient
+ *                     address. Note this is the webhook ONLY — the bare
+ *                     /api/inbound route reads and applies sales for the
+ *                     signed-in seller and must stay behind the session check.
  */
 const SELF_GUARDED_PREFIXES = [
   "/api/auth/",
@@ -30,6 +36,7 @@ const SELF_GUARDED_PREFIXES = [
   "/api/stripe/webhook",
   "/api/research",
   "/api/ebay/callback",
+  "/api/inbound/email",
 ];
 
 /**
