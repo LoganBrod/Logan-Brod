@@ -35,6 +35,8 @@ export interface TrafficPoint {
  * store, not the other way round.
  */
 export interface DepopDraft {
+  /** Empty on marketplaces with no title field, such as Depop. */
+  title?: string;
   description: string;
   hashtags: string[];
   brand: string;
@@ -49,10 +51,17 @@ export interface DepopDraft {
   priceNote: string;
   photoPlan: string[];
   vibe: string;
+  /** Grailed buyers shop by measurement rather than size label. */
+  measurements?: string;
 }
 
-export interface DepopState {
-  /** The Depop-optimized rewrite, shaped like Depop's compose form. */
+/**
+ * One marketplace's draft plus the manual tracking that stands in for the API
+ * it doesn't publish. Named per-marketplace state now rather than Depop state,
+ * since Vinted and Grailed work the same way.
+ */
+export interface MarketplaceState {
+  /** The rewrite, shaped like that marketplace's compose form. */
   draft?: DepopDraft;
   generatedAt?: string;
   /** Set when the seller confirms they've actually posted it to Depop. */
@@ -66,6 +75,9 @@ export interface DepopState {
   /** Link to the live listing, pasted by the seller. */
   url?: string;
 }
+
+/** Backwards-compatible alias: this was Depop-only before Vinted and Grailed. */
+export type DepopState = MarketplaceState;
 
 export interface ListingOutcome {
   views: number;
@@ -178,8 +190,10 @@ export interface Listing {
   status: ListingStatus;
   source: "imported" | "generated";
   outcome?: ListingOutcome;
-  /** Depop draft + manual tracking state. See DepopState. */
-  depop?: DepopState;
+  /** Superseded by `marketplaces`; still read so old rows keep working. */
+  depop?: MarketplaceState;
+  /** Per-marketplace drafts and tracking, keyed by marketplace id. */
+  marketplaces?: Record<string, MarketplaceState>;
   cost?: CostBasis;
   comps?: Comps;
   brainScore?: BrainScore;
@@ -481,7 +495,13 @@ function toListing(r: ListingRow): Listing {
     status: r.status as ListingStatus,
     source: r.source as Listing["source"],
     outcome: j<ListingOutcome>(r.outcome),
-    depop: j<DepopState>(r.depop),
+    depop: j<MarketplaceState>(r.depop),
+    // An old row has a `depop` blob and no `marketplaces` map. Present it as
+    // the map so every caller reads one shape and nothing has to know this
+    // column was once Depop-only.
+    marketplaces:
+      j<Record<string, MarketplaceState>>(r.marketplaces) ??
+      (r.depop ? { depop: j<MarketplaceState>(r.depop) as MarketplaceState } : undefined),
     cost: j<CostBasis>(r.cost),
     comps: j<Comps>(r.comps),
     brainScore: j<BrainScore>(r.brainScore),
@@ -537,6 +557,7 @@ const LISTING_ARRAYS = ["tags", "photos", "imageUrls"] as const;
 const LISTING_JSON = [
   "outcome",
   "depop",
+  "marketplaces",
   "cost",
   "comps",
   "brainScore",
@@ -611,6 +632,7 @@ export async function addListing(userId: string, listing: Listing) {
       source: listing.source,
       outcome: jsonIn(listing.outcome),
       depop: jsonIn(listing.depop),
+      marketplaces: jsonIn(listing.marketplaces),
       cost: jsonIn(listing.cost),
       comps: jsonIn(listing.comps),
       brainScore: jsonIn(listing.brainScore),

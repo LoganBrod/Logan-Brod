@@ -7,9 +7,10 @@ import Reveal from "@/components/Reveal";
 import PageHeader from "@/components/PageHeader";
 import ListingPreview from "@/components/ListingPreview";
 import FixPanel from "@/components/FixPanel";
-import DepopPanel from "@/components/DepopPanel";
+import MarketplacePanel from "@/components/MarketplacePanel";
 import DepopCard from "@/components/DepopCard";
-import type { DepopState } from "@/lib/store";
+import type { MarketplaceState } from "@/lib/store";
+import { MARKETPLACES, MARKETPLACE_IDS, type MarketplaceId } from "@/lib/marketplaces";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -34,8 +35,10 @@ interface Listing {
     soldAt?: string;
     updatedAt?: string;
   };
-  /** Depop draft + manual tracking; Depop has no API to sync from. */
-  depop?: DepopState;
+  /** Superseded by `marketplaces`; still present on older rows. */
+  depop?: MarketplaceState;
+  /** Per-marketplace drafts + manual tracking. None of them have an API. */
+  marketplaces?: Record<string, MarketplaceState>;
   comps?: {
     summary: string;
     priceLow?: number;
@@ -1088,7 +1091,7 @@ function ShippingBox({ listing: l, onChanged }: { listing: Listing; onChanged: (
   );
 }
 
-type TabKey = "listing" | "depop" | "comps" | "outcome" | "cost" | "diagnosis";
+type TabKey = "listing" | MarketplaceId | "comps" | "outcome" | "cost" | "diagnosis";
 
 function ListingCard({
   listing: l,
@@ -1146,9 +1149,13 @@ function ListingCard({
 
   const TABS: { key: TabKey; label: string; dot?: boolean }[] = [
     { key: "listing", label: "Listing" },
-    // Depop is a separately written draft rather than a view of the eBay one,
-    // so it earns its own tab instead of sitting under Listing.
-    { key: "depop", label: "Depop", dot: !!l.depop?.draft },
+    // Each marketplace is a separately written draft rather than a view of the
+    // eBay one, so each earns its own tab instead of sitting under Listing.
+    ...MARKETPLACE_IDS.map((m) => ({
+      key: m as TabKey,
+      label: MARKETPLACES[m].name,
+      dot: !!(l.marketplaces?.[m]?.draft ?? (m === "depop" ? l.depop?.draft : undefined)),
+    })),
     { key: "comps", label: "Comps", dot: !!l.comps?.summary },
     { key: "outcome", label: "Outcome" },
     { key: "cost", label: "Cost", dot: l.cost?.purchasePrice !== undefined },
@@ -1257,15 +1264,20 @@ function ListingCard({
             </div>
           )}
 
-          {tab === "depop" && (
-            <DepopPanel
-              listingId={l.id}
-              ebayPrice={l.price}
-              depop={l.depop}
-              outcome={l.outcome}
-              status={l.status}
-              onChanged={onChanged}
-            />
+          {MARKETPLACE_IDS.map(
+            (m) =>
+              tab === m && (
+                <MarketplacePanel
+                  key={m}
+                  listingId={l.id}
+                  ebayPrice={l.price}
+                  spec={MARKETPLACES[m]}
+                  state={l.marketplaces?.[m] ?? (m === "depop" ? l.depop : undefined)}
+                  outcome={l.outcome}
+                  status={l.status}
+                  onChanged={onChanged}
+                />
+              )
           )}
 
           {tab === "comps" && (
