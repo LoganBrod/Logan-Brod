@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "LevoZ Filler",
+  "version": "0.1.0",
+  "description": "Fills a marketplace listing form with a draft written in LevoZ. You review it and post it yourself.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://www.depop.com/*",
+    "https://www.vinted.com/*",
+    "https://www.vinted.co.uk/*",
+    "https://www.grailed.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://*.depop.com/*"],
+      "js": ["fill/common.js", "fill/depop.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.vinted.com/*", "https://*.vinted.co.uk/*"],
+      "js": ["fill/common.js", "fill/vinted.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.grailed.com/*"],
+      "js": ["fill/common.js", "fill/grailed.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": ["https://*.levoz.app/*", "http://localhost/*"]
+  }
+}

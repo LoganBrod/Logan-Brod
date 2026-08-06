@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/Toast";
 import type { DepopDraft, MarketplaceState } from "@/lib/store";
@@ -57,6 +57,26 @@ function daysSince(iso?: string): number | null {
   return Math.floor((Date.now() - t) / 86_400_000);
 }
 
+/**
+ * Published Chrome Web Store id for the LevoZ filler, or empty when the
+ * extension hasn't been published yet — in which case the button never shows.
+ */
+const EXTENSION_ID = process.env.NEXT_PUBLIC_EXTENSION_ID ?? "";
+
+interface ChromeRuntime {
+  sendMessage: (
+    id: string,
+    msg: unknown,
+    cb: (res?: { ok?: boolean; error?: string }) => void
+  ) => void;
+  lastError?: { message?: string };
+}
+
+function chromeRuntime(): ChromeRuntime | null {
+  const w = window as unknown as { chrome?: { runtime?: ChromeRuntime } };
+  return w.chrome?.runtime ?? null;
+}
+
 function CopyRow({
   label,
   value,
@@ -104,6 +124,49 @@ export default function MarketplacePanel({
   const draft = state?.draft as DepopDraft | undefined;
   const listed = Boolean(state?.listedAt);
   const sold = status === "sold";
+
+  // Undefined until the ping answers, so nothing renders while we don't know.
+  const [hasExtension, setHasExtension] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    const runtime = chromeRuntime();
+    if (!EXTENSION_ID || !runtime) {
+      setHasExtension(false);
+      return;
+    }
+    // An installed extension answers; anything else leaves lastError set.
+    runtime.sendMessage(EXTENSION_ID, { type: "ping" }, (res) => {
+      setHasExtension(Boolean(!runtime.lastError && res?.ok));
+    });
+  }, []);
+
+  /**
+   * Hand the draft to the extension, which opens the marketplace's own
+   * compose page and fills it in. It never presses post — the seller checks
+   * the listing and submits it themselves, which is both the honest design
+   * and what keeps this on the right side of the marketplace's terms.
+   */
+  async function fillOnMarketplace() {
+    const runtime = chromeRuntime();
+    if (!runtime) return;
+    setBusy("fill");
+    try {
+      const res = await fetch(`/api/listings/${listingId}/handoff?m=${spec.id}`);
+      if (!res.ok) throw new Error((await res.json()).error ?? "Couldn't prepare it");
+      const payload = await res.json();
+      runtime.sendMessage(EXTENSION_ID, { type: "fill", ...payload }, (reply) => {
+        if (runtime.lastError || !reply?.ok) {
+          toast.push("Couldn't reach the LevoZ extension", "error");
+        } else {
+          toast.push(`Opening ${spec.name} — check it before you post`);
+        }
+      });
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "That didn't work", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   function copy(text: string, key: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -220,6 +283,22 @@ export default function MarketplacePanel({
         <div className="mt-4 rounded-xl border border-ink-border bg-ink-deep p-4">
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-fog">{fullDescription}</p>
         </div>
+        {hasExtension && (
+          <>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              disabled={busy === "fill"}
+              onClick={fillOnMarketplace}
+              className="mt-3 w-full rounded-xl grad-primary px-5 py-3 text-sm font-bold disabled:opacity-50"
+            >
+              {busy === "fill" ? "Opening…" : `Fill this in on ${spec.name}`}
+            </motion.button>
+            <p className="mt-1.5 text-center text-[11px] text-fog/40">
+              Opens {spec.name} and fills the form. You check it and press post.
+            </p>
+          </>
+        )}
+
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={() => copy(fullDescription, "desc")}
