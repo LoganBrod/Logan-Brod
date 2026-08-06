@@ -6,7 +6,7 @@
   },
   "deploy": {
     "startCommand": "npm run start",
-    "preDeployCommand": "npx prisma db push --skip-generate",
+    "preDeployCommand": "node scripts/migrate.mjs",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",

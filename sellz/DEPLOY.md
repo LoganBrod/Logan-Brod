@@ -43,15 +43,29 @@ read once the root directory points at `sellz`.
    ```sh
    cd sellz
    npm install
-   DATABASE_URL=... DIRECT_URL=... npx prisma db push
+   DATABASE_URL=... DIRECT_URL=... npx prisma migrate deploy
    ```
 
-There are no migration files — the schema is applied with `prisma db push`.
-`railway.json` also runs it as a pre-deploy step, so later schema changes land
-with the deploy that contains them. It runs **without** `--accept-data-loss`, so
-a change that would drop a column fails the deploy instead of quietly
-destroying data. If that happens, resolve it by hand rather than adding the
-flag.
+The schema is applied from committed migration files under
+`prisma/migrations/`. `railway.json` runs `node scripts/migrate.mjs` as a
+pre-deploy step, so a schema change lands with the deploy that contains it.
+
+This replaced `prisma db push`, which diffed the schema against the database
+and guessed at the SQL. That guessing broke a deploy once: adding a unique
+constraint to a populated table counts as potentially destructive, so push
+refused, and its documented escape hatch — `--accept-data-loss` — would have
+applied to every subsequent deploy, including one that dropped a column of
+customer data.
+
+The database predates its migration history, so the pre-deploy script
+baselines it on first run: it records the baseline migration as applied
+without executing it, then deploys the rest. That decision is made from the
+database's actual state, never from a flag, and only the baseline is ever
+auto-resolved — every later migration runs for real.
+
+To change the schema, edit `prisma/schema.prisma`, run
+`npx prisma migrate dev --name what_changed`, and commit the generated
+migration alongside the code.
 
 ## 2. Auth
 
@@ -181,8 +195,8 @@ custom domain exists. Set it explicitly once you have a domain.
 2. **Set Root Directory to `sellz`** (section 0).
 3. Paste the environment variables into **Variables**. Do not set `PORT` —
    Railway sets it, and the start script reads it.
-4. Deploy. Railway builds with Nixpacks, runs `prisma db push` as a pre-deploy
-   step, starts the server, and waits for `/api/health` before shifting traffic.
+4. Deploy. Railway builds with Nixpacks, runs `node scripts/migrate.mjs` as a
+   pre-deploy step, starts the server, and waits for `/api/health` before shifting traffic.
 5. **Settings → Networking → Custom Domain**, then point your DNS at it.
 6. Once the domain is live, go back and update: `NEXTAUTH_URL`,
    `PUBLIC_SITE_URL`, the Google redirect URI, the Stripe webhook URL, and the

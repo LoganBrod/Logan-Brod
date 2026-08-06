@@ -23,7 +23,7 @@ Third sibling of the Brain family (the LevoZ clipper, AdZ ads) — this one grad
 cd sellz
 cp .env.local.example .env.local
 npm install
-npx prisma db push        # needs DATABASE_URL + DIRECT_URL
+npx prisma migrate deploy # needs DATABASE_URL + DIRECT_URL
 npm run dev
 ```
 

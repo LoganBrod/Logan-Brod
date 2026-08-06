@@ -12,8 +12,13 @@ moment you look.
 
 ## 0. Before anything else
 
-Railway runs `prisma db push` on deploy, so the new columns should already be
-live. Confirm rather than assume — everything below depends on it:
+Railway now runs `node scripts/migrate.mjs` on deploy, which applies committed
+migrations instead of letting `db push` diff the schema and guess. The first
+deploy after this change baselines the existing database automatically and logs
+`[migrate] Existing database with no migration history` — that line appears
+once, ever. Check the deploy log for it.
+
+Confirm the schema landed — everything below depends on it:
 
 ```sh
 # Railway → your service → Data, or psql against DATABASE_URL
@@ -22,8 +27,21 @@ live. Confirm rather than assume — everything below depends on it:
 \d "InboundSale"  -- expect the table to exist
 ```
 
-If they're missing, the deploy's pre-deploy step failed. Nothing else in this
-document will work until that is fixed.
+Also expect a `_prisma_migrations` table with two rows. If the columns are
+missing, the pre-deploy step failed and nothing else here will work until it is
+fixed — read the deploy log rather than re-running blind.
+
+### Changing the schema from now on
+
+`db push` is gone. Edit `prisma/schema.prisma`, then:
+
+```sh
+npx prisma migrate dev --name what_you_changed
+```
+
+That writes a migration under `prisma/migrations/`. **Commit it with the code.**
+Deploys apply exactly those files, so a schema change without its migration
+file will start an app whose code expects columns the database doesn't have.
 
 **The new cron does not run until you create it.** Adding the route did not
 schedule anything. See §3.
