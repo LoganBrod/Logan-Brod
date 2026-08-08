@@ -1,79 +1,14 @@
-// eBay Browse API — active listing search via OAuth2 client-credentials grant.
-// Requires EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (from developer.ebay.com).
+// eBay Browse API — active listing search.
 //
-// Ported from the sports-card app in the parent repo; the OAuth token cache is
-// unchanged, the search adds price/condition filtering and menswear scoping.
+// Search quality is the whole game here: everything downstream can only pick
+// from what this returns, so the filters below matter more than any prompt.
 
+import { BROWSE_BASE, getAppToken } from "./ebayAuth";
+import { menswearCategoryIds } from "./ebayCategories";
+import { rejectTitle, thumbnailUrl } from "./menswear";
 import type { ProductListing, SourceSearchOptions } from "./types";
 
-const EBAY_ENV = process.env.EBAY_ENV === "sandbox" ? "sandbox" : "production";
-
-const OAUTH_URL =
-  EBAY_ENV === "sandbox"
-    ? "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
-    : "https://api.ebay.com/identity/v1/oauth2/token";
-
-const BROWSE_BASE =
-  EBAY_ENV === "sandbox"
-    ? "https://api.sandbox.ebay.com/buy/browse/v1"
-    : "https://api.ebay.com/buy/browse/v1";
-
-const BASE_SCOPE = "https://api.ebay.com/oauth/api_scope";
-
-// eBay US category IDs. 11450 is the "Clothing, Shoes & Accessories" root and is
-// what we actually scope to — it is stable and safe. The menswear leaves below
-// are the intended narrowing, but eBay renumbers leaf categories periodically,
-// so they are NOT used until verified against the Taxonomy API
-// (GET /commerce/taxonomy/v1/category_tree/0). See style/README.md.
-export const EBAY_CATEGORIES = {
-  clothingShoesAccessories: "11450",
-  // Unverified — do not use without checking the live category tree first:
-  // mensClothing: "1059",
-  // mensShoes: "93427",
-  // mensAccessories: "4250",
-} as const;
-
-export function ebayConfigured(): boolean {
-  return Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
-}
-
-const tokenCache = new Map<string, { token: string; expiresAt: number }>();
-
-export async function getAppToken(scope: string = BASE_SCOPE): Promise<string> {
-  const cached = tokenCache.get(scope);
-  if (cached && cached.expiresAt > Date.now() + 30_000) {
-    return cached.token;
-  }
-
-  const clientId = process.env.EBAY_CLIENT_ID;
-  const clientSecret = process.env.EBAY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("EBAY_CLIENT_ID / EBAY_CLIENT_SECRET are not configured");
-  }
-
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(OAUTH_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({ grant_type: "client_credentials", scope }),
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`eBay OAuth failed: HTTP ${res.status} ${text}`);
-  }
-
-  const json = (await res.json()) as { access_token: string; expires_in: number };
-  tokenCache.set(scope, {
-    token: json.access_token,
-    expiresAt: Date.now() + json.expires_in * 1000,
-  });
-  return json.access_token;
-}
+export { ebayConfigured, getAppToken } from "./ebayAuth";
 
 interface EbayItemSummary {
   itemId: string;
@@ -84,32 +19,43 @@ interface EbayItemSummary {
   image?: { imageUrl?: string };
   thumbnailImages?: Array<{ imageUrl?: string }>;
   condition?: string;
-  seller?: { username?: string };
+  conditionId?: string;
+  seller?: { username?: string; feedbackPercentage?: string };
 }
+
+/**
+ * Everything except "For parts or not working" (7000) and the manufacturer-
+ * refurbished tiers we can't judge. Used and vintage stock is most of what
+ * makes eBay worth searching, so it stays in.
+ */
+const CONDITION_IDS = ["1000", "1500", "1750", "2000", "2500", "3000", "4000", "5000"];
 
 export async function search({
   query,
   range,
-  limit = 24,
+  limit = 30,
 }: SourceSearchOptions): Promise<ProductListing[]> {
-  const token = await getAppToken();
+  const [token, categoryIds] = await Promise.all([getAppToken(), menswearCategoryIds()]);
 
-  // priceCurrency is mandatory whenever a price filter is present, and
-  // FIXED_PRICE keeps auctions out — an auction's current bid is not a price
-  // the user can actually pay.
+  // priceCurrency is mandatory alongside a price filter. FIXED_PRICE keeps
+  // auctions out — a current bid isn't a price anyone can actually pay.
   const filters = [
     `price:[${range.min}..${range.max}]`,
     "priceCurrency:USD",
     "buyingOptions:{FIXED_PRICE}",
+    `conditionIds:{${CONDITION_IDS.join("|")}}`,
   ].join(",");
 
   const params = new URLSearchParams({
     q: query,
     limit: String(limit),
-    category_ids: EBAY_CATEGORIES.clothingShoesAccessories,
+    category_ids: categoryIds.join(","),
     filter: filters,
-    sort: "price",
   });
+
+  // Deliberately no `sort`. eBay's default is Best Match relevance; sorting by
+  // price ascending returns the cheapest things matching the words — insoles,
+  // size charts, replicas — which is exactly the junk we were drowning in.
 
   const res = await fetch(`${BROWSE_BASE}/item_summary/search?${params.toString()}`, {
     headers: {
@@ -128,6 +74,8 @@ export async function search({
   const json = (await res.json()) as { itemSummaries?: EbayItemSummary[] };
 
   return (json.itemSummaries ?? [])
+    // Category scoping catches most of it, but sellers miscategorise constantly.
+    .filter((item) => item.title && !rejectTitle(item.title))
     .map((item): ProductListing => {
       const base = Number(item.price?.value ?? 0);
       const shipping = Number(item.shippingOptions?.[0]?.shippingCost?.value ?? 0);
@@ -138,12 +86,13 @@ export async function search({
         price: Math.round((base + shipping) * 100) / 100,
         currency: item.price?.currency ?? "USD",
         url: item.itemWebUrl,
-        imageUrl: item.image?.imageUrl ?? item.thumbnailImages?.[0]?.imageUrl,
+        imageUrl: thumbnailUrl(item.image?.imageUrl ?? item.thumbnailImages?.[0]?.imageUrl),
         condition: item.condition,
         merchant: item.seller?.username,
         matchedQuery: query,
       };
     })
-    // Shipping can push an item past the ceiling the API filtered on.
-    .filter((item) => item.price > 0 && item.price <= range.max);
+    // Shipping can push an item past the ceiling the API filtered on, and an
+    // item with no photo can't be judged by the curation pass.
+    .filter((item) => item.price > 0 && item.price <= range.max && Boolean(item.imageUrl));
 }

@@ -51,7 +51,9 @@ export const StyleProfileSchema = z.object({
     .describe("Slots missing from the uploads that would round the wardrobe out."),
   searchQueries: z
     .array(SearchQuerySchema)
-    .describe("Six to eight queries covering the gaps, priced inside the user's stated range."),
+    .describe(
+      "Eight to ten queries spread across different garment types, covering the gaps, priced inside the user's stated range."
+    ),
 });
 
 export const PickSchema = z.object({
@@ -63,7 +65,11 @@ export const PickSchema = z.object({
 });
 
 export const CurationSchema = z.object({
-  picks: z.array(PickSchema).describe("Only candidates that genuinely fit, best first."),
+  picks: z
+    .array(PickSchema)
+    .describe(
+      "Six to ten candidates that genuinely fit, best first. Fewer is correct when the search came back thin — never pad."
+    ),
   notes: z
     .string()
     .describe("One short line on what you rejected and why, so the user can adjust their range."),

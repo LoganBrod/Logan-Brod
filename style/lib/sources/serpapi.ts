@@ -4,6 +4,7 @@
 // Swapping providers (Oxylabs, Rainforest, ...) means rewriting `toListing` and
 // the request URL here; nothing outside this file knows SerpAPI exists.
 
+import { rejectTitle } from "./menswear";
 import type { ProductListing, SourceSearchOptions } from "./types";
 
 const ENDPOINT = "https://serpapi.com/search.json";
@@ -84,5 +85,8 @@ export async function search({
   return (json.shopping_results ?? [])
     .map((raw, i) => toListing(raw, query, i))
     .filter((item): item is ProductListing => item !== null)
-    .filter((item) => item.price >= range.min && item.price <= range.max);
+    .filter((item) => item.price >= range.min && item.price <= range.max)
+    // Google Shopping has no category scoping, so the title filter is the only
+    // thing keeping womenswear and listing chaff out of this source.
+    .filter((item) => !rejectTitle(item.title) && Boolean(item.imageUrl));
 }

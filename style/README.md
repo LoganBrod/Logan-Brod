@@ -17,11 +17,28 @@ lives entirely in `style/` and deploys separately.
 3. **Shop** (no Claude) — every query runs against eBay and Google Shopping in parallel. Results are
    normalized to one shape, deduped, and interleaved per query so one broad query can't crowd out
    the narrower ones.
-4. **Curate + outfits** (Claude, twice) — scores the candidates from titles and prices alone, drops
-   the keyword-search junk, and writes one line per pick on why it suits you. Then builds 2–3
-   outfits from what survived.
+4. **Curate + outfits** (Claude, twice) — **looks at each candidate's photo**, throws out anything
+   that isn't the garment its title claims, and writes one line per pick on why it suits you. Then
+   builds 2–3 outfits from what survived.
 
-Roughly $0.15–0.30 in API cost per full run, dominated by the vision pass.
+Roughly $0.20–0.35 in API cost per full run, split between the two vision passes.
+
+### Why it recommends what it does
+
+Search quality decides everything downstream, so most of the work is upstream of Claude:
+
+- **Relevance, not price.** eBay is queried on Best Match. Sorting by price ascending — the
+  obvious thing to do with a budget — returns the cheapest items matching the words, which on eBay
+  means insoles, size-chart listings, and replicas.
+- **Menswear is enforced twice.** Searches are scoped to eBay's men's categories, resolved from
+  the live Taxonomy API at runtime rather than hardcoded (leaf IDs get renumbered, and a stale one
+  fails silently by returning nothing). Titles are then filtered again in `lib/sources/menswear.ts`,
+  because sellers miscategorise constantly and Google Shopping has no categories at all.
+- **A wide pool, a tight list.** Up to 10 queries × 30 results feed a candidate pool of ~120, from
+  which curation keeps 6–10. Being selective requires something to select between.
+- **The photo beats the title.** Curation sees thumbnails, so a listing captioned "waxed cotton
+  jacket" showing a woman's cropped jacket gets dropped on sight. Images are requested at eBay's
+  small rendition — token cost scales with area, and 400px is plenty to identify a garment.
 
 ## Setup
 
@@ -93,17 +110,12 @@ accounts. Codes are 6 characters from a 31-character alphabet with `0/O/1/I/L` e
 survive being read aloud, and are allocated with `SET NX` so a collision can never overwrite
 someone else's closet. Closets expire after 90 days, refreshed every time one is opened.
 
-**eBay category scoping is deliberately broad.** `lib/sources/ebay.ts` scopes to category `11450`
-(Clothing, Shoes & Accessories). The menswear leaves — `1059`, `93427`, `4250` — are left commented
-out because eBay renumbers leaf categories periodically and a wrong ID silently returns nothing. To
-narrow it, check the live tree first:
-
-```
-GET /commerce/taxonomy/v1/category_tree/0    # marketplace EBAY_US
-```
-
-Until then menswear specificity comes from the query text, which is why the analyze prompt pushes
-so hard on writing specific queries.
+**eBay categories are resolved, not hardcoded.** `lib/sources/ebayCategories.ts` reads the live
+category subtree under `11450` and picks the branches whose names start with "Men". If that lookup
+fails or times out, it falls back to the whole Clothing/Shoes/Accessories root and the title filter
+does the work instead — narrower quality, never a broken search. Watch for
+`[ebay] falling back to the full clothing category` in the logs if results start looking
+gender-mixed.
 
 ## Layout
 
@@ -121,6 +133,8 @@ lib/
                                       which is what the SDK's zodOutputFormat is typed against
   anthropic.ts                        client, model choice, refusal handling
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
+                                      menswear.ts holds the title filters; ebayCategories.ts
+                                      resolves men's category IDs at runtime
   closet.ts redis.ts                  persistence
 scripts/                              offline tests and the Upstash stand-in
 ```

@@ -11,6 +11,7 @@ import type {
 export * from "./types";
 export { ebayConfigured } from "./ebay";
 export { serpapiConfigured } from "./serpapi";
+export { isMenswearListing, rejectTitle } from "./menswear";
 
 const SOURCES: Array<{
   name: SourceName;
@@ -79,8 +80,10 @@ export async function shop(
   range: PriceRange,
   opts: { perQueryLimit?: number; cap?: number } = {}
 ): Promise<ShopResult> {
-  const perQueryLimit = opts.perQueryLimit ?? 12;
-  const cap = opts.cap ?? 60;
+  // A tight final list needs a wide pool to choose from, not a narrow one —
+  // curation can only be selective if there is something to select between.
+  const perQueryLimit = opts.perQueryLimit ?? 30;
+  const cap = opts.cap ?? 120;
 
   const active = SOURCES.filter((source) => source.configured());
   const reports: SourceReport[] = SOURCES.filter((s) => !s.configured()).map((s) => ({

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { shop } from "@/lib/sources";
 
 export const dynamic = "force-dynamic";
+// Ten queries fanned across two sources, plus a possible taxonomy lookup on a
+// cold start. The platform default would cut this off.
+export const maxDuration = 60;
 
 const MAX_QUERIES = 10;
 

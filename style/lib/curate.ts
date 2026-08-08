@@ -13,23 +13,23 @@ export interface CurationResult {
   notes: string;
 }
 
-const SYSTEM = `You are filtering keyword-search results down to the ones that actually suit a specific person's style.
+/**
+ * How many candidates get looked at. Each thumbnail is a few hundred tokens, so
+ * this is the main cost dial for the pass — 48 small images runs a few cents.
+ */
+const MAX_VIEWED = 48;
 
-The candidate list is raw search output, so a good portion of it is wrong — mismatched garments, womenswear, kids' sizes, bulk lots, accessories for a different aesthetic entirely. Cutting those is most of the job. A short list the wearer trusts beats a long one they have to sift.
+const SYSTEM = `You are choosing which men's clothing, out of raw shopping-search results, is genuinely worth showing one specific person.
 
-You are working from titles and prices alone, with no images. Where a title is too vague to tell what the garment actually is, leave it out rather than guessing.
+You can see each item's photo. Use it — the picture is the evidence, the title is just a claim. Sellers mislabel constantly, so when the two disagree, believe the photo.
 
-Write each whyItFits to the wearer in one sentence, tied to something concrete in their profile — a colour, a fabric, a proportion — not generic praise.`;
+Reject on sight, and don't spend reasoning on them: womenswear and kids' clothing, multi-item lots, mannequins with nothing distinctive, stock photos that show no actual garment, heavy wear or staining, and anything where the photo doesn't show the thing the title says it is.
 
-/** Titles are the whole signal here; keep the block compact but complete. */
-function renderCandidates(candidates: ProductListing[]): string {
-  return candidates
-    .map(
-      (c) =>
-        `${c.id} | $${c.price.toFixed(2)} | ${c.condition ?? "unspecified"} | ${c.merchant ?? "unknown seller"} | ${c.title}`
-    )
-    .join("\n");
-}
+Then judge fit against the wearer's style — colour, material, cut, formality — not against menswear in general. A beautiful piece that clashes with their palette is a bad recommendation.
+
+Return only items you would defend. Six to ten is the target, and fewer is fine if the search came back thin — never pad the list to reach a number. Say so in the notes when that happens.
+
+Write each whyItFits to the wearer in one sentence, pointing at something concrete you can see in the photo and tying it to their profile. No generic praise.`;
 
 function renderProfile(profile: StyleProfile): string {
   return [
@@ -51,26 +51,42 @@ export async function curate(
     return { items: [], notes: "No listings came back from the shopping sources." };
   }
 
+  const viewed = candidates.filter((c) => c.imageUrl).slice(0, MAX_VIEWED);
+  if (!viewed.length) {
+    return { items: [], notes: "None of the listings had a usable photo." };
+  }
+
+  // Each item is a label followed by its photo, so the id, price, and image stay
+  // unambiguously associated.
+  const content = viewed.flatMap((item) => [
+    {
+      type: "text" as const,
+      text: `${item.id} | $${item.price.toFixed(2)} | ${item.condition ?? "condition unstated"} | ${item.title}`,
+    },
+    {
+      type: "image" as const,
+      source: { type: "url" as const, url: item.imageUrl! },
+    },
+  ]);
+
   const message = await anthropic().messages.parse({
     model: MODEL,
     max_tokens: 8000,
     system: SYSTEM,
     output_config: {
-      effort: "medium",
+      effort: "high",
       format: zodOutputFormat(CurationSchema),
     },
     messages: [
       {
         role: "user",
-        content: `Here is the wearer's style profile:
-
-${renderProfile(profile)}
-
-Here are ${candidates.length} candidates as "id | price | condition | seller | title":
-
-${renderCandidates(candidates)}
-
-Pick the twelve to eighteen that genuinely fit. Use the ids exactly as given.`,
+        content: [
+          {
+            type: "text",
+            text: `Here is the wearer's style profile:\n\n${renderProfile(profile)}\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given.`,
+          },
+          ...content,
+        ],
       },
     ],
   });
@@ -80,7 +96,7 @@ Pick the twelve to eighteen that genuinely fit. Use the ids exactly as given.`,
 
   // Rejoin against the real listings and drop anything hallucinated — a pick
   // whose id isn't in the candidate set has no URL, price, or image to render.
-  const byId = new Map(candidates.map((c) => [c.id, c]));
+  const byId = new Map(viewed.map((c) => [c.id, c]));
   const seen = new Set<string>();
   const items: CuratedItem[] = [];
 
