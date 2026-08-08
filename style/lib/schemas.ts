@@ -75,20 +75,7 @@ export const CurationSchema = z.object({
     .describe("One short line on what you rejected and why, so the user can adjust their range."),
 });
 
-export const OutfitSchema = z.object({
-  name: z.string().describe("Short evocative name, e.g. 'Cold morning, warm coffee'."),
-  itemIds: z.array(z.string()).describe("Two to four ids drawn from the supplied picks."),
-  occasion: z.string().describe("Where this outfit is going."),
-  stylingNote: z.string().describe("How to wear it — layering, cuffs, proportion."),
-});
-
-export const OutfitsSchema = z.object({
-  outfits: z.array(OutfitSchema).describe("Two or three complete outfits."),
-});
-
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 export type StyleProfile = z.infer<typeof StyleProfileSchema>;
 export type Pick = z.infer<typeof PickSchema>;
 export type Curation = z.infer<typeof CurationSchema>;
-export type Outfit = z.infer<typeof OutfitSchema>;
-export type Outfits = z.infer<typeof OutfitsSchema>;

@@ -23,17 +23,12 @@ export default async function Home() {
   const closet = await lastCloset();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <header className="mb-10">
-        <p className="label mb-2 text-ink-gold">Menswear</p>
-        <h1 className="font-serif text-4xl text-white md:text-5xl">
+        <p className="label mb-3">Menswear</p>
+        <h1 className="font-serif text-5xl leading-none text-room-ink md:text-6xl">
           Show me what you like.
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-500">
-          Add a few pieces you think look good. Claude reads the style across them and finds
-          real listings in your price range that extend it &mdash; then puts them together
-          into outfits.
-        </p>
       </header>
 
       <StyleRunner initialCloset={closet} />

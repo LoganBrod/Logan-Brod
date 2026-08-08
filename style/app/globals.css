@@ -4,32 +4,50 @@
 
 @layer base {
   body {
-    @apply bg-ink-bg text-gray-200;
+    @apply bg-room-bg text-room-ink;
+    /* The render's backdrop is a soft vignette, not a flat fill. */
+    background-image: radial-gradient(
+      120% 80% at 50% 0%,
+      #f4f2ee 0%,
+      #edeae4 45%,
+      #e3dfd7 100%
+    );
+    background-attachment: fixed;
   }
 }
 
 @layer components {
   .panel {
-    @apply bg-ink-card border border-ink-border rounded-2xl;
+    @apply rounded-2xl border border-room-line bg-room-panel;
   }
 
   .label {
-    @apply text-gray-500 text-[11px] uppercase tracking-widest font-semibold;
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-room-faint;
   }
 
   .btn {
-    @apply rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply rounded-full px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .btn-primary {
-    @apply btn bg-ink-gold text-ink-bg hover:bg-ink-gold/85;
+    @apply btn bg-room-ink text-room-bg hover:bg-room-ink/85;
   }
 
   .btn-ghost {
-    @apply btn border border-ink-border text-gray-300 hover:border-ink-gold/50 hover:text-white;
+    @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/30 hover:text-room-ink;
   }
 
   .field {
-    @apply bg-ink-bg border border-ink-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-ink-gold/60;
+    @apply rounded-full border border-room-line bg-room-panel px-4 py-2 text-sm text-room-ink placeholder:text-room-faint focus:border-room-ink/40 focus:outline-none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

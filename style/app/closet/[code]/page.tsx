@@ -13,12 +13,12 @@ export default async function ClosetPage({ params }: { params: { code: string } 
   if (!closet) notFound();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="label mb-2 text-ink-gold">Saved closet</p>
-          <h1 className="font-mono text-3xl tracking-[0.3em] text-white">{closet.code}</h1>
-          <p className="mt-2 text-xs text-gray-600">
+          <p className="label mb-2">Saved closet</p>
+          <h1 className="font-mono text-3xl tracking-[0.3em] text-room-ink">{closet.code}</h1>
+          <p className="mt-2 text-xs text-room-faint">
             Updated {new Date(closet.updatedAt).toLocaleDateString()}
           </p>
         </div>

@@ -17,11 +17,13 @@ lives entirely in `style/` and deploys separately.
 3. **Shop** (no Claude) — every query runs against eBay and Google Shopping in parallel. Results are
    normalized to one shape, deduped, and interleaved per query so one broad query can't crowd out
    the narrower ones.
-4. **Curate + outfits** (Claude, twice) — **looks at each candidate's photo**, throws out anything
-   that isn't the garment its title claims, and writes one line per pick on why it suits you. Then
-   builds 2–3 outfits from what survived.
+4. **Curate** (Claude) — **looks at each candidate's photo**, throws out anything that isn't the
+   garment its title claims, and writes one line per pick on why it suits you.
 
-Roughly $0.20–0.35 in API cost per full run, split between the two vision passes.
+Results hang in a virtual closet; hovering a piece slides up its price, title, condition, and why
+it was chosen. While the pipeline runs, a wardrobe assembles itself on screen.
+
+Roughly $0.20–0.30 in API cost per full run, split between the two vision passes.
 
 ### Why it recommends what it does
 
@@ -125,7 +127,12 @@ app/
   closet/[code]/page.tsx    permalink for a saved closet
   api/style/{analyze,shop,curate}/route.ts
   api/closet/route.ts
-  components/               StyleRunner is the interactive flow; the rest are pure render
+  components/               StyleRunner drives the flow; Closet hangs the results on rails;
+                            BuildingCloset plays the loading animation
+public/                     closet-building.{webm,mp4,jpg} — the loading animation. WebM is
+                            listed first for Chromium builds without proprietary codecs; the
+                            MP4 covers Safari and iOS, which don't decode VP9 in <video>.
+                            The palette in tailwind.config.ts is sampled from this render.
 lib/
   analyze.ts curate.ts outfits.ts    one file per Claude pass
   image.ts photos.ts                  browser-side downscaling, and the photo selection rules

@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { claimKey, expire, getJson, setJson } from "./redis";
-import type { Outfit, StyleProfile } from "./schemas";
+import type { StyleProfile } from "./schemas";
 import type { CuratedItem } from "./curate";
 import type { PriceRange } from "./sources/types";
 
@@ -22,7 +22,6 @@ export interface ClosetContents {
   range: PriceRange;
   profile: StyleProfile;
   items: CuratedItem[];
-  outfits: Outfit[];
   notes?: string;
 }
 

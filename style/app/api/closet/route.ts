@@ -47,7 +47,6 @@ function parseDraft(body: unknown): ClosetDraft | { error: string } {
     range: { min, max },
     profile: profile.data,
     items: Array.isArray(raw.items) ? (raw.items as ClosetDraft["items"]) : [],
-    outfits: Array.isArray(raw.outfits) ? (raw.outfits as ClosetDraft["outfits"]) : [],
     notes: typeof raw.notes === "string" ? raw.notes : undefined,
   };
 }
