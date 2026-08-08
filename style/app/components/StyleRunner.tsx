@@ -7,10 +7,19 @@ import type { StyleProfile } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
 import { encodePhotos } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
-import BuildingCloset from "./BuildingCloset";
-import ClosetView from "./ClosetView";
+import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 
 type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
+
+/**
+ * The on-screen sequence, deliberately separate from the pipeline's `Stage`.
+ * The two run at different speeds — the build animation is ~2.8s and a full run
+ * is far longer — so the closet waits at `open` until results land.
+ */
+type Phase = "form" | "exiting" | "building" | "open" | "filled";
+
+/** Long enough for the form to clear frame before the wardrobe starts. */
+const EXIT_MS = 480;
 
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
   preparing: "Preparing your photos…",
@@ -47,6 +56,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const [results, setResults] = useState<ClosetContents | null>(initialCloset);
   const [code, setCode] = useState<string | null>(initialCloset?.code ?? null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>(initialCloset ? "filled" : "form");
+  // Results can land before the build animation finishes. Park them here and
+  // hang them the moment the wardrobe is open, so the animation is never cut
+  // short and the pieces never appear before there's a rail to hang them on.
+  const pending = useRef<ClosetContents | null>(null);
+  const built = useRef(false);
   const [reports, setReports] = useState<SourceReport[]>([]);
   const [codeInput, setCodeInput] = useState("");
 
@@ -89,6 +104,30 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     });
   }, []);
 
+  /**
+   * Results and the build animation finish in either order. Whichever lands
+   * second triggers the reveal, so the wardrobe is always fully built before
+   * anything hangs in it, and a slow pipeline just holds the closet open.
+   */
+  const revealWhenBuilt = useCallback((contents: ClosetContents) => {
+    pending.current = contents;
+    if (!built.current) return;
+    setResults(contents);
+    setPhase("filled");
+    pending.current = null;
+  }, []);
+
+  const onBuilt = useCallback(() => {
+    if (built.current) return;
+    built.current = true;
+    setPhase((p) => (p === "building" ? "open" : p));
+    if (pending.current) {
+      setResults(pending.current);
+      pending.current = null;
+      setPhase("filled");
+    }
+  }, []);
+
   async function run() {
     if (photos.length < 1) {
       setError("Add at least one photo.");
@@ -100,6 +139,17 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     }
 
     setError(null);
+    built.current = false;
+    pending.current = null;
+    setResults(null);
+    setCode(null);
+
+    // Clear the form out of frame, then let the wardrobe build over where it was.
+    const reduced = prefersReducedMotion();
+    setPhase("exiting");
+    await new Promise((r) => setTimeout(r, reduced ? 0 : EXIT_MS));
+    setPhase("building");
+
     try {
       // Downscaled and encoded in the browser, then sent inline — the photos
       // are never hosted anywhere.
@@ -141,8 +191,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         items: curated.items,
         notes: curated.notes,
       };
-      setResults(contents);
-      setCode(null);
+      revealWhenBuilt(contents);
 
       setStage("saving");
       try {
@@ -161,6 +210,9 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
+      // Nothing to hang, so put the form back rather than stranding an empty
+      // wardrobe with an error floating under it.
+      setPhase(results ? "filled" : "form");
       setStage("idle");
     }
   }
@@ -178,17 +230,25 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setCode(json.closet.code);
       setSaveNotice(null);
       setCodeInput("");
+      setPhase("filled");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load that closet.");
     }
   }
 
   const busy = stage !== "idle";
+  const onStage = phase === "building" || phase === "open" || phase === "filled";
+  const leaving = phase === "exiting";
   const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
 
   return (
     <div className="space-y-10">
-      <section className="panel p-6 sm:p-8">
+      {!onStage && (
+      <section
+        className={`panel p-6 transition-all duration-500 ease-in sm:p-8 ${
+          leaving ? "pointer-events-none -translate-y-6 scale-[0.97] opacity-0" : ""
+        }`}
+      >
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <p className="label">Pieces you like</p>
           <form onSubmit={loadByCode} className="flex items-center gap-2">
@@ -239,7 +299,19 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         {photos.length > 0 && (
           <div className="mt-5 flex flex-wrap gap-3">
             {photos.map((photo, index) => (
-              <div key={photo.preview} className="relative h-24 w-24">
+              <div
+                key={photo.preview}
+                className="relative h-24 w-24 transition-all duration-500 ease-in"
+                style={
+                  leaving
+                    ? {
+                        transform: `translate(${(photos.length / 2 - index) * 60}px, 40px) scale(0.2)`,
+                        opacity: 0,
+                        transitionDelay: `${index * 45}ms`,
+                      }
+                    : undefined
+                }
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo.preview}
@@ -311,10 +383,18 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           </p>
         )}
       </section>
+      )}
 
-      {busy && <BuildingCloset stage={STAGE_COPY[stage as Exclude<Stage, "idle">]} />}
+      {onStage && (
+        <ClosetStage
+          items={results?.items ?? []}
+          phase={phase as StagePhase}
+          caption={busy ? STAGE_COPY[stage as Exclude<Stage, "idle">] : undefined}
+          onBuilt={onBuilt}
+        />
+      )}
 
-      {!busy && results && (
+      {phase === "filled" && results && (
         <>
           {code ? (
             <div className="panel flex flex-wrap items-center justify-between gap-3 px-6 py-4">
@@ -330,13 +410,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           ) : (
             saveNotice && (
               <p className="panel px-6 py-4 text-xs leading-relaxed text-room-muted">
-                {saveNotice} Your pieces are below either way &mdash; they just won&rsquo;t be
-                here when you come back.
+                {saveNotice} Your pieces are hanging above either way &mdash; they just
+                won&rsquo;t be here when you come back.
               </p>
             )
           )}
 
-          <ClosetView closet={results} />
+          <button type="button" onClick={() => setPhase("form")} className="btn-ghost">
+            Start another
+          </button>
         </>
       )}
     </div>

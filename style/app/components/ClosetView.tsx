@@ -1,10 +1,10 @@
 import type { ClosetContents } from "@/lib/closet";
-import Closet from "./Closet";
+import ClosetStage from "./ClosetStage";
 
 /**
- * A run's results, shared by the live run and the saved-closet page. Takes
- * contents rather than a saved `Closet` so results still render when saving
- * was unavailable.
+ * A saved closet. Mounts straight to a filled wardrobe on the clip's final
+ * frame — replaying the build on a page you're returning to is a delay, not a
+ * flourish.
  */
 export default function ClosetView({ closet }: { closet: ClosetContents }) {
   return (
@@ -17,7 +17,7 @@ export default function ClosetView({ closet }: { closet: ClosetContents }) {
         </span>
       </div>
 
-      <Closet items={closet.items} />
+      <ClosetStage items={closet.items} phase="filled" />
     </section>
   );
 }

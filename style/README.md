@@ -1,8 +1,8 @@
 # Closet — men's style recommender
 
 Upload a few pieces you think look good. Claude reads the style across them, searches for real
-listings in your price range that would extend it, throws out the ones that don't fit, and puts
-what's left into outfits. Everything is saved under a short code so it's still there next time.
+listings in your price range that would extend it, throws out the ones that don't fit, and hangs
+what's left in a closet. Everything is saved under a short code so it's still there next time.
 
 This is a standalone app. The repository root is a different project (sports-card tools) — this one
 lives entirely in `style/` and deploys separately.
@@ -12,7 +12,7 @@ lives entirely in `style/` and deploys separately.
 1. **Upload** — 1–6 photos are downscaled in your browser and sent to Claude inline. No storage
    service involved; the photos are never hosted anywhere.
 2. **Analyze** (Claude, vision) — reads aesthetic, palette, silhouette, fabrics, formality, and the
-   gaps, then writes 6–8 specific shopping queries. "Brown suede chelsea boot", not "men's shoes" —
+   gaps, then writes 8–10 specific shopping queries. "Brown suede chelsea boot", not "men's shoes" —
    the specificity is what makes the search step worth anything.
 3. **Shop** (no Claude) — every query runs against eBay and Google Shopping in parallel. Results are
    normalized to one shape, deduped, and interleaved per query so one broad query can't crowd out
@@ -20,8 +20,9 @@ lives entirely in `style/` and deploys separately.
 4. **Curate** (Claude) — **looks at each candidate's photo**, throws out anything that isn't the
    garment its title claims, and writes one line per pick on why it suits you.
 
-Results hang in a virtual closet; hovering a piece slides up its price, title, condition, and why
-it was chosen. While the pipeline runs, a wardrobe assembles itself on screen.
+Pressing Build runs one continuous sequence: the form flies out of frame, your uploaded photos
+sweep toward centre, the wardrobe assembles itself over them, and the chosen pieces hang inside it.
+Hovering a piece lifts it and shows its price, title, condition, and why it was chosen.
 
 Roughly $0.20–0.30 in API cost per full run, split between the two vision passes.
 
@@ -102,6 +103,13 @@ curation downstream saves the result.
 
 ## Things worth knowing
 
+**The closet is the video, not a drawing of one.** The results view hangs garments over the clip
+paused on its last frame, positioned in fractions of that frame — so there is no replica to drift
+out of alignment. The clip is trimmed to end exactly on the pose those coordinates were measured
+from (t=2.75s, doors wide open), which is why its `ended` event can be trusted as the handoff. **If
+you ever re-cut the video, re-measure `lib/wardrobe.ts`** — every garment position reads from it,
+and the browser check asserts each piece lands inside the measured carcass.
+
 **Photos are never stored.** They're downscaled to a 1568px long edge in the browser, sent to
 Claude inline as base64, and that's it — nothing is written to disk or to any storage service, and
 saved closets hold no images. The downscale also cuts the vision token cost substantially; full
@@ -127,14 +135,17 @@ app/
   closet/[code]/page.tsx    permalink for a saved closet
   api/style/{analyze,shop,curate}/route.ts
   api/closet/route.ts
-  components/               StyleRunner drives the flow; Closet hangs the results on rails;
-                            BuildingCloset plays the loading animation
-public/                     closet-building.{webm,mp4,jpg} — the loading animation. WebM is
+  components/               StyleRunner owns the form→exiting→building→open→filled sequence;
+                            ClosetStage is the wardrobe and everything hung in it;
+                            HungGarment is one piece on the rail
+public/                     closet-building.{webm,mp4,jpg} — the build animation. WebM is
                             listed first for Chromium builds without proprietary codecs; the
                             MP4 covers Safari and iOS, which don't decode VP9 in <video>.
                             The palette in tailwind.config.ts is sampled from this render.
 lib/
-  analyze.ts curate.ts outfits.ts    one file per Claude pass
+  analyze.ts curate.ts                one file per Claude pass
+  wardrobe.ts                         where the closet sits in the clip's final frame —
+                                      measured, not guessed; everything positional reads from it
   image.ts photos.ts                  browser-side downscaling, and the photo selection rules
   schemas.ts                          zod schemas — note these import from `zod/v4`,
                                       which is what the SDK's zodOutputFormat is typed against
