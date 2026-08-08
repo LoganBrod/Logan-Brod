@@ -1,0 +1,88 @@
+// Schemas for the three Claude passes.
+//
+// These import from `zod/v4` rather than `zod` because the SDK's
+// `zodOutputFormat` is typed against that subpath — importing from plain `zod`
+// type-errors at the call site.
+//
+// Structured outputs reject several JSON Schema keywords, so there are no
+// `.min()` / `.max()` numeric constraints here. Counts are requested in the
+// prompt and clamped in code afterwards.
+
+import * as z from "zod/v4";
+
+export const SearchQuerySchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "A specific menswear search query, as typed into a shopping site. Name the garment, material, and colour — 'brown suede chelsea boot', not 'men's shoes'."
+    ),
+  category: z
+    .string()
+    .describe("Broad slot this fills: outerwear, tops, bottoms, footwear, or accessories."),
+  minPrice: z.number().describe("Low end of the sensible band for this item, in USD."),
+  maxPrice: z.number().describe("High end of the sensible band for this item, in USD."),
+  reason: z
+    .string()
+    .describe("One sentence on why this extends the uploaded pieces rather than duplicating them."),
+});
+
+export const StyleProfileSchema = z.object({
+  summary: z
+    .string()
+    .describe("Two or three sentences describing the style as a whole, addressed to the wearer."),
+  aesthetics: z
+    .array(z.string())
+    .describe("Two to four named aesthetics, e.g. 'workwear', 'ivy', 'techwear'."),
+  palette: z
+    .array(
+      z.object({
+        name: z.string().describe("Plain colour name, e.g. 'washed indigo'."),
+        hex: z.string().describe("Approximate hex code, including the leading #."),
+      })
+    )
+    .describe("Four to six colours that characterise the uploads."),
+  silhouette: z.string().describe("How these pieces fit and drape — cut, volume, proportion."),
+  fabrics: z.array(z.string()).describe("Materials and textures that recur across the uploads."),
+  formality: z
+    .string()
+    .describe("Where this sits on casual-to-formal, in a short phrase."),
+  gaps: z
+    .array(z.string())
+    .describe("Slots missing from the uploads that would round the wardrobe out."),
+  searchQueries: z
+    .array(SearchQuerySchema)
+    .describe("Six to eight queries covering the gaps, priced inside the user's stated range."),
+});
+
+export const PickSchema = z.object({
+  id: z.string().describe("The exact candidate id being picked. Never invent one."),
+  score: z.number().describe("0-100 fit against the style profile."),
+  whyItFits: z
+    .string()
+    .describe("One sentence, addressed to the wearer, on why this suits their style."),
+});
+
+export const CurationSchema = z.object({
+  picks: z.array(PickSchema).describe("Only candidates that genuinely fit, best first."),
+  notes: z
+    .string()
+    .describe("One short line on what you rejected and why, so the user can adjust their range."),
+});
+
+export const OutfitSchema = z.object({
+  name: z.string().describe("Short evocative name, e.g. 'Cold morning, warm coffee'."),
+  itemIds: z.array(z.string()).describe("Two to four ids drawn from the supplied picks."),
+  occasion: z.string().describe("Where this outfit is going."),
+  stylingNote: z.string().describe("How to wear it — layering, cuffs, proportion."),
+});
+
+export const OutfitsSchema = z.object({
+  outfits: z.array(OutfitSchema).describe("Two or three complete outfits."),
+});
+
+export type SearchQuery = z.infer<typeof SearchQuerySchema>;
+export type StyleProfile = z.infer<typeof StyleProfileSchema>;
+export type Pick = z.infer<typeof PickSchema>;
+export type Curation = z.infer<typeof CurationSchema>;
+export type Outfit = z.infer<typeof OutfitSchema>;
+export type Outfits = z.infer<typeof OutfitsSchema>;
