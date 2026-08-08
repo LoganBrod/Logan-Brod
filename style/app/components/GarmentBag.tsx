@@ -4,11 +4,18 @@ import { useRef } from "react";
 import type { CuratedItem } from "@/lib/curate";
 
 /**
- * The bag's outline, as percentages: tapered over the shoulders, chamfered at
- * the hem. Written once in both the clip-path and the SVG stroke forms so the
- * seam can never drift from the shape it traces.
+ * The bag's outline, as percentages: a narrow neck at the hook, shoulders
+ * curving out to full width, chamfered at the hem. Written once in both the
+ * clip-path and the SVG stroke forms so the seam can never drift from the shape
+ * it traces.
+ *
+ * The shoulders are a curve rather than the two straight lines they used to be.
+ * A straight taper is fine on a narrow bag, but these are now wide enough that
+ * it read as an envelope flap — the slope has to steepen as the bag widens, and
+ * only a curve does that.
  */
-const BAG_POINTS = "40,0 60,0 100,14 100,96 95,100 5,100 0,96 0,14";
+const BAG_POINTS =
+  "46,0 54,0 66,2 78,6 89,12 96,17 100,22 100,95 96,100 4,100 0,95 0,22 4,17 11,12 22,6 34,2";
 const BAG_SHAPE = `polygon(${BAG_POINTS.split(" ")
   .map((point) => point.split(",").map((n) => `${n}%`).join(" "))
   .join(", ")})`;
@@ -126,7 +133,12 @@ export default function GarmentBag({
             // object-contain, always: this is the whole point of the bag. The
             // photo is fitted, never cropped, so nothing is cut off when it
             // clears.
-            className={`h-full w-full object-contain p-[7%] transition-[filter,transform] duration-300 ${
+            //
+            // Deeper padding at the top so the photo starts below the shoulder
+            // curve — otherwise the clip takes its top corners. Percentages all
+            // resolve against the bag's width, which is why the top figure looks
+            // out of proportion to the others.
+            className={`h-full w-full object-contain px-[6%] pb-[6%] pt-[20%] transition-[filter,transform] duration-300 ${
               active ? "scale-100 blur-0" : "scale-[1.03] blur-[2px]"
             }`}
           />

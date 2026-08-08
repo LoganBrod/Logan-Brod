@@ -11,9 +11,10 @@ export default function ClosetView({ closet }: { closet: ClosetContents }) {
     <section className="space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-3xl text-room-ink">Your closet</h2>
+        {/* The stage carries its own "hover or tap a piece" line under the
+            wardrobe, so this only needs to say what the pieces cost. */}
         <span className="text-xs text-room-faint">
-          ${closet.range.min}&ndash;${closet.range.max} per piece &middot; hover or tap a piece
-          for details
+          ${closet.range.min}&ndash;${closet.range.max} per piece
         </span>
       </div>
 

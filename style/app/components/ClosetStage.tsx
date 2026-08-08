@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CuratedItem } from "@/lib/curate";
-import { RAIL, bagHeight, bagWidth, hangPositions } from "@/lib/wardrobe";
+import { RAIL, layout } from "@/lib/wardrobe";
 import GarmentBag from "./GarmentBag";
 
 export type StagePhase = "building" | "open" | "filled";
@@ -207,20 +207,24 @@ export default function ClosetStage({
   const active = items.find((item) => item.id === activeId) ?? null;
   const showGarments = phase === "filled";
 
-  const width = bagWidth(items.length);
-  const height = bagHeight();
-  const positions = hangPositions(items.length, width);
+  const { width, height, slots, rowYs } = layout(items.length);
   const canVote = taste?.configured === true;
 
   return (
     <div className="animate-fade-in" aria-live="polite" aria-busy={phase !== "filled"}>
       <div className="relative overflow-hidden rounded-2xl bg-room-bg">
-        {/* Portrait on phones, where a 16:9 wardrobe leaves the pieces too small
-            to read or tap. The clip keeps its aspect and overflows sideways, and
-            because the cavity sits dead centre of the frame the crop lands on it
-            almost exactly — no zoom state, no paging. */}
-        <div className="relative aspect-[4/5] w-full sm:aspect-video">
-          <div className="absolute left-1/2 top-0 h-full -translate-x-1/2 sm:left-0 sm:w-full sm:translate-x-0">
+        {/* The stage is narrower than the clip, on purpose. The wardrobe occupies
+            the middle 44% of a 16:9 frame and the rest is empty room, so showing
+            all of it spends most of the width on nothing and leaves the pieces
+            too small to read. Cropping to 4:3 scales the wardrobe up by a third
+            with no loss of detail — and portrait on phones, further still.
+
+            The clip keeps its own aspect and overflows sideways, and because the
+            cavity sits dead centre of the frame the crop lands on it almost
+            exactly: no zoom state, no paging, and the garment coordinates below
+            are untouched. */}
+        <div className="relative aspect-[4/5] w-full sm:aspect-[4/3]">
+          <div className="absolute left-1/2 top-0 h-full -translate-x-1/2">
             <div className="relative aspect-video h-full">
               <video
                 ref={videoRef}
@@ -237,14 +241,34 @@ export default function ClosetStage({
                 <source src="/closet-building.mp4" type="video/mp4" />
               </video>
 
+              {/* The lower rail, which the footage doesn't have — the clip ends on
+                  one wide cavity with a single rail across the top. Drawn only
+                  when there are enough pieces to need a second row, and it
+                  arrives with them rather than sitting in an empty wardrobe. */}
+              {phase !== "building" &&
+                rowYs.slice(1).map((y) => (
+                  <span
+                    key={y}
+                    aria-hidden
+                    className={`absolute z-[5] h-[2px] rounded-full bg-wardrobe-rail shadow-[0_2px_3px_rgba(27,26,23,0.3)] transition-opacity duration-500 ${
+                      showGarments ? "opacity-90" : "opacity-0"
+                    }`}
+                    style={{
+                      left: `${RAIL.left * 100}%`,
+                      width: `${(RAIL.right - RAIL.left) * 100}%`,
+                      top: `${y * 100}%`,
+                    }}
+                  />
+                ))}
+
               {/* Garments only exist once the wardrobe is built and filled. */}
               {phase !== "building" &&
                 items.map((item, index) => (
                   <GarmentBag
                     key={item.id}
                     item={item}
-                    centreX={positions[index]}
-                    railY={RAIL.y}
+                    centreX={slots[index].x}
+                    railY={slots[index].y}
                     width={width}
                     height={height}
                     index={index}
@@ -259,22 +283,41 @@ export default function ClosetStage({
           </div>
         </div>
 
-        {/* Detail for the open piece. Anchored under the wardrobe rather than
-            beside the garment: at this scale a bag is ~80px wide, far too small
-            to hold readable text, and a floating card would cover the pieces
-            hanging next to it.
+      </div>
 
-            It holds a link and buttons now, so it has to take the pointer — and
-            it stays open while the pointer is over either the bag or the panel,
-            with a short delay so crossing the gap doesn't dismiss it.
+      {/* Detail for the open piece, below the wardrobe rather than beside the
+          garment: even at this size a bag is too small to hold readable text,
+          and a floating card would cover the pieces hanging next to it.
 
-            z-50 puts it over the garments, which carry z-indexes of their own so
-            the hovered one lifts above its neighbours. Without it the piece
-            hanging in front swallows clicks meant for the link or the buttons. */}
+          It sits in a slot of its own with a reserved height instead of floating
+          over the wardrobe — with two rows the lower one now hangs where an
+          overlay would land, and a panel that covered half the closet every time
+          you moved the pointer was worse than the problem it solved. The height
+          is reserved so the page doesn't jump on every hover; when nothing is
+          open the slot holds the hint instead of sitting empty.
+
+          It holds a link and buttons, so it has to take the pointer — and it
+          stays open while the pointer is over either the bag or the panel, with
+          a short delay so crossing the gap doesn't dismiss it. */}
+      <div
+        className={`relative transition-[min-height] duration-300 ${
+          showGarments ? "mt-4 min-h-[196px] sm:min-h-[180px]" : "min-h-0"
+        }`}
+      >
+        <p
+          className={`absolute inset-x-0 top-6 text-center text-xs text-room-faint transition-opacity duration-200 ${
+            active || !showGarments ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {canVote
+            ? "Say yes or no on a piece and the next closet is picked around it."
+            : "Hover or tap a piece to see why it's here."}
+        </p>
+
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className={`absolute inset-x-0 bottom-0 z-50 flex justify-center p-3 transition-all duration-200 sm:p-6 ${
+          className={`absolute inset-x-0 top-0 flex justify-center transition-all duration-200 ${
             active ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
           }`}
         >
@@ -297,10 +340,14 @@ export default function ClosetStage({
                 {active?.condition ? ` · ${active.condition}` : ""}
               </span>
             </div>
-            <p className="mb-1.5 text-sm font-medium leading-snug text-room-ink">
+            {/* Clamped so the panel stays inside its reserved slot — eBay titles
+                run to 80 characters of keyword stuffing. */}
+            <p className="mb-1.5 line-clamp-2 text-sm font-medium leading-snug text-room-ink">
               {active?.title}
             </p>
-            <p className="text-xs leading-relaxed text-room-muted">{active?.whyItFits}</p>
+            <p className="line-clamp-3 text-xs leading-relaxed text-room-muted">
+              {active?.whyItFits}
+            </p>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-room-line pt-3">
               <a
@@ -345,12 +392,6 @@ export default function ClosetStage({
           </div>
         </div>
       </div>
-
-      {canVote && phase === "filled" && items.length > 0 && (
-        <p className="mt-4 text-center text-xs text-room-faint">
-          Say yes or no on a piece and the next closet is picked around it.
-        </p>
-      )}
 
       {caption && phase !== "filled" && (
         <div className="mt-6 flex items-center justify-center gap-3">

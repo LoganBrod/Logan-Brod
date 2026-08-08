@@ -143,7 +143,28 @@ framing there is; forcing them into a common box cut the toes off boots and the 
 jackets. So the resting state is a uniform frosted bag with the photo blurred behind it, and hover
 clears the bag and shows the photo `object-contain` — fitted, never cropped. The bag's outline is
 an SVG stroke rather than a border, because a `clip-path` cuts a border off and eight pale bags
-without outlines merge into one white band.
+without outlines merge into one white band. Its shoulders are a curved run of points rather than a
+straight taper: the slope has to steepen as the bag widens, or a wide bag reads as an envelope.
+
+**What makes the photos legible is the bag's proportion, not the image code.** `object-contain`
+fits a photo to whichever side is tighter, so a tall narrow bag shrinks a square product shot to
+its width and leaves it floating in a column of white. Eight pieces on one rail gave each bag 5.6%
+of the frame — about 55px on the page, with a 47px photo inside it. Two rails at four apiece
+doubles the width and lets `BAG_RATIO` in `lib/wardrobe.ts` hold the shape at 1.2:1, which puts
+~130px photos on the page. **The lower rail is drawn over the clip** — the footage has only one —
+and the height of every bag follows from its width so the shape never changes with the count.
+
+**The stage is narrower than the clip.** The wardrobe occupies the middle 44% of a 16:9 frame and
+the rest is empty room, so the container crops to 4:3 (4:5 on phones) while the clip keeps its own
+aspect and overflows sideways. That scales the wardrobe up by a third with no loss of detail, and
+because the cavity sits dead centre of the frame the crop lands on it almost exactly — no zoom
+state, no paging, and the garment coordinates are untouched.
+
+**The detail panel sits below the wardrobe, in a slot of its own.** It used to float over the
+bottom of the stage, which was fine with one row and covers the lower row with two. Its height is
+reserved so the page doesn't jump on every hover, and the slot holds the hint line when nothing is
+open rather than sitting empty; the title and reason are clamped so a long eBay title can't push
+the panel out of it.
 
 **Two hover bugs worth not reintroducing.** Tapping a bag in mobile Chromium fires `mouseenter`,
 then `mouseleave` as the finger lifts, and *no click at all* — so the hover path opened the panel
