@@ -9,7 +9,8 @@ lives entirely in `style/` and deploys separately.
 
 ## How it works
 
-1. **Upload** — 1–6 photos go to Vercel Blob, which gives Claude URLs it can fetch.
+1. **Upload** — 1–6 photos are downscaled in your browser and sent to Claude inline. No storage
+   service involved; the photos are never hosted anywhere.
 2. **Analyze** (Claude, vision) — reads aesthetic, palette, silhouette, fabrics, formality, and the
    gaps, then writes 6–8 specific shopping queries. "Brown suede chelsea boot", not "men's shoes" —
    the specificity is what makes the search step worth anything.
@@ -38,7 +39,6 @@ npm run dev
 | `ANTHROPIC_API_KEY` | **Required.** All three Claude passes. | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` | **Required.** The primary shopping source. | [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys) |
 | `EBAY_ENV` | Optional. `sandbox` or `production` (default). | — |
-| `BLOB_READ_WRITE_TOKEN` | Photo upload. Without it you can't start a run. | Vercel → Storage → Blob |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Saving closets. Without them everything else still works; results just aren't kept. | Vercel → Storage → Marketplace → Upstash |
 | `SERPAPI_KEY` | Optional. Adds mainstream retail alongside eBay. | [serpapi.com](https://serpapi.com/manage-api-key) |
 
@@ -83,9 +83,10 @@ curation downstream saves the result.
 
 ## Things worth knowing
 
-**Photo URLs are public.** Vercel Blob URLs are unguessable but not access-controlled — the Claude
-API has to reach them over the open internet. That's fine for photos of clothing; worth knowing
-before anyone uploads a photo of a person.
+**Photos are never stored.** They're downscaled to a 1568px long edge in the browser, sent to
+Claude inline as base64, and that's it — nothing is written to disk or to any storage service, and
+saved closets hold no images. The downscale also cuts the vision token cost substantially; full
+resolution buys nothing for reading a garment's cut and colour.
 
 **A closet code is the only credential.** Anyone with the code can open that closet. There are no
 accounts. Codes are 6 characters from a 31-character alphabet with `0/O/1/I/L` excluded so they
@@ -111,14 +112,15 @@ app/
   page.tsx                  upload, price range, and the live run
   closet/[code]/page.tsx    permalink for a saved closet
   api/style/{analyze,shop,curate}/route.ts
-  api/closet/{route,upload/route}.ts
+  api/closet/route.ts
   components/               StyleRunner is the interactive flow; the rest are pure render
 lib/
   analyze.ts curate.ts outfits.ts    one file per Claude pass
+  image.ts photos.ts                  browser-side downscaling, and the photo selection rules
   schemas.ts                          zod schemas — note these import from `zod/v4`,
                                       which is what the SDK's zodOutputFormat is typed against
   anthropic.ts                        client, model choice, refusal handling
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
-  closet.ts redis.ts blob.ts          persistence
+  closet.ts redis.ts                  persistence
 scripts/                              offline tests and the Upstash stand-in
 ```

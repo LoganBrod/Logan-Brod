@@ -13,11 +13,17 @@ Recommend what is missing, not what is already there. If every upload is outerwe
 
 Write the summary and the per-query reasons to the wearer, in plain second person. No preamble.`;
 
+export interface PhotoInput {
+  /** Raw base64, no data: prefix. */
+  data: string;
+  mediaType: string;
+}
+
 export async function analyzeStyle(
-  photoUrls: string[],
+  photos: PhotoInput[],
   range: PriceRange
 ): Promise<StyleProfile> {
-  if (!photoUrls.length) {
+  if (!photos.length) {
     throw new Error("At least one photo is required.");
   }
 
@@ -34,13 +40,22 @@ export async function analyzeStyle(
       {
         role: "user",
         content: [
-          ...photoUrls.map(
-            (url) =>
-              ({ type: "image", source: { type: "url", url } }) as const
+          // Sent inline rather than by URL, so the photos never have to be
+          // hosted anywhere public for the API to reach them.
+          ...photos.map(
+            (photo) =>
+              ({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: photo.mediaType as "image/jpeg",
+                  data: photo.data,
+                },
+              }) as const
           ),
           {
             type: "text",
-            text: `These are ${photoUrls.length} piece${photoUrls.length === 1 ? "" : "s"} I like the look of.
+            text: `These are ${photos.length} piece${photos.length === 1 ? "" : "s"} I like the look of.
 
 Read the style across them, then give me six to eight things to buy that would extend it. My budget per item is $${range.min}-$${range.max}, so keep every suggested price band inside that.`,
           },

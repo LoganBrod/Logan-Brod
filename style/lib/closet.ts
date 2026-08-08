@@ -17,7 +17,6 @@ export interface Closet {
   code: string;
   createdAt: string;
   updatedAt: string;
-  photoUrls: string[];
   range: PriceRange;
   profile: StyleProfile;
   items: CuratedItem[];

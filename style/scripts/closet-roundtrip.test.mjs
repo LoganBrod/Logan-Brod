@@ -31,7 +31,6 @@ const profile = {
 };
 
 const draft = () => ({
-  photoUrls: ["https://example.com/a.jpg"],
   range: { min: 50, max: 250 },
   profile,
   items: [],

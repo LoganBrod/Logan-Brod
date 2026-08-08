@@ -5,14 +5,14 @@ import type { Closet } from "@/lib/closet";
 import type { CuratedItem } from "@/lib/curate";
 import type { StyleProfile, Outfit } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
+import { encodePhotos } from "@/lib/image";
+import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import ClosetView from "./ClosetView";
 
-const MAX_PHOTOS = 6;
-
-type Stage = "idle" | "uploading" | "analyzing" | "shopping" | "curating" | "saving";
+type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
 
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
-  uploading: "Uploading your photos…",
+  preparing: "Preparing your photos…",
   analyzing: "Reading the style…",
   shopping: "Searching for pieces…",
   curating: "Picking the ones that fit…",
@@ -56,15 +56,24 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
   const addFiles = useCallback((files: FileList | null) => {
     if (!files) return;
-    setError(null);
-    setPhotos((current) => {
-      const room = MAX_PHOTOS - current.length;
-      const incoming = Array.from(files)
-        .filter((file) => file.type.startsWith("image/"))
-        .slice(0, Math.max(room, 0))
-        .map((file) => ({ file, preview: URL.createObjectURL(file) }));
-      return [...current, ...incoming];
-    });
+
+    // Read the FileList out NOW. Both the file input and the drop event
+    // invalidate it the moment this handler returns, and React may defer the
+    // state updater past that point — which is why only the first selection
+    // used to land.
+    const incoming = Array.from(files);
+    const selection = selectPhotos(photosRef.current.length, incoming);
+
+    setError(describeRejections(selection));
+    if (!selection.accepted.length) return;
+
+    // Object URLs are created out here too: state updaters must be pure, and
+    // StrictMode double-invokes them, which would leak a URL per extra call.
+    const added = selection.accepted.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPhotos((current) => [...current, ...added]);
   }, []);
 
   const removePhoto = useCallback((index: number) => {
@@ -87,18 +96,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
     setError(null);
     try {
-      setStage("uploading");
-      const form = new FormData();
-      for (const photo of photos) form.append("photos", photo.file);
-      const uploadRes = await fetch("/api/closet/upload", { method: "POST", body: form });
-      const uploaded = await uploadRes.json().catch(() => null);
-      if (!uploadRes.ok) throw new Error(uploaded?.error ?? "Upload failed.");
-      const photoUrls: string[] = uploaded.photoUrls;
+      // Downscaled and encoded in the browser, then sent inline — the photos
+      // are never hosted anywhere.
+      setStage("preparing");
+      const encoded = await encodePhotos(photos.map((photo) => photo.file));
 
       setStage("analyzing");
       const { profile } = await postJson<{ profile: StyleProfile }>(
         "/api/style/analyze",
-        { photoUrls, min, max }
+        { photos: encoded, min, max }
       );
 
       setStage("shopping");
@@ -125,7 +131,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
       setStage("saving");
       const saved = await postJson<{ closet: Closet }>("/api/closet", {
-        photoUrls,
         range: { min, max },
         profile,
         items: curated.items,

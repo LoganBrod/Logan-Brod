@@ -43,9 +43,6 @@ function parseDraft(body: unknown): ClosetDraft | { error: string } {
   }
 
   return {
-    photoUrls: Array.isArray(raw.photoUrls)
-      ? (raw.photoUrls.filter((u) => typeof u === "string") as string[])
-      : [],
     range: { min, max },
     profile: profile.data,
     items: Array.isArray(raw.items) ? (raw.items as ClosetDraft["items"]) : [],
