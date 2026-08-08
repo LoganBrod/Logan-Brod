@@ -21,8 +21,10 @@ lives entirely in `style/` and deploys separately.
    garment its title claims, and writes one line per pick on why it suits you.
 
 Pressing Build runs one continuous sequence: the form flies out of frame, your uploaded photos
-sweep toward centre, the wardrobe assembles itself over them, and the chosen pieces hang inside it.
-Hovering a piece lifts it and shows its price, title, condition, and why it was chosen.
+sweep toward centre, the wardrobe assembles itself over them, and the chosen pieces hang inside it
+in garment bags. Hovering a bag clears it and shows the photo whole, with the price, title,
+condition, why it was chosen, a link to the listing, and **Right for you?** — a yes or a no that
+steers the next run.
 
 Roughly $0.20–0.30 in API cost per full run, split between the two vision passes.
 
@@ -42,6 +44,10 @@ Search quality decides everything downstream, so most of the work is upstream of
 - **The photo beats the title.** Curation sees thumbnails, so a listing captioned "waxed cotton
   jacket" showing a woman's cropped jacket gets dropped on sight. Images are requested at eBay's
   small rendition — token cost scales with area, and 400px is plenty to identify a garment.
+- **Your yes and no outrank everything.** Votes are the only direct signal about whether a
+  recommendation was actually good, so both Claude passes get them: the analyze pass writes queries
+  away from what you rejected, and curation treats rejected titles as already turned down. See
+  `lib/taste.ts`.
 
 ## Setup
 
@@ -59,12 +65,21 @@ npm run dev
 | `ANTHROPIC_API_KEY` | **Required.** All three Claude passes. | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` | **Required.** The primary shopping source. | [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys) |
 | `EBAY_ENV` | Optional. `sandbox` or `production` (default). | — |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Saving closets. Without them everything else still works; results just aren't kept. | Vercel → Storage → Marketplace → Upstash |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Saving closets, and the yes/no feedback. Without them everything else still works; results just aren't kept and the vote control doesn't appear. | Vercel → Storage → Marketplace → Upstash |
 | `SERPAPI_KEY` | Optional. Adds mainstream retail alongside eBay. | [serpapi.com](https://serpapi.com/manage-api-key) |
 
 With `SERPAPI_KEY` unset the app searches eBay only and says so in the UI — a supported
 configuration, not a broken one. Swapping SerpAPI for another provider (Oxylabs, Rainforest) means
 rewriting `lib/sources/serpapi.ts`; nothing outside that file knows which provider is in use.
+
+**SerpAPI's free tier is 100 searches a month**, and a run issues up to 10 queries. Sending all of
+them would make Google Shopping useful for ten runs and then dead, so `QUERY_CAP` in
+`lib/sources/index.ts` gives it only the first four — roughly twenty-five runs. Raise it if you're
+on a paid plan. eBay has no such cap and sees every query.
+
+Note `lib/sources/serpapi.ts` has never been exercised against the live service. If Google Shopping
+results look wrong, check `toListing` against a real `shopping_results` payload before looking
+anywhere else.
 
 ### Deploying
 
@@ -79,8 +94,9 @@ npm run typecheck
 npm run build
 ```
 
-The tests cover the logic that doesn't need network: dedupe, per-query interleaving, closet-code
-validation, and the full closet round-trip against an in-memory stand-in for Upstash.
+The tests cover the logic that doesn't need network: dedupe, per-query interleaving, the SerpAPI
+query cap, closet-code validation, taste-memo rendering, API-error translation, and the full closet
+round-trip against an in-memory stand-in for Upstash.
 
 To exercise saved closets locally without an Upstash account:
 
@@ -90,6 +106,18 @@ UPSTASH_REDIS_REST_URL=http://127.0.0.1:6380 UPSTASH_REDIS_REST_TOKEN=dev npm ru
 ```
 
 That store is in memory and dies with the process. Local testing only.
+
+To check that a vote actually reaches Claude — as opposed to merely reaching Redis — point the SDK
+at a local capture server with `ANTHROPIC_BASE_URL` and read the outbound request body. Have it
+answer `400`; the SDK retries 5xx five times, and the body is all you need:
+
+```
+ANTHROPIC_BASE_URL=http://127.0.0.1:6390 npm run dev
+```
+
+The rejected title should appear under "They said NO to" in `messages[0].content` for both the
+analyze and the curate call. Asserting the outbound body is the only thing that proves the wiring
+from cookie → route → lib → prompt, and it's easy to break without any test noticing.
 
 **Search quality has to be checked by eye, and it's the thing everything else depends on.** Start
 here whenever you change a source:
@@ -105,10 +133,30 @@ curation downstream saves the result.
 
 **The closet is the video, not a drawing of one.** The results view hangs garments over the clip
 paused on its last frame, positioned in fractions of that frame — so there is no replica to drift
-out of alignment. The clip is trimmed to end exactly on the pose those coordinates were measured
-from (t=2.75s, doors wide open), which is why its `ended` event can be trusted as the handoff. **If
-you ever re-cut the video, re-measure `lib/wardrobe.ts`** — every garment position reads from it,
-and the browser check asserts each piece lands inside the measured carcass.
+out of alignment. The clip already ends on the pose those coordinates were measured from (doors
+wide open, one clear rail), which is why its `ended` event can be trusted as the handoff. **If you
+ever re-cut the video, re-measure `lib/wardrobe.ts`** — every garment position reads from it, and
+the browser check asserts each piece lands inside the measured carcass.
+
+**Photos hang in bags because they can't be cropped.** eBay photos come in every aspect ratio and
+framing there is; forcing them into a common box cut the toes off boots and the shoulders off
+jackets. So the resting state is a uniform frosted bag with the photo blurred behind it, and hover
+clears the bag and shows the photo `object-contain` — fitted, never cropped. The bag's outline is
+an SVG stroke rather than a border, because a `clip-path` cuts a border off and eight pale bags
+without outlines merge into one white band.
+
+**Two hover bugs worth not reintroducing.** Tapping a bag in mobile Chromium fires `mouseenter`,
+then `mouseleave` as the finger lifts, and *no click at all* — so the hover path opened the panel
+and instantly closed it, and a tap could never pin it. `GarmentBag` therefore branches on
+`pointerType` instead of trusting the emulated mouse events. Separately, closing the panel takes it
+out of hit-testing, so the browser fires `mouseenter` on whatever bag was behind it without the
+pointer moving, and the panel sprang back open on the wrong piece; `ClosetStage` remembers where
+the close was clicked and ignores a hover arriving from that exact spot.
+
+**Below `sm` the wardrobe goes portrait.** A 16:9 closet on a phone leaves the pieces too small to
+read or tap. Rather than zooming and paging, the container becomes 4:5 and the clip keeps its own
+aspect and overflows sideways — and because the cavity sits dead centre of the frame, the crop
+lands on it almost exactly. No zoom state, no swipe, and the garment coordinates don't change.
 
 **A busy API doesn't cost you the run.** Anthropic returns `529 overloaded_error` when it's
 momentarily saturated. The client retries five times with the SDK's own backoff, which absorbs most
@@ -125,6 +173,12 @@ open, dumping the raw JSON. `constructor.name` is no safer once the production b
 Claude inline as base64, and that's it — nothing is written to disk or to any storage service, and
 saved closets hold no images. The downscale also cuts the vision token cost substantially; full
 resolution buys nothing for reading a garment's cut and colour.
+
+**Feedback is per browser, and optional.** A vote is stored under a long-lived `taste_id` cookie in
+the same Upstash instance as the closets — no account, no closet code needed. Without Upstash the
+vote control simply doesn't render and both passes run without a memo. `renderMemo` walks votes
+newest-first and skips titles it has already placed, so changing your mind about something replaces
+the earlier verdict instead of leaving it in both lists.
 
 **A closet code is the only credential.** Anyone with the code can open that closet. There are no
 accounts. Codes are 6 characters from a 31-character alphabet with `0/O/1/I/L` excluded so they
@@ -146,9 +200,10 @@ app/
   closet/[code]/page.tsx    permalink for a saved closet
   api/style/{analyze,shop,curate}/route.ts
   api/closet/route.ts
+  api/taste/route.ts        yes/no votes, and the memo they render into
   components/               StyleRunner owns the form→exiting→building→open→filled sequence;
-                            ClosetStage is the wardrobe and everything hung in it;
-                            HungGarment is one piece on the rail
+                            ClosetStage is the wardrobe, the detail panel, and the vote control;
+                            GarmentBag is one piece hanging on the rail in its bag
 public/                     closet-building.{webm,mp4,jpg} — the build animation. WebM is
                             listed first for Chromium builds without proprietary codecs; the
                             MP4 covers Safari and iOS, which don't decode VP9 in <video>.
@@ -164,6 +219,8 @@ lib/
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
                                       menswear.ts holds the title filters; ebayCategories.ts
                                       resolves men's category IDs at runtime
+  taste.ts                            what this browser said yes and no to, and the
+                                      memo both Claude passes are given
   closet.ts redis.ts                  persistence
 scripts/                              offline tests and the Upstash stand-in
 ```

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { curate } from "@/lib/curate";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
+import { readTasteId, tasteMemo } from "@/lib/taste";
 import type { ProductListing } from "@/lib/sources/types";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const curation = await curate(parsedProfile.data, candidates);
+    const memo = await tasteMemo(readTasteId(req.headers.get("cookie")));
+    const curation = await curate(parsedProfile.data, candidates, memo);
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },
       { headers: { "Cache-Control": "no-store" } }

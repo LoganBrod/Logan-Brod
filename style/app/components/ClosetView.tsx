@@ -12,8 +12,8 @@ export default function ClosetView({ closet }: { closet: ClosetContents }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-3xl text-room-ink">Your closet</h2>
         <span className="text-xs text-room-faint">
-          ${closet.range.min}&ndash;${closet.range.max} per piece &middot; hover a piece for
-          details
+          ${closet.range.min}&ndash;${closet.range.max} per piece &middot; hover or tap a piece
+          for details
         </span>
       </div>
 

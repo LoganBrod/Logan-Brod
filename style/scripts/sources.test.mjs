@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dedupeKey, interleaveByQuery, shop } from "../lib/sources/index.ts";
+import { dedupeKey, interleaveByQuery, queriesFor, shop } from "../lib/sources/index.ts";
 
 const listing = (over = {}) => ({
   id: "ebay:1",
@@ -69,4 +69,19 @@ test("shop degrades to an empty result when no source is configured", async () =
     reports.every((r) => r.configured === false && r.ok === true),
     "an unconfigured source is not a failed source"
   );
+});
+
+test("SerpAPI sees only the first few queries, because its free tier is 100 a month", () => {
+  const queries = Array.from({ length: 10 }, (_, i) => `query ${i}`);
+
+  assert.deepEqual(queriesFor("ebay", queries), queries, "eBay is not rate-limited this way");
+
+  const asked = queriesFor("serpapi", queries);
+  assert.equal(asked.length, 4);
+  assert.deepEqual(asked, queries.slice(0, 4), "keeps the most central queries, not a sample");
+});
+
+test("the cap never invents queries when a run produces fewer than it allows", () => {
+  assert.deepEqual(queriesFor("serpapi", ["one", "two"]), ["one", "two"]);
+  assert.deepEqual(queriesFor("serpapi", []), []);
 });

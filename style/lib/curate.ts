@@ -45,7 +45,9 @@ function renderProfile(profile: StyleProfile): string {
 
 export async function curate(
   profile: StyleProfile,
-  candidates: ProductListing[]
+  candidates: ProductListing[],
+  /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
+  tasteMemo?: string | null
 ): Promise<CurationResult> {
   if (!candidates.length) {
     return { items: [], notes: "No listings came back from the shopping sources." };
@@ -83,7 +85,9 @@ export async function curate(
         content: [
           {
             type: "text",
-            text: `Here is the wearer's style profile:\n\n${renderProfile(profile)}\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given.`,
+            text: `Here is the wearer's style profile:\n\n${renderProfile(profile)}${
+              tasteMemo ? `\n\n${tasteMemo}` : ""
+            }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given.`,
           },
           ...content,
         ],

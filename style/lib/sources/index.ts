@@ -22,6 +22,24 @@ const SOURCES: Array<{
   { name: "serpapi", configured: serpapi.serpapiConfigured, search: serpapi.search },
 ];
 
+/**
+ * How many of a run's queries each source is allowed to see.
+ *
+ * eBay's Browse API is generous enough that every query can go to it. SerpAPI's
+ * free tier is 100 searches a month, and a run issues up to 10 queries — sending
+ * all of them would make Google Shopping useful for ten runs and then dead.
+ * Four keeps it alive for roughly twenty-five, and the queries are already
+ * ordered by how central they are to the style, so the first four are the ones
+ * worth spending on.
+ */
+const QUERY_CAP: Partial<Record<SourceName, number>> = { serpapi: 4 };
+
+/** Exported for the test: the cap is a quota decision, so it needs pinning. */
+export function queriesFor(source: SourceName, queries: string[]): string[] {
+  const cap = QUERY_CAP[source];
+  return cap === undefined ? queries : queries.slice(0, cap);
+}
+
 /** Titles vary in punctuation and casing across sources; compare on the bones. */
 export function dedupeKey(item: ProductListing): string {
   const title = item.title
@@ -95,8 +113,9 @@ export async function shop(
 
   const settled = await Promise.all(
     active.map(async (source) => {
+      const asked = queriesFor(source.name, queries);
       const results = await Promise.allSettled(
-        queries.map((query) => source.search({ query, range, limit: perQueryLimit }))
+        asked.map((query) => source.search({ query, range, limit: perQueryLimit }))
       );
 
       const items: ProductListing[] = [];
@@ -108,7 +127,7 @@ export async function shop(
 
       // Only a total wipeout counts as a failed source; partial errors across
       // eight queries are normal and shouldn't be surfaced as breakage.
-      const ok = errors.length < queries.length;
+      const ok = asked.length === 0 || errors.length < asked.length;
       const report: SourceReport = {
         source: source.name,
         configured: true,
