@@ -13,10 +13,12 @@ export const CLOSET_COOKIE = "closet_code";
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
 
-export interface Closet {
-  code: string;
-  createdAt: string;
-  updatedAt: string;
+/**
+ * Everything a run produces. This exists the moment curation returns, whether
+ * or not it was ever stored — which is why it's separate from `Closet`. Saving
+ * is optional, so the UI must be able to render results that have no code.
+ */
+export interface ClosetContents {
   range: PriceRange;
   profile: StyleProfile;
   items: CuratedItem[];
@@ -24,7 +26,14 @@ export interface Closet {
   notes?: string;
 }
 
-export type ClosetDraft = Omit<Closet, "code" | "createdAt" | "updatedAt">;
+/** Contents that made it into Redis, and therefore have an identity. */
+export interface Closet extends ClosetContents {
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ClosetDraft = ClosetContents;
 
 function key(code: string): string {
   return `closet:${code}`;

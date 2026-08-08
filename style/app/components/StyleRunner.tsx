@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Closet } from "@/lib/closet";
+import type { Closet, ClosetContents } from "@/lib/closet";
 import type { CuratedItem } from "@/lib/curate";
 import type { StyleProfile, Outfit } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
@@ -41,7 +41,11 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const [max, setMax] = useState(250);
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [closet, setCloset] = useState<Closet | null>(initialCloset);
+  // Results and identity are separate: a run always produces results, but only
+  // gets a code if saving was available.
+  const [results, setResults] = useState<ClosetContents | null>(initialCloset);
+  const [code, setCode] = useState<string | null>(initialCloset?.code ?? null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [reports, setReports] = useState<SourceReport[]>([]);
   const [codeInput, setCodeInput] = useState("");
 
@@ -129,20 +133,34 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         outfits: Outfit[];
       }>("/api/style/curate", { profile, candidates });
 
-      setStage("saving");
-      const saved = await postJson<{ closet: Closet }>("/api/closet", {
+      // Show the results before attempting to save. The run is complete and
+      // paid for at this point; a storage problem must never discard it.
+      const contents: ClosetContents = {
         range: { min, max },
         profile,
         items: curated.items,
         outfits: curated.outfits,
         notes: curated.notes,
-      });
+      };
+      setResults(contents);
+      setCode(null);
 
-      setCloset(saved.closet);
+      setStage("saving");
+      try {
+        const saved = await postJson<{ closet: Closet }>("/api/closet", contents);
+        setCode(saved.closet.code);
+        setSaveNotice(null);
+      } catch (saveErr) {
+        // Saving is optional, so this is a note, not an error.
+        setSaveNotice(
+          saveErr instanceof Error
+            ? saveErr.message
+            : "Couldn't save this closet, so there's no code for it."
+        );
+      }
+
       setStage("idle");
     } catch (err) {
-      // Saving is the last step, so a failure there still leaves usable results
-      // on screen — but the user needs to know the code won't be there later.
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setStage("idle");
     }
@@ -150,14 +168,16 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
   async function loadByCode(event: React.FormEvent) {
     event.preventDefault();
-    const code = codeInput.trim();
-    if (!code) return;
+    const wanted = codeInput.trim();
+    if (!wanted) return;
     setError(null);
     try {
-      const res = await fetch(`/api/closet?code=${encodeURIComponent(code)}`);
+      const res = await fetch(`/api/closet?code=${encodeURIComponent(wanted)}`);
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error ?? "Could not load that closet.");
-      setCloset(json.closet);
+      setResults(json.closet);
+      setCode(json.closet.code);
+      setSaveNotice(null);
       setCodeInput("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load that closet.");
@@ -173,10 +193,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="label text-ink-gold">Pieces you like</p>
           <form onSubmit={loadByCode} className="flex items-center gap-2">
+            {/* Placeholder is kept short: the wide letter-spacing that makes an
+                entered code legible clips anything longer. */}
             <input
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value)}
-              placeholder="Closet code"
+              placeholder="Code"
               aria-label="Load a saved closet by code"
               className="field w-32 uppercase tracking-widest"
               maxLength={8}
@@ -291,22 +313,29 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         )}
       </section>
 
-      {closet && (
+      {results && (
         <>
-          <div className="panel flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-            <div>
-              <p className="label mb-1">Closet code</p>
-              <p className="font-mono text-2xl tracking-[0.3em] text-ink-gold">
-                {closet.code}
+          {code ? (
+            <div className="panel flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+              <div>
+                <p className="label mb-1">Closet code</p>
+                <p className="font-mono text-2xl tracking-[0.3em] text-ink-gold">{code}</p>
+              </div>
+              <p className="max-w-xs text-xs leading-relaxed text-gray-500">
+                Saved. This browser reopens it automatically &mdash; use the code to open it
+                anywhere else.
               </p>
             </div>
-            <p className="max-w-xs text-xs leading-relaxed text-gray-500">
-              Saved. This browser reopens it automatically &mdash; use the code to open it
-              anywhere else.
-            </p>
-          </div>
+          ) : (
+            saveNotice && (
+              <p className="panel px-6 py-4 text-xs leading-relaxed text-gray-500">
+                {saveNotice} Your picks are below either way &mdash; they just won&rsquo;t be
+                here when you come back.
+              </p>
+            )
+          )}
 
-          <ClosetView closet={closet} />
+          <ClosetView closet={results} />
         </>
       )}
     </div>

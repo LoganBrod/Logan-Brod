@@ -9,6 +9,7 @@ import {
   updateCloset,
   type ClosetDraft,
 } from "@/lib/closet";
+import { redisConfigured } from "@/lib/redis";
 import { StyleProfileSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,18 @@ export async function GET(req: Request) {
 
 /** POST /api/closet — creates a closet, or updates one when `code` is supplied. */
 export async function POST(req: Request) {
+  // 501, not 502: saving is an optional feature that hasn't been set up, which
+  // the client treats as "carry on without a code" rather than a failure.
+  if (!redisConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Saving isn't set up. Add Upstash Redis (Vercel → Storage → Marketplace) to keep closets between visits.",
+      },
+      { status: 501 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

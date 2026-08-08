@@ -1,10 +1,14 @@
-import type { Closet } from "@/lib/closet";
+import type { ClosetContents } from "@/lib/closet";
 import OutfitList from "./OutfitList";
 import PickGrid from "./PickGrid";
 import ProfileCard from "./ProfileCard";
 
-/** The read-only rendering of a closet, shared by the live run and the saved page. */
-export default function ClosetView({ closet }: { closet: Closet }) {
+/**
+ * The read-only rendering of a run's results, shared by the live run and the
+ * saved-closet page. Takes contents rather than a saved `Closet` so results
+ * still render when saving was unavailable.
+ */
+export default function ClosetView({ closet }: { closet: ClosetContents }) {
   return (
     <div className="space-y-10">
       <ProfileCard profile={closet.profile} />
