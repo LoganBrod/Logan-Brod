@@ -62,6 +62,11 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   // short and the pieces never appear before there's a rail to hang them on.
   const pending = useRef<ClosetContents | null>(null);
   const built = useRef(false);
+  // What a run has already produced. Curation is the last and most failure-prone
+  // step, and by the time it runs the vision pass and ten eBay searches are
+  // already paid for — losing those to a transient 529 is the expensive
+  // failure, so they're kept for a retry that resumes rather than restarts.
+  const resumable = useRef<{ profile: StyleProfile; candidates: ProductListing[] } | null>(null);
   const [reports, setReports] = useState<SourceReport[]>([]);
   const [codeInput, setCodeInput] = useState("");
 
@@ -128,6 +133,51 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     }
   }, []);
 
+  /**
+   * Re-run only the curation pass. Everything before it — the photos, the
+   * vision pass, the eBay searches — is already done and already paid for, so a
+   * transient failure at the last step shouldn't cost any of it.
+   */
+  async function retryCuration() {
+    const saved = resumable.current;
+    if (!saved) return;
+
+    setError(null);
+    setStage("curating");
+    try {
+      const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
+        "/api/style/curate",
+        { profile: saved.profile, candidates: saved.candidates }
+      );
+
+      const contents: ClosetContents = {
+        range: { min, max },
+        profile: saved.profile,
+        items: curated.items,
+        notes: curated.notes,
+      };
+      setResults(contents);
+      setPhase("filled");
+
+      setStage("saving");
+      try {
+        const savedCloset = await postJson<{ closet: Closet }>("/api/closet", contents);
+        setCode(savedCloset.closet.code);
+        setSaveNotice(null);
+      } catch (saveErr) {
+        setSaveNotice(
+          saveErr instanceof Error
+            ? saveErr.message
+            : "Couldn't save this closet, so there's no code for it."
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setStage("idle");
+    }
+  }
+
   async function run() {
     if (photos.length < 1) {
       setError("Add at least one photo.");
@@ -141,6 +191,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     setError(null);
     built.current = false;
     pending.current = null;
+    resumable.current = null;
     setResults(null);
     setCode(null);
 
@@ -177,6 +228,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         );
       }
 
+      resumable.current = { profile, candidates };
+
       setStage("curating");
       const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
         "/api/style/curate",
@@ -210,9 +263,10 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
-      // Nothing to hang, so put the form back rather than stranding an empty
-      // wardrobe with an error floating under it.
-      setPhase(results ? "filled" : "form");
+      // Hold the built wardrobe when the run can be resumed, so "Try again"
+      // picks up from the candidates instead of starting over. With nothing to
+      // resume from, put the form back rather than stranding an empty wardrobe.
+      setPhase(results || resumable.current ? "filled" : "form");
       setStage("idle");
     }
   }
@@ -392,6 +446,25 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           caption={busy ? STAGE_COPY[stage as Exclude<Stage, "idle">] : undefined}
           onBuilt={onBuilt}
         />
+      )}
+
+      {/* The form's own error banner is hidden once the stage takes over, so a
+          failure at curation needs its own place to surface — next to the way
+          out of it. */}
+      {onStage && error && (
+        <div className="panel flex flex-wrap items-center justify-between gap-4 border-red-300/70 bg-red-50 px-6 py-4">
+          <p className="max-w-xl text-sm text-red-800">{error}</p>
+          {resumable.current && (
+            <button
+              type="button"
+              onClick={retryCuration}
+              disabled={busy}
+              className="btn-primary shrink-0"
+            >
+              {busy ? "Trying again…" : "Try again"}
+            </button>
+          )}
+        </div>
       )}
 
       {phase === "filled" && results && (

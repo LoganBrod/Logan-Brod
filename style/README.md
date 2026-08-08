@@ -110,6 +110,17 @@ from (t=2.75s, doors wide open), which is why its `ended` event can be trusted a
 you ever re-cut the video, re-measure `lib/wardrobe.ts`** — every garment position reads from it,
 and the browser check asserts each piece lands inside the measured carcass.
 
+**A busy API doesn't cost you the run.** Anthropic returns `529 overloaded_error` when it's
+momentarily saturated. The client retries five times with the SDK's own backoff, which absorbs most
+of it. If curation still fails, the wardrobe stays built and **Try again** re-runs *only* that
+pass — the vision call and the eBay searches are already paid for and are kept. `describeApiError`
+in `lib/anthropic.ts` translates SDK exceptions into sentences; without it a route returns
+`err.message`, which for an API error is the status code plus the whole serialised body.
+
+It identifies errors by **shape, not `instanceof`** — the SDK ships CJS and ESM builds, so a caller
+resolving a different one gets a different `APIError` class and every identity check silently fails
+open, dumping the raw JSON. `constructor.name` is no safer once the production build is minified.
+
 **Photos are never stored.** They're downscaled to a 1568px long edge in the browser, sent to
 Claude inline as base64, and that's it — nothing is written to disk or to any storage service, and
 saved closets hold no images. The downscale also cuts the vision token cost substantially; full

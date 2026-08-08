@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { curate } from "@/lib/curate";
+import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
 import type { ProductListing } from "@/lib/sources/types";
 
@@ -41,7 +42,6 @@ export async function POST(req: Request) {
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: describeApiError(err) }, { status: 502 });
   }
 }

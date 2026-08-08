@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeStyle, type PhotoInput } from "@/lib/analyze";
+import { describeApiError } from "@/lib/anthropic";
 import { MAX_PHOTOS } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +73,6 @@ export async function POST(req: Request) {
     const profile = await analyzeStyle(photos, { min, max });
     return NextResponse.json({ profile }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: describeApiError(err) }, { status: 502 });
   }
 }
