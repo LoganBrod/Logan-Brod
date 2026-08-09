@@ -3,6 +3,7 @@ import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
 import type { ItemAttributes } from "./taste";
 import { MAX_VIEWED, PICKS_PER_BATCH } from "./batching";
+import { withThumbnails } from "./thumbnails";
 import type { ProductListing } from "./sources/types";
 
 export interface CuratedItem extends ProductListing {
@@ -54,21 +55,32 @@ export async function curate(
     return { items: [], notes: "No listings came back from the shopping sources." };
   }
 
-  const viewed = candidates.filter((c) => c.imageUrl).slice(0, MAX_VIEWED);
-  if (!viewed.length) {
-    return { items: [], notes: "None of the listings had a usable photo." };
+  // Photos are fetched here and sent inline rather than handed over as URLs.
+  // The API's own fetcher honours robots.txt, which Google's thumbnail CDN
+  // disallows — and a single rejected URL fails the entire message, so one
+  // retail listing used to take a whole batch of sixteen down with it. A photo
+  // that can't be fetched now costs exactly its own candidate.
+  const fetched = await withThumbnails(candidates.filter((c) => c.imageUrl).slice(0, MAX_VIEWED));
+  if (!fetched.length) {
+    return { items: [], notes: "None of the listings had a photo that could be loaded." };
   }
+
+  const viewed = fetched.map((entry) => entry.listing);
 
   // Each item is a label followed by its photo, so the id, price, and image stay
   // unambiguously associated.
-  const content = viewed.flatMap((item) => [
+  const content = fetched.flatMap(({ listing, image }) => [
     {
       type: "text" as const,
-      text: `${item.id} | $${item.price.toFixed(2)} | ${item.condition ?? "condition unstated"} | ${item.title}`,
+      text: `${listing.id} | $${listing.price.toFixed(2)} | ${listing.condition ?? "condition unstated"} | ${listing.title}`,
     },
     {
       type: "image" as const,
-      source: { type: "url" as const, url: item.imageUrl! },
+      source: {
+        type: "base64" as const,
+        media_type: image.mediaType as "image/jpeg",
+        data: image.data,
+      },
     },
   ]);
 

@@ -105,9 +105,10 @@ npm run build
 ```
 
 The tests cover the logic that doesn't need network: dedupe, per-query interleaving, the SerpAPI
-query cap, closet-code validation, taste-memo and statistics rendering, size parsing out of listing
-titles, the curation batch plan, wardrobe layout, API-error translation, and the full closet
-round-trip against an in-memory stand-in for Upstash.
+query cap, both sources surviving the merge, closet-code validation, taste-memo and statistics
+rendering, size parsing out of listing titles, thumbnail fetching against a local server, the
+curation batch plan, wardrobe layout, API-error translation, and the full closet round-trip against
+an in-memory stand-in for Upstash.
 
 To exercise saved closets locally without an Upstash account:
 
@@ -143,6 +144,16 @@ Do the listings actually match the query? Are the URLs live? If this step is bad
 curation downstream saves the result.
 
 ## Things worth knowing
+
+**Curation fetches the photos itself.** It used to hand the API image URLs and let it fetch them,
+which works for eBay and fails for Google Shopping: the API's fetcher honours robots.txt, and
+Google's thumbnail CDN disallows it. Because a message is rejected as a whole, a single unfetchable
+photo failed all sixteen in its batch — so every retail listing poisoned whichever batch it landed
+in, the moment those listings started reaching curation at all. `lib/thumbnails.ts` now fetches them
+in parallel and sends the bytes inline, the same way uploaded photos already travel. These are the
+same images the page loads into `<img>` tags moments later. **The property that matters is
+containment: a photo that can't be fetched costs one candidate, never a batch** — which is what
+`scripts/thumbnails.test.mjs` pins.
 
 **Both sources have to survive the merge, and once didn't.** `interleaveByQuery` bucketed on the
 query text alone, and because eBay's results are merged ahead of Google Shopping's, every bucket
@@ -296,6 +307,9 @@ lib/
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
                                       menswear.ts holds the title filters; ebayCategories.ts
                                       resolves men's category IDs at runtime
+  thumbnails.ts                       fetches candidate photos for curation, because
+                                      the API's own fetcher honours robots.txt and one
+                                      rejected URL fails the whole message
   taste.ts                            what this browser said yes and no to, what it
                                       clicked, and the memo both Claude passes are given
   sizing.ts                           the sizing profile, and reading sizes out of titles
