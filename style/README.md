@@ -18,13 +18,16 @@ lives entirely in `style/` and deploys separately.
    normalized to one shape, deduped, and interleaved per query so one broad query can't crowd out
    the narrower ones.
 4. **Curate** (Claude) — **looks at each candidate's photo**, throws out anything that isn't the
-   garment its title claims, and writes one line per pick on why it suits you.
+   garment its title claims, writes one line per pick on why it suits you, and tags each one with
+   its category, maker, material, and colour. This runs as several calls at once over slices of the
+   pool rather than one call over all of it.
 
 Pressing Build runs one continuous sequence: the form flies out of frame, your uploaded photos
 sweep toward centre, the wardrobe assembles itself over them, and the chosen pieces hang inside it
-in garment bags. Hovering a bag clears it and shows the photo whole, with the price, title,
-condition, why it was chosen, a link to the listing, and **Right for you?** — a yes or a no that
-steers the next run.
+in garment bags — **each batch's pieces dropping in as they're picked**, rather than everything
+waiting on the slowest one. Hovering a bag clears it and shows the photo whole, with the price,
+title, condition, why it was chosen, a link to the listing, and **Right for you?** — a yes or a no
+that steers the next run.
 
 Roughly $0.20–0.30 in API cost per full run, split between the two vision passes.
 
@@ -39,14 +42,21 @@ Search quality decides everything downstream, so most of the work is upstream of
   the live Taxonomy API at runtime rather than hardcoded (leaf IDs get renumbered, and a stale one
   fails silently by returning nothing). Titles are then filtered again in `lib/sources/menswear.ts`,
   because sellers miscategorise constantly and Google Shopping has no categories at all.
-- **A wide pool, a tight list.** Up to 10 queries × 30 results feed a candidate pool of ~120, from
-  which curation keeps 6–10. Being selective requires something to select between.
+- **A wide pool, a tight list.** Up to 10 queries × 30 results (50 once sizes are known, since a
+  good fraction is about to be dropped for stating a size that can't fit) feed a candidate pool of
+  ~120, from which curation keeps up to 9. Being selective requires something to select between.
 - **The photo beats the title.** Curation sees thumbnails, so a listing captioned "waxed cotton
   jacket" showing a woman's cropped jacket gets dropped on sight. Images are requested at eBay's
   small rendition — token cost scales with area, and 400px is plenty to identify a garment.
+- **It has to fit.** Sizes are filled in beside the price range and remembered per browser. A
+  listing whose title states a size that can't fit is dropped before Claude ever sees it, and the
+  sizes go into the curation prompt as well. See `lib/sizing.ts`.
 - **Your yes and no outrank everything.** Votes are the only direct signal about whether a
   recommendation was actually good, so both Claude passes get them: the analyze pass writes queries
-  away from what you rejected, and curation treats rejected titles as already turned down. See
+  away from what you rejected, and curation treats rejected titles as already turned down.
+- **And what you do counts too.** Most people never press a button, so impressions, panel opens,
+  and click-throughs to the listing are counted against each piece's material, colour, category, and
+  maker — and the patterns that clear a confidence bar are put in front of both passes. See
   `lib/taste.ts`.
 
 ## Setup
@@ -95,7 +105,8 @@ npm run build
 ```
 
 The tests cover the logic that doesn't need network: dedupe, per-query interleaving, the SerpAPI
-query cap, closet-code validation, taste-memo rendering, API-error translation, and the full closet
+query cap, closet-code validation, taste-memo and statistics rendering, size parsing out of listing
+titles, the curation batch plan, wardrobe layout, API-error translation, and the full closet
 round-trip against an in-memory stand-in for Upstash.
 
 To exercise saved closets locally without an Upstash account:
@@ -116,8 +127,10 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:6390 npm run dev
 ```
 
 The rejected title should appear under "They said NO to" in `messages[0].content` for both the
-analyze and the curate call. Asserting the outbound body is the only thing that proves the wiring
-from cookie → route → lib → prompt, and it's easy to break without any test noticing.
+analyze and the curate call, alongside the sizes and the attribute statistics. Asserting the
+outbound body is the only thing that proves the wiring from cookie → route → lib → prompt, and it's
+easy to break without any test noticing — the counters can be perfectly correct in Redis and still
+reach nothing.
 
 **Search quality has to be checked by eye, and it's the thing everything else depends on.** Start
 here whenever you change a source:
@@ -130,6 +143,35 @@ Do the listings actually match the query? Are the URLs live? If this step is bad
 curation downstream saves the result.
 
 ## Things worth knowing
+
+**Curation is several calls, not one.** It used to be a single call over 48 product photos, which
+was the slowest thing in the app by a wide margin — every photo is fetched by the API before the
+model can start. `lib/batching.ts` splits the pool into three slices of sixteen, each curated by its
+own request, so the wait is the slowest slice rather than the sum of all of them and each slice's
+pieces can hang the moment they arrive. Each batch is asked for three picks, about the same
+selectivity as the old six-to-ten of forty-eight. Two consequences worth keeping: **nothing already
+hanging is ever removed** when a later batch lands, which is why batches are asked for a few picks
+rather than a whole closet; and each invocation is now short enough to sit inside Vercel Hobby's
+60-second function cap.
+
+**Sizes are asked, not learned.** No amount of watching someone browse reveals their inseam, and a
+listing in the wrong size is worthless however good the piece is — so `lib/sizing.ts` holds a
+sizing profile filled in beside the price range and remembered per browser. It's used twice: the
+shop route drops any listing whose **title states** a size that can't fit, and the curation pass is
+told the sizes so it can judge the photo too. The parsing is deliberately timid — a letter size has
+to follow the word "size" or stand alone in upper case, denim has to arrive as `34x32`, a jacket
+size needs its length letter — because a title that says nothing about size must survive. Dropping
+a wearable piece costs more than passing an unwearable one to a pass that also reads the title.
+
+**Learning is smoothed, and compared against your own average.** Every piece hung counts as an
+impression; opening its panel, clicking through to the listing, and pressing yes or no are the
+signals against it. Those accumulate per attribute — material, colour, category, and maker *within*
+a category — in `taste:{id}:stats`. The trap is small numbers: one click on three impressions is
+not a 33% rate, it's noise, and acting on it would let two unlucky runs wall off a whole material.
+So an attribute needs five impressions before it can say anything, and what it says is a Wilson
+interval rather than a raw rate — reported only when even its pessimistic bound beats your own
+average, or its optimistic bound falls short of it. The memo carries the raw counts alongside, so
+the model can weigh a 9-impression signal differently from a 40-impression one.
 
 **The closet is the video, not a drawing of one.** The results view hangs garments over the clip
 paused on its last frame, positioned in fractions of that frame — so there is no replica to drift
@@ -240,8 +282,12 @@ lib/
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
                                       menswear.ts holds the title filters; ebayCategories.ts
                                       resolves men's category IDs at runtime
-  taste.ts                            what this browser said yes and no to, and the
-                                      memo both Claude passes are given
+  taste.ts                            what this browser said yes and no to, what it
+                                      clicked, and the memo both Claude passes are given
+  sizing.ts                           the sizing profile, and reading sizes out of titles
+  batching.ts                         how the candidate pool is split for curation —
+                                      imported by the browser, so it must never reach
+                                      for anything that pulls in the Anthropic SDK
   closet.ts redis.ts                  persistence
 scripts/                              offline tests and the Upstash stand-in
 ```

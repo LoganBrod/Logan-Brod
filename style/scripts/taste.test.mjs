@@ -5,7 +5,15 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isValidTasteId, newTasteId, readTasteId, renderMemo } from "../lib/taste.ts";
+import {
+  facetsOf,
+  isValidTasteId,
+  newTasteId,
+  readTasteId,
+  renderMemo,
+  renderStats,
+  wilson,
+} from "../lib/taste.ts";
 
 /** Votes are stored most-recent-first, which is the order renderMemo expects. */
 const vote = (title, verdict) => ({ title, verdict, at: "2026-08-08T00:00:00.000Z" });
@@ -74,4 +82,73 @@ test("the id is read out of a cookie header, and a junk one is ignored", () => {
   assert.equal(readTasteId(`closet_code=ABC123; taste_id=${id}`), id);
   assert.equal(readTasteId("taste_id=nope*"), null);
   assert.equal(readTasteId(null), null);
+});
+
+// ------------------------------------------------------- attribute statistics
+
+test("wilson carries the sample size, not just the rate", () => {
+  const thin = wilson(1, 2);
+  const thick = wilson(40, 80);
+  // Same 50% point estimate; only one of them is worth acting on.
+  assert.ok(thick.lo > thin.lo, "80 trials should be more confident than 2");
+  assert.ok(thin.hi > thick.hi);
+  assert.deepEqual(wilson(0, 0), { lo: 0, hi: 1 });
+});
+
+test("brand facets are keyed within their category", () => {
+  assert.deepEqual(facetsOf({ category: "Jacket", brand: "Barbour", material: "Waxed Cotton" }), [
+    "category:jacket",
+    "material:waxed cotton",
+    "brand:jacket|barbour",
+  ]);
+});
+
+test("attributes the model didn't know don't become facets", () => {
+  assert.deepEqual(facetsOf({ brand: "unknown", material: "  ", colour: "N/A" }), []);
+  assert.deepEqual(facetsOf(undefined), []);
+});
+
+const counter = (over) => ({ shown: 0, opened: 0, clicked: 0, yes: 0, no: 0, ...over });
+
+test("nothing is said about an attribute seen too few times", () => {
+  // Four impressions and four clicks is a perfect record and still noise.
+  assert.equal(renderStats({ "material:waxed cotton": counter({ shown: 4, clicked: 4 }) }), null);
+});
+
+test("a pattern clearly above average is reported with its counts", () => {
+  const memo = renderStats({
+    "material:waxed cotton": counter({ shown: 10, clicked: 8 }),
+    "material:polyester": counter({ shown: 12, clicked: 0 }),
+  });
+  assert.match(memo, /Materials they go for: waxed cotton \(8 of 10\)/);
+  assert.match(memo, /Materials they pass over: polyester \(0 of 12\)/);
+});
+
+test("an attribute sitting at the average isn't worth saying", () => {
+  const memo = renderStats({
+    "material:waxed cotton": counter({ shown: 20, clicked: 6 }),
+    "material:moleskin": counter({ shown: 20, clicked: 6 }),
+  });
+  assert.equal(memo, null);
+});
+
+test("a yes counts as much as a click, and can't exceed impressions", () => {
+  const memo = renderStats({
+    "colour:olive": counter({ shown: 10, clicked: 9, yes: 9 }),
+    "colour:magenta": counter({ shown: 10, clicked: 0 }),
+  });
+  // 18 hits over 10 impressions has to clamp, or the rate exceeds 1.
+  assert.match(memo, /olive \(10 of 10\)/);
+});
+
+test("brand lines read as a maker within a category", () => {
+  const memo = renderStats({
+    "brand:jacket|barbour": counter({ shown: 8, clicked: 7 }),
+    "brand:boot|generic": counter({ shown: 9, clicked: 0 }),
+  });
+  assert.match(memo, /Makers that land, by category: jacket barbour \(7 of 8\)/);
+});
+
+test("no statistics at all means no block", () => {
+  assert.equal(renderStats({}), null);
 });

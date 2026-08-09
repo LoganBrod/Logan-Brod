@@ -7,6 +7,8 @@ import type { StyleProfile } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
 import { encodePhotos } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
+import { PICKS_PER_BATCH, appendPicks, planBatches } from "@/lib/batching";
+import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 
 type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
@@ -20,6 +22,21 @@ type Phase = "form" | "exiting" | "building" | "open" | "filled";
 
 /** Long enough for the form to clear frame before the wardrobe starts. */
 const EXIT_MS = 480;
+
+/** An emptied number field means "no preference", not zero. */
+function numberOrUndefined(value: string): number | undefined {
+  const n = Number(value);
+  return value.trim() && Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * Some of the pool couldn't be judged. Said as a note about coverage rather
+ * than as breakage, because the pieces that did come through are real and are
+ * already hanging.
+ */
+function partiallyJudged(count: number): string {
+  return `${count === 1 ? "One batch" : `${count} batches`} of the search couldn't be judged, so this closet is thinner than it should be. Try again to fill it out.`;
+}
 
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
   preparing: "Preparing your photos…",
@@ -66,9 +83,57 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   // step, and by the time it runs the vision pass and ten eBay searches are
   // already paid for — losing those to a transient 529 is the expensive
   // failure, so they're kept for a retry that resumes rather than restarts.
-  const resumable = useRef<{ profile: StyleProfile; candidates: ProductListing[] } | null>(null);
+  const resumable = useRef<{
+    profile: StyleProfile;
+    /** Only the batches that haven't produced picks — a retry redoes those, not the run. */
+    batches: ProductListing[][];
+    items: CuratedItem[];
+    notes: string[];
+  } | null>(null);
   const [reports, setReports] = useState<SourceReport[]>([]);
   const [codeInput, setCodeInput] = useState("");
+  // How many curation batches have come back. Shown in the caption so the wait
+  // reads as progress rather than as a stalled spinner.
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  // Sizes live on the server under the id cookie, not in this form: the shop
+  // route reads them itself, so the form only mirrors what's stored. Null until
+  // we know whether there's anywhere to store them at all.
+  const [sizes, setSizes] = useState<Sizes>({});
+  const [sizesAvailable, setSizesAvailable] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/taste")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { configured?: boolean; sizes?: Sizes } | null) => {
+        if (!alive || !json) return;
+        setSizesAvailable(Boolean(json.configured));
+        setSizes(json.sizes ?? {});
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /**
+   * Write sizes through on every change.
+   *
+   * Optimistic and unacknowledged on purpose — a size field that fought back
+   * mid-typing would be worse than one that occasionally doesn't persist, and
+   * the next run reads whatever the server actually has.
+   */
+  const updateSizes = useCallback((patch: Partial<Sizes>) => {
+    setSizes((current) => {
+      const next = { ...current, ...patch };
+      void fetch("/api/taste", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sizes: next }),
+      }).catch(() => {});
+      return next;
+    });
+  }, []);
 
   // Previews are object URLs; without this they leak for the page's lifetime.
   const photosRef = useRef<Selected[]>([]);
@@ -133,10 +198,82 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     }
   }, []);
 
+  /** Store the closet, and treat a storage failure as a note rather than an error. */
+  async function save(contents: ClosetContents) {
+    setStage("saving");
+    try {
+      const saved = await postJson<{ closet: Closet }>("/api/closet", contents);
+      setCode(saved.closet.code);
+      setSaveNotice(null);
+    } catch (err) {
+      setSaveNotice(
+        err instanceof Error
+          ? err.message
+          : "Couldn't save this closet, so there's no code for it."
+      );
+    }
+  }
+
   /**
-   * Re-run only the curation pass. Everything before it — the photos, the
-   * vision pass, the eBay searches — is already done and already paid for, so a
-   * transient failure at the last step shouldn't cost any of it.
+   * Curate every batch at once, hanging each batch's pieces the moment they
+   * land rather than waiting for the slowest one.
+   *
+   * Batches are independent by design: one that fails takes only its own slice
+   * of the pool with it, and is handed back so a retry can redo that slice
+   * alone. Nothing already hanging is ever removed — a later batch only ever
+   * adds, which is why each batch is asked for a few picks rather than the
+   * whole closet.
+   */
+  async function curateBatches(
+    profile: StyleProfile,
+    batches: ProductListing[][],
+    startFrom: CuratedItem[],
+    startNotes: string[]
+  ) {
+    let items = startFrom;
+    const notes = [...startNotes];
+    const failed: ProductListing[][] = [];
+    const errors: string[] = [];
+    let done = 0;
+
+    setProgress({ done: 0, total: batches.length });
+
+    await Promise.all(
+      batches.map(async (batch) => {
+        try {
+          const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
+            "/api/style/curate",
+            { profile, candidates: batch, limit: PICKS_PER_BATCH }
+          );
+          if (curated.notes) notes.push(curated.notes);
+
+          // Read-then-write inside one synchronous step, so concurrent batches
+          // can't drop each other's picks.
+          items = appendPicks(items, curated.items);
+          revealWhenBuilt({
+            range: { min, max },
+            profile,
+            items,
+            notes: notes.join(" "),
+          });
+        } catch (err) {
+          failed.push(batch);
+          errors.push(err instanceof Error ? err.message : "A batch couldn't be judged.");
+        } finally {
+          done += 1;
+          setProgress({ done, total: batches.length });
+        }
+      })
+    );
+
+    setProgress(null);
+    return { items, notes, failed, errors };
+  }
+
+  /**
+   * Re-run only what failed. Everything before it — the photos, the vision
+   * pass, the eBay searches — is already done and already paid for, and so are
+   * the batches that did come back, so a transient failure costs only itself.
    */
   async function retryCuration() {
     const saved = resumable.current;
@@ -145,32 +282,30 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     setError(null);
     setStage("curating");
     try {
-      const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
-        "/api/style/curate",
-        { profile: saved.profile, candidates: saved.candidates }
+      const outcome = await curateBatches(
+        saved.profile,
+        saved.batches,
+        saved.items,
+        saved.notes
       );
 
       const contents: ClosetContents = {
         range: { min, max },
         profile: saved.profile,
-        items: curated.items,
-        notes: curated.notes,
+        items: outcome.items,
+        notes: outcome.notes.join(" "),
       };
+
+      if (!outcome.items.length) throw new Error(outcome.errors[0] ?? "Nothing came back.");
+
       setResults(contents);
       setPhase("filled");
+      resumable.current = outcome.failed.length
+        ? { profile: saved.profile, batches: outcome.failed, items: outcome.items, notes: outcome.notes }
+        : null;
+      if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 
-      setStage("saving");
-      try {
-        const savedCloset = await postJson<{ closet: Closet }>("/api/closet", contents);
-        setCode(savedCloset.closet.code);
-        setSaveNotice(null);
-      } catch (saveErr) {
-        setSaveNotice(
-          saveErr instanceof Error
-            ? saveErr.message
-            : "Couldn't save this closet, so there's no code for it."
-        );
-      }
+      await save(contents);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -228,38 +363,44 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         );
       }
 
-      resumable.current = { profile, candidates };
-
       setStage("curating");
-      const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
-        "/api/style/curate",
-        { profile, candidates }
-      );
+      const batches = planBatches(candidates);
+      if (!batches.length) {
+        throw new Error("None of the listings came back with a usable photo.");
+      }
+      resumable.current = { profile, batches, items: [], notes: [] };
+
+      const outcome = await curateBatches(profile, batches, [], []);
+
+      if (!outcome.items.length) {
+        // Only worth retrying if something actually broke. Batches that came
+        // back and picked nothing will pick nothing again.
+        resumable.current = outcome.failed.length
+          ? { profile, batches: outcome.failed, items: [], notes: outcome.notes }
+          : null;
+        throw new Error(
+          outcome.errors[0] ?? "Nothing in the search was worth showing you. Try a wider range."
+        );
+      }
 
       // Show the results before attempting to save. The run is complete and
       // paid for at this point; a storage problem must never discard it.
       const contents: ClosetContents = {
         range: { min, max },
         profile,
-        items: curated.items,
-        notes: curated.notes,
+        items: outcome.items,
+        notes: outcome.notes.join(" "),
       };
       revealWhenBuilt(contents);
 
-      setStage("saving");
-      try {
-        const saved = await postJson<{ closet: Closet }>("/api/closet", contents);
-        setCode(saved.closet.code);
-        setSaveNotice(null);
-      } catch (saveErr) {
-        // Saving is optional, so this is a note, not an error.
-        setSaveNotice(
-          saveErr instanceof Error
-            ? saveErr.message
-            : "Couldn't save this closet, so there's no code for it."
-        );
-      }
+      // Only what failed is worth retrying, and nothing at all when the run
+      // came through whole.
+      resumable.current = outcome.failed.length
+        ? { profile, batches: outcome.failed, items: outcome.items, notes: outcome.notes }
+        : null;
+      if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 
+      await save(contents);
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -291,6 +432,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   }
 
   const busy = stage !== "idle";
+  // Curation runs several batches at once, so it's the one stage that can say
+  // how far along it is.
+  const caption =
+    stage === "curating" && progress && progress.total > 1
+      ? `Picking the ones that fit… ${progress.done} of ${progress.total}`
+      : STAGE_COPY[stage as Exclude<Stage, "idle">];
   const onStage = phase === "building" || phase === "open" || phase === "filled";
   const leaving = phase === "exiting";
   const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
@@ -415,6 +562,83 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               className="field w-28"
             />
           </div>
+          {/* Sizes. Optional, remembered per browser, and asked here rather than
+              learned because no amount of watching someone browse reveals their
+              inseam \u2014 while a listing in the wrong size is worthless however
+              good the piece is. Anything left blank simply isn't used. */}
+          {sizesAvailable && (
+            <>
+              <div>
+                <label htmlFor="tops" className="label mb-2 block">
+                  Tops
+                </label>
+                <select
+                  id="tops"
+                  value={sizes.tops ?? ""}
+                  disabled={busy}
+                  onChange={(e) => updateSizes({ tops: e.target.value || undefined })}
+                  className="field w-24"
+                >
+                  <option value="">Any</option>
+                  {LETTER_SIZES.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="waist" className="label mb-2 block">
+                  Waist
+                </label>
+                <input
+                  id="waist"
+                  type="number"
+                  min={26}
+                  max={50}
+                  placeholder="\u2014"
+                  value={sizes.waist ?? ""}
+                  disabled={busy}
+                  onChange={(e) => updateSizes({ waist: numberOrUndefined(e.target.value) })}
+                  className="field w-20"
+                />
+              </div>
+              <div>
+                <label htmlFor="inseam" className="label mb-2 block">
+                  Inseam
+                </label>
+                <input
+                  id="inseam"
+                  type="number"
+                  min={26}
+                  max={40}
+                  placeholder="\u2014"
+                  value={sizes.inseam ?? ""}
+                  disabled={busy}
+                  onChange={(e) => updateSizes({ inseam: numberOrUndefined(e.target.value) })}
+                  className="field w-20"
+                />
+              </div>
+              <div>
+                <label htmlFor="shoe" className="label mb-2 block">
+                  Shoe
+                </label>
+                <input
+                  id="shoe"
+                  type="number"
+                  min={5}
+                  max={16}
+                  step={0.5}
+                  placeholder="\u2014"
+                  value={sizes.shoe ?? ""}
+                  disabled={busy}
+                  onChange={(e) => updateSizes({ shoe: numberOrUndefined(e.target.value) })}
+                  className="field w-20"
+                />
+              </div>
+            </>
+          )}
+
           <button
             type="button"
             onClick={run}
@@ -443,7 +667,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         <ClosetStage
           items={results?.items ?? []}
           phase={phase as StagePhase}
-          caption={busy ? STAGE_COPY[stage as Exclude<Stage, "idle">] : undefined}
+          caption={busy ? caption : undefined}
           onBuilt={onBuilt}
         />
       )}

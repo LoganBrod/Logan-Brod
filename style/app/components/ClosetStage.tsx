@@ -100,6 +100,10 @@ export default function ClosetStage({
     });
   }, [taste, items]);
 
+  // Read inside callbacks that mustn't re-create themselves when it changes.
+  const configuredRef = useRef(false);
+  configuredRef.current = taste?.configured === true;
+
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pinnedRef = useRef(false);
   pinnedRef.current = pinned;
@@ -126,6 +130,61 @@ export default function ClosetStage({
   // piece. A hover arriving from the exact spot the close was clicked is that
   // echo, not an intent, so it's ignored; anything a few pixels away is real.
   const dismissedAt = useRef<{ x: number; y: number } | null>(null);
+
+  /**
+   * Tell the server what was seen and what was acted on.
+   *
+   * Fire-and-forget: this is measurement, and a failed count must never surface
+   * to someone looking at clothes. Sent in batches because a closet hangs
+   * several pieces in one moment, and one request per piece would be several
+   * read-modify-writes racing over the same counters.
+   */
+  const record = useCallback((events: Array<{ item: CuratedItem; signal: string }>) => {
+    if (!configuredRef.current || !events.length) return;
+    void fetch("/api/taste", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        events: events.map(({ item, signal }) => ({
+          title: item.title,
+          signal,
+          attrs: item.attrs,
+          source: item.source,
+          price: item.price,
+        })),
+      }),
+    }).catch(() => {});
+  }, []);
+
+  // Which pieces have already been counted, so an impression is one impression
+  // however many times the component re-renders around it.
+  const counted = useRef(new Set<string>());
+
+  /**
+   * Every piece hanging counts as shown, once.
+   *
+   * `shown` is the denominator the rest of the statistics are meaningless
+   * without: a material clicked twice is excellent if it appeared three times
+   * and dismal if it appeared forty, and only impressions separate those.
+   */
+  useEffect(() => {
+    if (phase !== "filled" || !taste?.configured) return;
+    const fresh = items.filter((item) => !counted.current.has(item.id));
+    if (!fresh.length) return;
+    for (const item of fresh) counted.current.add(item.id);
+    record(fresh.map((item) => ({ item, signal: "shown" })));
+  }, [items, phase, taste?.configured, record]);
+
+  // Opening the panel is a weaker signal than a click but a far commoner one,
+  // and it's the only thing most people ever do. Counted once per piece.
+  const opened = useRef(new Set<string>());
+  useEffect(() => {
+    if (!activeId || !taste?.configured || opened.current.has(activeId)) return;
+    const item = items.find((candidate) => candidate.id === activeId);
+    if (!item) return;
+    opened.current.add(activeId);
+    record([{ item, signal: "opened" }]);
+  }, [activeId, items, taste?.configured, record]);
 
   const openBag = useCallback(
     (id: string, at?: { x: number; y: number }) => {
@@ -183,6 +242,7 @@ export default function ClosetStage({
         body: JSON.stringify({
           title: item.title,
           verdict,
+          attrs: item.attrs,
           source: item.source,
           price: item.price,
         }),
@@ -208,6 +268,20 @@ export default function ClosetStage({
   const showGarments = phase === "filled";
 
   const { width, height, slots, rowYs } = layout(items.length);
+
+  // Stagger positions, numbered within each arrival rather than across the whole
+  // rail. Assigned once per piece and never reassigned, so a re-render can't
+  // make something that's already hanging animate again.
+  const staggerRef = useRef(new Map<string, number>());
+  let arriving = 0;
+  const stagger = items.map((item) => {
+    const known = staggerRef.current.get(item.id);
+    if (known !== undefined) return known;
+    const position = arriving;
+    arriving += 1;
+    staggerRef.current.set(item.id, position);
+    return position;
+  });
   const canVote = taste?.configured === true;
 
   return (
@@ -272,6 +346,7 @@ export default function ClosetStage({
                     width={width}
                     height={height}
                     index={index}
+                    delayIndex={stagger[index]}
                     active={activeId === item.id}
                     hidden={!showGarments}
                     onEnter={(at) => openBag(item.id, at)}
@@ -350,10 +425,13 @@ export default function ClosetStage({
             </p>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-room-line pt-3">
+              {/* The strongest signal anyone gives without pressing a button:
+                  leaving for the listing itself. */}
               <a
                 href={active?.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => active && record([{ item: active, signal: "clicked" }])}
                 className="text-xs font-semibold text-accent underline-offset-4 hover:underline"
               >
                 View the listing &rarr;

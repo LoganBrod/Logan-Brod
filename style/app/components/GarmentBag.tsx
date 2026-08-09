@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CuratedItem } from "@/lib/curate";
 
 /**
@@ -40,6 +40,7 @@ export default function GarmentBag({
   width,
   height,
   index,
+  delayIndex,
   active,
   hidden,
   onEnter,
@@ -56,6 +57,13 @@ export default function GarmentBag({
   /** How far it hangs below the rail, as a fraction of the frame height. */
   height: number;
   index: number;
+  /**
+   * Position within this piece's own arrival, which is what the drop-in is
+   * staggered on. Not the same as `index`: batches land seconds apart, and a
+   * piece arriving in the last one shouldn't sit still for the stagger meant
+   * for the pieces that arrived with the first.
+   */
+  delayIndex: number;
   active: boolean;
   /** True once results exist but this piece hasn't dropped in yet. */
   hidden: boolean;
@@ -70,6 +78,18 @@ export default function GarmentBag({
   // as the finger lifts, and *no click at all* — so the hover path opened the
   // panel and immediately closed it again, and the tap could never pin it.
   const touch = useRef(false);
+
+  // Pieces no longer all arrive together — curation runs in batches and each
+  // one's picks hang as they land — so a bag mounted mid-sequence would simply
+  // appear. Holding the entered state off for a frame gives every bag the same
+  // drop-in whether it was in the first batch or the last.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const away = hidden || !entered;
 
   return (
     <button
@@ -96,12 +116,12 @@ export default function GarmentBag({
         // hovered one straightens as it lifts.
         transform: `translateX(-50%) rotate(${
           active ? 0 : (index % 2 === 0 ? 1 : -1) * (0.7 + (index % 3) * 0.35)
-        }deg) ${active ? "scale(1.16)" : "scale(1)"} ${hidden ? "translateY(-14%)" : ""}`,
+        }deg) ${active ? "scale(1.16)" : "scale(1)"} ${away ? "translateY(-14%)" : ""}`,
         // Scales from the rail, the way a hung garment would swing.
         transformOrigin: "top center",
-        opacity: hidden ? 0 : 1,
+        opacity: away ? 0 : 1,
         // Pieces drop in one after another rather than arriving all at once.
-        transitionDelay: hidden ? "0ms" : `${index * 90}ms`,
+        transitionDelay: away ? "0ms" : `${delayIndex * 90}ms`,
         zIndex: active ? 40 : 10 + index,
       }}
     >

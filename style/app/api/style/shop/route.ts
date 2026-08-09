@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { shop } from "@/lib/sources";
+import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
+import { readSizes, readTasteId } from "@/lib/taste";
 
 export const dynamic = "force-dynamic";
 // Ten queries fanned across two sources, plus a possible taxonomy lookup on a
@@ -35,8 +37,34 @@ export async function GET(req: Request) {
   }
 
   try {
-    const result = await shop(queries.slice(0, MAX_QUERIES), { min, max });
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    // Sizes are read here rather than sent by the client: they are the one
+    // preference where a wrong value silently ruins every result, so they come
+    // from the server's own record under the id cookie, not from a request
+    // body anyone could get wrong.
+    const id = readTasteId(req.headers.get("cookie"));
+    const sizes = id ? await readSizes(id).catch(() => ({})) : {};
+
+    // A wider net when sizes are known, because a good fraction of what comes
+    // back is about to be dropped for stating a size that can't fit.
+    const perQueryLimit = hasSizes(sizes) ? 50 : 30;
+    const result = await shop(queries.slice(0, MAX_QUERIES), { min, max }, { perQueryLimit });
+
+    if (!hasSizes(sizes)) {
+      return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    const listings = result.listings.filter((item) => !conflictsWithSizes(item.title, sizes));
+
+    return NextResponse.json(
+      {
+        ...result,
+        listings,
+        // Reported so a collapsed result set reads as "your sizes are narrow"
+        // rather than "the search is broken".
+        droppedForSize: result.listings.length - listings.length,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 502 });

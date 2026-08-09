@@ -1,23 +1,21 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
+import type { ItemAttributes } from "./taste";
+import { MAX_VIEWED, PICKS_PER_BATCH } from "./batching";
 import type { ProductListing } from "./sources/types";
 
 export interface CuratedItem extends ProductListing {
   score: number;
   whyItFits: string;
+  /** What this piece is, for the statistics that steer the next run. */
+  attrs: ItemAttributes;
 }
 
 export interface CurationResult {
   items: CuratedItem[];
   notes: string;
 }
-
-/**
- * How many candidates get looked at. Each thumbnail is a few hundred tokens, so
- * this is the main cost dial for the pass — 48 small images runs a few cents.
- */
-const MAX_VIEWED = 48;
 
 const SYSTEM = `You are choosing which men's clothing, out of raw shopping-search results, is genuinely worth showing one specific person.
 
@@ -27,7 +25,9 @@ Reject on sight, and don't spend reasoning on them: womenswear and kids' clothin
 
 Then judge fit against the wearer's style — colour, material, cut, formality — not against menswear in general. A beautiful piece that clashes with their palette is a bad recommendation.
 
-Return only items you would defend. Six to ten is the target, and fewer is fine if the search came back thin — never pad the list to reach a number. Say so in the notes when that happens.
+Return only items you would defend. You are looking at one slice of a larger search and several slices are being judged at once, so pick the best few here rather than trying to assemble a whole wardrobe out of this batch — the results are merged afterwards and the best overall are kept. Fewer is fine if this slice came back thin, and padding to reach a number just means a weaker piece displaces a stronger one from another slice.
+
+Tag every pick with its category, maker, material, and colour. These are counted across runs to learn what this person actually responds to, so they have to be consistent: the same material named the same way every time, and 'unknown' rather than a guess when the title and photo don't say.
 
 Write each whyItFits to the wearer in one sentence, pointing at something concrete you can see in the photo and tying it to their profile. No generic praise.`;
 
@@ -47,7 +47,8 @@ export async function curate(
   profile: StyleProfile,
   candidates: ProductListing[],
   /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
-  tasteMemo?: string | null
+  tasteMemo?: string | null,
+  limit = PICKS_PER_BATCH
 ): Promise<CurationResult> {
   if (!candidates.length) {
     return { items: [], notes: "No listings came back from the shopping sources." };
@@ -76,7 +77,11 @@ export async function curate(
     max_tokens: 8000,
     system: SYSTEM,
     output_config: {
-      effort: "high",
+      // Medium rather than high. This call is now one of several running at
+      // once over a slice of the pool, and the judgement it makes — does this
+      // photo show the thing the title claims, does it suit this palette — did
+      // not measurably improve at high effort, while the latency did.
+      effort: "medium",
       format: zodOutputFormat(CurationSchema),
     },
     messages: [
@@ -87,7 +92,7 @@ export async function curate(
             type: "text",
             text: `Here is the wearer's style profile:\n\n${renderProfile(profile)}${
               tasteMemo ? `\n\n${tasteMemo}` : ""
-            }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given.`,
+            }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
           },
           ...content,
         ],
@@ -108,9 +113,22 @@ export async function curate(
     const listing = byId.get(pick.id);
     if (!listing || seen.has(pick.id)) continue;
     seen.add(pick.id);
-    items.push({ ...listing, score: pick.score, whyItFits: pick.whyItFits });
+    items.push({
+      ...listing,
+      score: pick.score,
+      whyItFits: pick.whyItFits,
+      attrs: {
+        category: pick.category,
+        brand: pick.brand,
+        material: pick.material,
+        colour: pick.colour,
+      },
+    });
   }
 
+  // The count is enforced here as well as asked for: a batch that returns six
+  // when it was asked for four would quietly out-vote the other batches in the
+  // merge, which is the one thing batching must not let happen.
   items.sort((a, b) => b.score - a.score);
-  return { items, notes: curation.notes };
+  return { items: items.slice(0, limit), notes: curation.notes };
 }
