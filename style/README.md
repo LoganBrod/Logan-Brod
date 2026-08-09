@@ -144,6 +144,20 @@ curation downstream saves the result.
 
 ## Things worth knowing
 
+**Both sources have to survive the merge, and once didn't.** `interleaveByQuery` bucketed on the
+query text alone, and because eBay's results are merged ahead of Google Shopping's, every bucket
+read `[30 eBay, then 24 retail]`. The round-robin drains position 0 of each bucket, then position 1,
+and a 120 cap over ten queries never gets past position 12 — which eBay fills on its own. Google
+Shopping could be configured, working, and billed without one of its listings ever reaching the
+candidate pool. It now takes turns across the sources *within* each query as well as across the
+queries, and `scripts/sources.test.mjs` pins both properties. If you add a third source, that test
+is the one that matters.
+
+**A configured source that fails says so.** A source that isn't set up is announced under the form;
+one that is set up and then errors or returns nothing used to be completely invisible — the run
+succeeded, the closet filled from whatever did answer, and nothing indicated the key you just added
+wasn't working. That now surfaces under the closet with the error text.
+
 **Curation is several calls, not one.** It used to be a single call over 48 product photos, which
 was the slowest thing in the app by a wide margin — every photo is fetched by the API before the
 model can start. `lib/batching.ts` splits the pool into three slices of sixteen, each curated by its

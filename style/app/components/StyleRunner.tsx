@@ -38,6 +38,8 @@ function partiallyJudged(count: number): string {
   return `${count === 1 ? "One batch" : `${count} batches`} of the search couldn't be judged, so this closet is thinner than it should be. Try again to fill it out.`;
 }
 
+const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Shopping" };
+
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
   preparing: "Preparing your photos…",
   analyzing: "Reading the style…",
@@ -441,6 +443,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const onStage = phase === "building" || phase === "open" || phase === "filled";
   const leaving = phase === "exiting";
   const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
+  // Configured, asked, and came back with either an error or nothing at all.
+  const sourceTrouble = reports.filter((r) => r.configured && (!r.ok || r.count === 0));
 
   return (
     <div className="space-y-10">
@@ -688,6 +692,27 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               {busy ? "Trying again…" : "Try again"}
             </button>
           )}
+        </div>
+      )}
+
+      {/* A source that is configured and still didn't deliver.
+
+          Worth its own line, because it is otherwise completely invisible: the
+          run succeeds, the closet fills from whatever did answer, and there is
+          nothing at all to say the key you just added isn't working. That's a
+          bad way to spend an afternoon. */}
+      {phase === "filled" && sourceTrouble.length > 0 && (
+        <div className="panel px-6 py-4">
+          {sourceTrouble.map((report) => (
+            <p key={report.source} className="text-xs leading-relaxed text-room-muted">
+              <span className="font-semibold text-room-ink">
+                {SOURCE_NAME[report.source] ?? report.source}
+              </span>{" "}
+              {report.ok
+                ? "is set up but returned nothing for any of these searches."
+                : `is set up but failed: ${report.error ?? "unknown error"}`}
+            </p>
+          ))}
         </div>
       )}
 

@@ -52,22 +52,53 @@ export function dedupeKey(item: ProductListing): string {
 }
 
 /**
+ * Take turns, one item at a time.
+ */
+function roundRobin<T>(queues: T[][]): T[] {
+  const out: T[] = [];
+  for (let i = 0; ; i += 1) {
+    let added = false;
+    for (const queue of queues) {
+      if (i < queue.length) {
+        out.push(queue[i]);
+        added = true;
+      }
+    }
+    if (!added) return out;
+  }
+}
+
+/**
  * Round-robin across the queries that produced results, so a single broad query
- * can't eat the whole candidate budget and starve the narrower ones.
+ * can't eat the whole candidate budget and starve the narrower ones — and,
+ * within each query, across the sources that answered it.
+ *
+ * That second turn matters more than it looks. This used to bucket on the query
+ * alone, and because eBay's results are merged ahead of Google Shopping's, every
+ * bucket read [30 eBay, then 24 retail]. The round-robin drains position 0 of
+ * each bucket, then position 1, and a 120 cap over 10 queries never gets past
+ * position 12 — which eBay fills on its own. The result was that Google Shopping
+ * could be configured, working, and billed, and not one of its listings ever
+ * reached the candidate pool.
  */
 export function interleaveByQuery(
   listings: ProductListing[],
   cap: number
 ): ProductListing[] {
-  const buckets = new Map<string, ProductListing[]>();
+  const byQuery = new Map<string, Map<SourceName, ProductListing[]>>();
   for (const item of listings) {
     const key = item.matchedQuery ?? "";
-    const bucket = buckets.get(key);
+    let sources = byQuery.get(key);
+    if (!sources) {
+      sources = new Map();
+      byQuery.set(key, sources);
+    }
+    const bucket = sources.get(item.source);
     if (bucket) bucket.push(item);
-    else buckets.set(key, [item]);
+    else sources.set(item.source, [item]);
   }
 
-  const queues = [...buckets.values()];
+  const queues = [...byQuery.values()].map((sources) => roundRobin([...sources.values()]));
   const out: ProductListing[] = [];
   let drained = false;
 

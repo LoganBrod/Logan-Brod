@@ -85,3 +85,82 @@ test("the cap never invents queries when a run produces fewer than it allows", (
   assert.deepEqual(queriesFor("serpapi", ["one", "two"]), ["one", "two"]);
   assert.deepEqual(queriesFor("serpapi", []), []);
 });
+
+test("both sources reach the candidate pool, not just the first one merged", () => {
+  // The shape of a real run: eBay answers all ten queries with thirty items
+  // each, Google Shopping answers the first four with twenty-four, and eBay's
+  // results are merged first because its source is listed first.
+  //
+  // Bucketing on the query alone made every bucket read [30 eBay, 24 retail].
+  // The round-robin drains position 0 of each bucket, then position 1, and a
+  // 120 cap over ten queries never reaches position 12 — so Google Shopping
+  // could be configured, working and billed without a single one of its
+  // listings ever being seen.
+  const listings = [];
+  for (let q = 0; q < 10; q += 1) {
+    for (let i = 0; i < 30; i += 1) {
+      listings.push(listing({ id: `ebay:${q}-${i}`, source: "ebay", matchedQuery: `query ${q}` }));
+    }
+  }
+  for (let q = 0; q < 4; q += 1) {
+    for (let i = 0; i < 24; i += 1) {
+      listings.push(
+        listing({ id: `serp:${q}-${i}`, source: "serpapi", matchedQuery: `query ${q}` })
+      );
+    }
+  }
+
+  const pool = interleaveByQuery(listings, 120);
+  const retail = pool.filter((item) => item.source === "serpapi");
+  assert.ok(retail.length > 0, "no retail listing survived the merge");
+
+  // And it has to survive the part curation actually looks at, which is only
+  // the first few batches' worth.
+  const seen = pool.slice(0, 48).filter((item) => item.source === "serpapi");
+  assert.ok(seen.length > 0, "retail listings existed but none reached curation");
+});
+
+test("one source can't take a query's whole share", () => {
+  const listings = [
+    ...Array.from({ length: 10 }, (_, i) =>
+      listing({ id: `ebay:${i}`, source: "ebay", matchedQuery: "boots" })
+    ),
+    ...Array.from({ length: 10 }, (_, i) =>
+      listing({ id: `serp:${i}`, source: "serpapi", matchedQuery: "boots" })
+    ),
+  ];
+
+  const pool = interleaveByQuery(listings, 6);
+  assert.equal(pool.filter((item) => item.source === "ebay").length, 3);
+  assert.equal(pool.filter((item) => item.source === "serpapi").length, 3);
+});
+
+test("per-query fairness survives the source interleave", () => {
+  // The original guarantee: one broad query can't starve the narrow ones.
+  const listings = [
+    ...Array.from({ length: 50 }, (_, i) =>
+      listing({ id: `a${i}`, source: "ebay", matchedQuery: "broad" })
+    ),
+    ...Array.from({ length: 4 }, (_, i) =>
+      listing({ id: `b${i}`, source: "ebay", matchedQuery: "narrow" })
+    ),
+  ];
+
+  const pool = interleaveByQuery(listings, 10);
+  assert.equal(pool.filter((item) => item.matchedQuery === "narrow").length, 4);
+});
+
+test("a source that answers only some queries doesn't distort the others", () => {
+  const listings = [
+    ...Array.from({ length: 6 }, (_, i) =>
+      listing({ id: `e${i}`, source: "ebay", matchedQuery: i < 3 ? "covered" : "uncovered" })
+    ),
+    ...Array.from({ length: 3 }, (_, i) =>
+      listing({ id: `s${i}`, source: "serpapi", matchedQuery: "covered" })
+    ),
+  ];
+
+  const pool = interleaveByQuery(listings, 9);
+  assert.equal(pool.filter((item) => item.matchedQuery === "uncovered").length, 3);
+  assert.equal(pool.length, 9);
+});
