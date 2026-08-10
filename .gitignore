@@ -27,3 +27,5 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+site/node_modules/
+site/.next/
