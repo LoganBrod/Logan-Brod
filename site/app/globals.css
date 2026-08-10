@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Lenis drives the scroll; the native smooth behaviour would fight it. */
+    scroll-behavior: auto;
+  }
+
+  body {
+    background-color: #edeae4;
+    background-image: radial-gradient(
+      120% 80% at 50% 0%,
+      #f4f2ee 0%,
+      #edeae4 45%,
+      #e3dfd7 100%
+    );
+    background-attachment: fixed;
+    color: #1b1a17;
+  }
+
+  /* The ring is only hidden where a real pointer exists to replace it. */
+  @media (hover: hover) and (pointer: fine) {
+    body[data-cursor="custom"],
+    body[data-cursor="custom"] * {
+      cursor: none;
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid #8a7448;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  /* --- the corridor ---------------------------------------------------- */
+
+  .scene {
+    perspective: 1400px;
+    perspective-origin: 50% 50%;
+    transform-style: preserve-3d;
+  }
+
+  .camera {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  .bay {
+    transform: translate(-50%, -50%) translateZ(var(--z));
+    transform-style: preserve-3d;
+  }
+
+  /* Below lg the corridor is abandoned outright — a 3D corridor on a phone is
+     unreadable and burns battery. */
+  @media (max-width: 1023px) {
+    .scene {
+      perspective: none;
+    }
+
+    .camera {
+      transform: none !important;
+      will-change: auto;
+    }
+
+    .bay {
+      transform: none;
+      position: relative;
+      inset: auto;
+    }
+  }
+
+  /* --- the garment bag -------------------------------------------------- */
+
+  /* This silhouette is the company's shape: tapered neck, curved shoulders,
+     chamfered hem. Reused as a clip-path so the DOM carries it, not an image. */
+  .bag-shape {
+    clip-path: polygon(
+      46% 0,
+      54% 0,
+      66% 2%,
+      78% 6%,
+      89% 12%,
+      96% 17%,
+      100% 22%,
+      100% 95%,
+      96% 100%,
+      4% 100%,
+      0 95%,
+      0 22%,
+      4% 17%,
+      11% 12%,
+      22% 6%,
+      34% 2%
+    );
+  }
+
+  .bag-face {
+    background: linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.52) 0%,
+      rgba(236, 233, 227, 0.3) 40%,
+      rgba(255, 255, 255, 0.44) 64%,
+      rgba(226, 222, 214, 0.5) 100%
+    );
+  }
+
+  /* backdrop-filter is expensive: at most three at once, and none below lg. */
+  .bag-frost {
+    background: linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(236, 233, 227, 0.62) 40%,
+      rgba(255, 255, 255, 0.68) 64%,
+      rgba(226, 222, 214, 0.72) 100%
+    );
+  }
+
+  @media (min-width: 1024px) {
+    .bag-frost {
+      backdrop-filter: blur(3px);
+    }
+  }
+
+  /* --- rails ------------------------------------------------------------ */
+
+  .rail {
+    background-color: #9e9a92;
+    box-shadow: 0 2px 3px rgba(27, 26, 23, 0.3);
+  }
+
+  /* Sits over the rail, not below it. */
+  .rail-hook {
+    width: 9%;
+    height: 7%;
+    border: 2px solid #9e9a92;
+    border-bottom: none;
+    border-radius: 999px 999px 0 0;
+    transform: translateY(-85%);
+  }
+}
+
+/* Everything scroll-driven is off; the page becomes a plain document. */
+@media (prefers-reduced-motion: reduce) {
+  .scene {
+    perspective: none;
+  }
+
+  .camera {
+    transform: none !important;
+  }
+
+  .bay {
+    transform: none;
+    opacity: 1 !important;
+  }
+
+  .animate-sway {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
