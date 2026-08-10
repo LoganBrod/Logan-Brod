@@ -50,5 +50,21 @@
   "texture_4": {
     "job_id": "d506d2eb-c7f1-426a-89e7-40fb47152d3c",
     "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260809_181727_d506d2eb-c7f1-426a-89e7-40fb47152d3c.png"
+  },
+  "garment_shirt": {
+    "job_id": "65178a33-43d4-413d-908d-cc21accdc340",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260810_015430_65178a33-43d4-413d-908d-cc21accdc340.png"
+  },
+  "garment_pants": {
+    "job_id": "b218e046-220b-4e1f-a180-999773b28bba",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260810_015430_b218e046-220b-4e1f-a180-999773b28bba.png"
+  },
+  "garment_shirt_cutout": {
+    "job_id": "6b9e47ef-df38-49cf-b4a2-6311b828f8c6",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260810_020135_6b9e47ef-df38-49cf-b4a2-6311b828f8c6.png"
+  },
+  "garment_pants_cutout": {
+    "job_id": "319fe562-b5e3-4c0c-b315-e02b847c5690",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260810_020136_319fe562-b5e3-4c0c-b315-e02b847c5690.png"
   }
 }

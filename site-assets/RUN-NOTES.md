@@ -60,3 +60,12 @@ of target and of each other.
 ## Credits
 
 272.5 at start → 110.5 after all generation (162 spent: 34 stills incl. iterations, 128 video incl. tests; failed dust jobs auto-refunded).
+
+## Addendum — 2026-08-10 rework
+
+Page restructured: the 3D bay corridor was dropped. Now: hero → corridor frame-scrub →
+end wall where generated garments carry the info (hover/tap/focus to reveal) → a plain
+website section with the Closet app link and contact. New generations: olive overshirt
+and grey wool trousers on hangers (Nano Banana Pro 2k 3:4), background-removed via
+`image_background_remover`, shipped as `site/public/garment-{shirt,pants}.webp`.
+Balance after rework: 102.5 credits.

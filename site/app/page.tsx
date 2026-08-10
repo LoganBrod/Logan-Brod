@@ -2,13 +2,13 @@ import SmoothScroll from "./components/SmoothScroll";
 import Cursor from "./components/Cursor";
 import Hero from "./components/Hero";
 import FrameScrubber from "./components/FrameScrubber";
-import Corridor from "./components/Corridor";
-import ClosingBay from "./components/ClosingBay";
+import EndWall from "./components/EndWall";
+import SiteSection from "./components/SiteSection";
 import DustOverlay from "./components/DustOverlay";
 
-// One page, one continuous walk deeper into a closet. The page must make
-// complete sense with CSS disabled: every section is semantic, every bay has a
-// real heading, and the reading order is the visual order.
+// One page: the wardrobe opens, the camera walks the corridor as you scroll,
+// arrives at the end wall where the clothes carry the writing — then the page
+// settles into the actual website. Must read completely with CSS disabled.
 export default function Page() {
   return (
     <main>
@@ -18,8 +18,8 @@ export default function Page() {
 
       <Hero />
       <FrameScrubber />
-      <Corridor />
-      <ClosingBay />
+      <EndWall />
+      <SiteSection />
     </main>
   );
 }
