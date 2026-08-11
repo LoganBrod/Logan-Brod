@@ -25,7 +25,9 @@ export async function analyzeStyle(
   photos: PhotoInput[],
   range: PriceRange,
   /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
-  tasteMemo?: string | null
+  tasteMemo?: string | null,
+  /** What they actually own, from `lib/wardrobeOwned.ts`. */
+  ownedMemo?: string | null
 ): Promise<StyleProfile> {
   if (!photos.length) {
     throw new Error("At least one photo is required.");
@@ -62,8 +64,8 @@ export async function analyzeStyle(
             text: `These are ${photos.length} piece${photos.length === 1 ? "" : "s"} I like the look of.
 
 Read the style across them, then give me eight to ten things to buy that would extend it, spread across different garment types. My budget per item is $${range.min}-$${range.max}, so keep every suggested price band inside that.${
-              tasteMemo ? `\n\n${tasteMemo}` : ""
-            }`,
+              ownedMemo ? `\n\n${ownedMemo}` : ""
+            }${tasteMemo ? `\n\n${tasteMemo}` : ""}`,
           },
         ],
       },

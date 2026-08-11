@@ -271,6 +271,19 @@ vote control simply doesn't render and both passes run without a memo. `renderMe
 newest-first and skips titles it has already placed, so changing your mind about something replaces
 the earlier verdict instead of leaving it in both lists.
 
+**The gaps used to be a guess.** The analyze pass infers what's missing from the six photos someone
+happened to upload, which is a guess about a wardrobe it has never seen. `lib/wardrobeOwned.ts` lets
+someone photograph what they actually own — read once, stored as a line of text per garment, the
+photographs discarded — and `renderOwned` puts that in front of the query writing. The instruction
+not to recommend something they effectively already have is explicit, because a model handed a list
+of clothes will otherwise cheerfully suggest a fourth navy crewneck.
+
+Outfits build only from that list, referring to pieces **by index** rather than by name: asked to
+repeat a label a model paraphrases it, and then nothing can be matched back to the wardrobe it came
+from. Any index outside the list is dropped rather than rendered as a blank row. The output that
+matters most is `missing` — the one piece that would unlock the most further outfits — because it
+turns a purchase from "another jacket" into a number.
+
 **A watch is the whole reason to subscribe, and it exists because of one fact.** Secondhand
 inventory is ephemeral: the right jacket in your size at your price is listed on a Tuesday and gone
 by Wednesday. A search run the moment someone presses a button is structurally blind to almost
@@ -359,6 +372,9 @@ lib/
                                       menswear.ts holds the title filters; ebayCategories.ts
                                       resolves men's category IDs at runtime
   plans.ts                            what each tier allows, and the monthly meter
+  judge.ts                            one piece, one straight answer — plus the URL
+                                      guard, since it fetches links strangers supply
+  wardrobeOwned.ts                    what someone actually owns, and outfits from it
   watches.ts                          standing searches, their seen-sets, and the
                                       roster the sweep reads
   sweep.ts                            running one watch and deciding what's worth

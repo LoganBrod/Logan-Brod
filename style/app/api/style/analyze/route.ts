@@ -4,6 +4,7 @@ import { describeApiError } from "@/lib/anthropic";
 import { MAX_PHOTOS } from "@/lib/photos";
 import { tasteMemo } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { readOwned, renderOwned } from "@/lib/wardrobeOwned";
 
 export const dynamic = "force-dynamic";
 // Vision over several photos at high effort is slow; the platform default of
@@ -74,8 +75,12 @@ export async function POST(req: Request) {
   try {
     // Never throws and returns null when there's no memory or no Redis, so this
     // can sit in the hot path without a guard.
-    const memo = await tasteMemo((await readViewer(req)).tasteId);
-    const profile = await analyzeStyle(photos, { min, max }, memo);
+    const viewer = await readViewer(req);
+    const [memo, owned] = await Promise.all([
+      tasteMemo(viewer.tasteId),
+      readOwned(viewer.owner),
+    ]);
+    const profile = await analyzeStyle(photos, { min, max }, memo, renderOwned(owned));
     return NextResponse.json({ profile }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return NextResponse.json({ error: describeApiError(err) }, { status: 502 });

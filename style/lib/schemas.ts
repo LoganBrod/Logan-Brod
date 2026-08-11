@@ -152,3 +152,52 @@ export const JudgementSchema = z.object({
 });
 
 export type Judgement = z.infer<typeof JudgementSchema>;
+
+/** One garment someone actually owns, read off a photograph. */
+export const OwnedItemSchema = z.object({
+  label: z.string().describe("What to call it in a list: 'olive waxed field jacket'. No brand unless it's legible."),
+  category: CategorySchema,
+  colour: z.string().describe("Dominant colour in plain words."),
+  material: z.string().describe("Dominant material in two words at most, or 'unknown'."),
+  formality: z
+    .string()
+    .describe("One word: casual, smart-casual, or formal. What this piece is actually worn for."),
+  season: z
+    .string()
+    .describe("One word: warm, cold, or year-round. Judged on weight and material, not colour."),
+});
+
+export const WardrobeReadSchema = z.object({
+  items: z
+    .array(OwnedItemSchema)
+    .describe("One entry per distinct garment visible. Ignore anything that isn't clothing."),
+});
+
+/**
+ * An outfit, referring to owned pieces by index.
+ *
+ * Indexes rather than names: a model asked to repeat a label will paraphrase it,
+ * and then nothing can be matched back to the wardrobe it came from.
+ */
+export const OutfitSchema = z.object({
+  name: z.string().describe("Three or four words. What the outfit is for, not what's in it."),
+  itemIndexes: z.array(z.number()).describe("Indexes into the numbered wardrobe, exactly as given."),
+  occasion: z.string().describe("One short line on where this actually goes."),
+  note: z.string().describe("One sentence on why it works — proportion, colour, texture."),
+});
+
+export const OutfitsSchema = z.object({
+  outfits: z.array(OutfitSchema).describe("Outfits built only from the pieces listed. Never invent a garment."),
+  missing: z
+    .string()
+    .describe(
+      "The single piece that would unlock the most further outfits from what they already own. Name the garment, not a brand."
+    ),
+  missingUnlocks: z
+    .number()
+    .describe("Roughly how many additional outfits that one piece would make possible."),
+});
+
+export type OwnedItem = z.infer<typeof OwnedItemSchema>;
+export type Outfit = z.infer<typeof OutfitSchema>;
+export type Outfits = z.infer<typeof OutfitsSchema>;
