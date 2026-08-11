@@ -14,7 +14,7 @@ export function isTodo(value: string): boolean {
 export const company = "LevoZ Labs";
 
 /** The only text on the opening screen. Under 8 words. */
-export const heroLine = "TODO — the hero line, under 8 words";
+export const heroLine = "You already know what you like.";
 
 /**
  * The two stops on the corridor walk. At each stop the camera rests, pieces
@@ -36,13 +36,13 @@ export const stops: Stop[] = [
   {
     label: "How it works",
     heading: "Show it a few pieces you like.",
-    body: "Upload photos of clothes you own or want. The closet reads the style across them — palette, silhouette, fabric — then searches real listings and keeps only what fits the way you actually dress.",
+    body: "Upload photos of clothes you own or want. It reads the style across them — palette, silhouette, fabric — then searches real listings and keeps only what fits the way you actually dress.",
     pieces: ["/garment-shirt.webp", "/garment-jacket.webp"],
     pieceNames: ["An olive shirt on the rail", "A chore jacket on the rail"],
   },
   {
     label: "What you get back",
-    heading: "A closet that fills itself.",
+    heading: "Only what actually fits.",
     body: "Real pieces in your price range and your size, each with a line on why it suits you. Say yes or no to anything — the next run listens.",
     pieces: ["/garment-pants.webp", "/garment-knit.webp"],
     pieceNames: ["Grey wool trousers on the rail", "An oatmeal sweater on the rail"],
