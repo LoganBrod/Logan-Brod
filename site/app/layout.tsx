@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description: "TODO — the meta description, one sentence.",
 };
 
+/**
+ * The shell both halves share: one font, one stylesheet, one palette. The
+ * marketing walk and the product each add their own layer on top — see the
+ * (marketing) and (app) route groups.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={serif.variable}>

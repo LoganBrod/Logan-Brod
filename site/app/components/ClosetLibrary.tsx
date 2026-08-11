@@ -90,7 +90,7 @@ export default function ClosetLibrary() {
         <p className="mb-4 text-sm text-room-muted">
           Nothing here yet. Every closet you build shows up on this page automatically.
         </p>
-        <Link href="/" className="btn-primary inline-block">
+        <Link href="/closet" className="btn-primary inline-block">
           Build one
         </Link>
       </div>

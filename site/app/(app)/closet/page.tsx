@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import AccountBar from "./components/AccountBar";
-import StyleRunner from "./components/StyleRunner";
+import AccountBar from "@/app/components/AccountBar";
+import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export default async function Home() {
   const closet = await lastCloset();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
       <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className="label mb-3">Menswear</p>

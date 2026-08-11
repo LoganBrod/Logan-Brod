@@ -143,6 +143,33 @@
   }
 }
 
+/* --- product UI ------------------------------------------------------- */
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-room-line bg-room-panel;
+  }
+
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-room-faint;
+  }
+
+  .btn {
+    @apply rounded-full px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-room-ink text-room-bg hover:bg-room-ink/85;
+  }
+
+  .btn-ghost {
+    @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/30 hover:text-room-ink;
+  }
+
+  .field {
+    @apply rounded-full border border-room-line bg-room-panel px-4 py-2 text-sm text-room-ink placeholder:text-room-faint focus:border-room-ink/40 focus:outline-none;
+  }
+}
+
 /* Everything scroll-driven is off; the page becomes a plain document. */
 @media (prefers-reduced-motion: reduce) {
   .scene {
