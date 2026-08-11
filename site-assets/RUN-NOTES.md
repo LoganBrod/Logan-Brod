@@ -86,3 +86,16 @@ corridor walk inside a pinned rounded rectangle inset from the page edges (the
 illoca.com idiom the user asked for), and the website section below. The hero line
 and both stops live inside the frame; the dust loop is clipped to the frame too.
 Unused assets kept in public/ for now: closet-building.*, end-wall.*, bay-*.webp.
+
+## Addendum — the opening
+
+The walk now begins on shut wardrobe doors. A closed-doors still (20ece312) was
+generated against the corridor still for palette, then a Kling 3.0 clip
+(f2f2cfb5) ran start=doors → end=the corridor still, so the doors part and the
+camera pushes through, landing exactly on the corridor's first frame. Both clips
+were graded with the same curves and cut at 14fps/1400px into ONE sequence:
+frames 1–71 are the doors, 72–197 the corridor. 197 frames, 7.2MB.
+
+Note: `higgsfield upload create` (local file → media id) fails in this
+environment — the upload host `d276s3zg8h21b2.cloudfront.net` is not in the
+network policy, so end frames must be referenced by job id rather than by file.
