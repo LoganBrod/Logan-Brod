@@ -8,7 +8,7 @@ export default function SiteSection() {
   const appReady = !isTodo(siteSection.appUrl);
 
   return (
-    <section aria-label={company} className="relative w-full border-t border-room-line bg-room-panel">
+    <section aria-label={company} className="relative w-full border-t border-room-line bg-room-panel lg:pl-52">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-6 py-28 text-center">
         <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{company}</span>
 

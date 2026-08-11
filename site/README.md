@@ -12,9 +12,13 @@ One Next.js app serving both halves of the company:
 
 ## Layout
 
-- `app/(marketing)/` — the corridor walk. Its layout mounts Lenis smooth scroll,
-  the custom cursor, and the header. None of that loads on product routes.
-- `app/(app)/` — the product. Its layout is a wordmark that leads back out.
+- `app/components/SideNav.tsx` — the shared rail: About / Closet / Saved, plus
+  the wordmark and a contact link. Mounted once in the root layout, so it is the
+  same on both halves. A column down the left on desktop, a bar across the top on
+  phones, with `aria-current` following the route.
+- `app/(marketing)/` — the corridor walk. Its layout mounts Lenis smooth scroll
+  and the custom cursor. Neither loads on product routes.
+- `app/(app)/` — the product. Its layout only clears the rail.
 - `app/api/` — unchanged from the standalone product; paths did not move.
 - `lib/copy.ts` — every word the marketing side says, in one file.
 - `public/frames/` — 197 JPEGs: the doors opening, then the corridor walk.
