@@ -6,7 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { stops, heroLine, isTodo } from "@/lib/copy";
 import { MOTION, isDesktop, prefersReducedMotion } from "@/lib/motion";
 
-const FRAME_COUNT = 160;
+const FRAME_COUNT = 197;
 const framePath = (i: number) => `/frames/f_${String(i + 1).padStart(4, "0")}.jpg`;
 
 /**
@@ -19,15 +19,25 @@ const framePath = (i: number) => `/frames/f_${String(i + 1).padStart(4, "0")}.jp
 
 // Segments of pinned progress. Frames advance only in "walk" spans; during a
 // stop the frame holds still — the camera is resting.
+//
+// Frames 0–70 are the doors parting and the camera pushing through; 71–196
+// continue down the corridor. They are one sequence, cut from two clips that
+// share an end and start frame, so the opening flows into the walk without a
+// seam.
+const DOORS_END = 70;
 const WALKS: Array<{ from: number; to: number; f0: number; f1: number }> = [
-  { from: 0.06, to: 0.26, f0: 0, f1: 62 },
-  { from: 0.44, to: 0.62, f0: 62, f1: 120 },
-  { from: 0.8, to: 1.0, f0: 120, f1: 159 },
+  { from: 0.04, to: 0.24, f0: 0, f1: DOORS_END },
+  { from: 0.24, to: 0.4, f0: DOORS_END, f1: 118 },
+  { from: 0.56, to: 0.72, f0: 118, f1: 160 },
+  { from: 0.88, to: 1.0, f0: 160, f1: FRAME_COUNT - 1 },
 ];
 const STOP_SPANS: Array<{ enter: number; exit: number }> = [
-  { enter: 0.26, exit: 0.44 },
-  { enter: 0.62, exit: 0.8 },
+  { enter: 0.4, exit: 0.56 },
+  { enter: 0.72, exit: 0.88 },
 ];
+
+/** How much scroll before a stop the pieces start coming into view. */
+const PIECE_LEAD = 0.13;
 
 export default function CorridorWalk() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -92,22 +102,38 @@ export default function CorridorWalk() {
 
     const stopEls = Array.from(overlay.querySelectorAll<HTMLElement>("[data-stop]"));
 
-    const setStop = (el: HTMLElement, t: number) => {
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+    /** Ramp up over [a,b], hold, ramp down over [c,d]. */
+    const window4 = (p: number, a: number, b: number, c: number, d: number) => {
+      if (p <= a || p >= d) return 0;
+      if (p < b) return clamp01((p - a) / (b - a));
+      if (p <= c) return 1;
+      return clamp01(1 - (p - c) / (d - c));
+    };
+
+    /**
+     * Pieces are already on the rails and approaching before the camera stops
+     * — they read as hanging further down the corridor and coming toward you,
+     * so the walk never looks empty. Text waits for the rest.
+     */
+    const setStop = (el: HTMLElement, pieceT: number, textT: number) => {
       const pieces = el.querySelectorAll<HTMLElement>("[data-piece]");
       const text = el.querySelector<HTMLElement>("[data-stop-text]");
-      const ease = gsap.parseEase("power2.out")(Math.min(1, Math.max(0, t)));
+      const ease = gsap.parseEase("power2.out")(clamp01(pieceT));
       pieces.forEach((piece, i) => {
         const dir = i === 0 ? -1 : 1;
         gsap.set(piece, {
-          opacity: ease,
-          y: (1 - ease) * -46,
-          x: (1 - ease) * dir * 24,
-          rotation: dir * (1 - ease) * 2,
+          opacity: Math.min(1, ease * 1.25),
+          // Far away they sit small and nearer the vanishing point; as the
+          // camera closes they grow and swing out to their resting place.
+          scale: 0.72 + ease * 0.28,
+          x: -dir * (1 - ease) * 84,
+          y: (1 - ease) * 26,
+          rotation: dir * (1 - ease) * 2.5,
         });
       });
       if (text) {
-        const tt = Math.min(1, Math.max(0, (t - 0.35) / 0.65));
-        const te = gsap.parseEase("power2.out")(tt);
+        const te = gsap.parseEase("power2.out")(clamp01(textT));
         gsap.set(text, { opacity: te, y: (1 - te) * 20 });
       }
     };
@@ -122,24 +148,24 @@ export default function CorridorWalk() {
         const p = self.progress;
         draw(frameAt(p));
 
-        // The hero line lives on the first frame and dissolves as the walk
-        // begins.
+        // The hero line holds on the shut doors, then dissolves as they part.
         if (introRef.current) {
-          const t = Math.min(1, p / 0.06);
+          const t = Math.min(1, Math.max(0, (p - 0.02) / 0.07));
           gsap.set(introRef.current, { opacity: 1 - t, y: t * -24 });
         }
 
         STOP_SPANS.forEach((span, i) => {
           const el = stopEls[i];
           if (!el) return;
-          const mid = 0.3;
-          const inEnd = span.enter + (span.exit - span.enter) * mid;
-          const outStart = span.exit - (span.exit - span.enter) * mid;
-          let t = 0;
-          if (p >= span.enter && p < inEnd) t = (p - span.enter) / (inEnd - span.enter);
-          else if (p >= inEnd && p <= outStart) t = 1;
-          else if (p > outStart && p <= span.exit) t = 1 - (p - outStart) / (span.exit - outStart);
-          setStop(el, t);
+          const len = span.exit - span.enter;
+          // Pieces lead the stop by PIECE_LEAD of scroll and linger past it,
+          // so they arrive with the camera and leave with the walk.
+          // They must be fully gone by the time the next pair starts drifting
+          // in, or the two sets ghost over each other mid-walk.
+          const pieceT = window4(p, span.enter - PIECE_LEAD, span.enter + len * 0.06, span.exit - len * 0.35, span.exit);
+          // Text only once the camera is actually at rest.
+          const textT = window4(p, span.enter + len * 0.08, span.enter + len * 0.3, span.exit - len * 0.28, span.exit - len * 0.05);
+          setStop(el, pieceT, textT);
         });
       },
     });

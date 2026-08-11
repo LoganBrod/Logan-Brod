@@ -75,5 +75,11 @@
   },
   "garment_knit_cutout": {
     "job_id": "5b2e4564-53da-451f-8b70-16308c1e257d"
+  },
+  "doors_closed_still": {
+    "job_id": "20ece312-d3c8-4429-ae53-542b182cde36"
+  },
+  "doors_opening_clip": {
+    "job_id": "f2f2cfb5-7738-48cc-a64f-d4900eb79731"
   }
 }
