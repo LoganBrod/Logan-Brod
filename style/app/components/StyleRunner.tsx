@@ -102,6 +102,10 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   // we know whether there's anywhere to store them at all.
   const [sizes, setSizes] = useState<Sizes>({});
   const [sizesAvailable, setSizesAvailable] = useState(false);
+  // Offered once a run finishes: the queries the photos produced are already
+  // the best description of what someone is looking for, so a standing search
+  // is a continuation of the closet rather than a form to fill in.
+  const [watchState, setWatchState] = useState<"hidden" | "offer" | "saving" | "on">("hidden");
 
   useEffect(() => {
     let alive = true;
@@ -403,6 +407,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 
       await save(contents);
+      setWatchState("offer");
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -430,6 +435,28 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setPhase("filled");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load that closet.");
+    }
+  }
+
+  /** Leave this closet's searches running. */
+  async function startWatch(profile: StyleProfile) {
+    setWatchState("saving");
+    try {
+      const res = await fetch("/api/watches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profile.aesthetics.slice(0, 2).join(" & ") || "Your closet",
+          queries: profile.searchQueries.map((q) => q.query),
+          range: { min, max },
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error ?? "Couldn't start that watch.");
+      setWatchState("on");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't start that watch.");
+      setWatchState("offer");
     }
   }
 
@@ -733,6 +760,35 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                 won&rsquo;t be here when you come back.
               </p>
             )
+          )}
+
+          {/* The subscription pitch, made at the only moment it's obviously
+              true: you've just seen what one search found, and secondhand stock
+              turns over daily. */}
+          {watchState !== "hidden" && results.profile && (
+            <div className="panel flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+              {watchState === "on" ? (
+                <p className="text-sm text-room-muted">
+                  Watching. These searches keep running, and you&rsquo;ll hear when something turns
+                  up that clears the bar.
+                </p>
+              ) : (
+                <>
+                  <p className="max-w-md text-sm leading-relaxed text-room-muted">
+                    Secondhand moves fast &mdash; most of what would suit you isn&rsquo;t listed
+                    right now. Leave these searches running and they&rsquo;ll keep looking.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => startWatch(results.profile)}
+                    disabled={watchState === "saving"}
+                    className="btn-primary shrink-0"
+                  >
+                    {watchState === "saving" ? "Starting…" : "Keep looking"}
+                  </button>
+                </>
+              )}
+            </div>
           )}
 
           <button type="button" onClick={() => setPhase("form")} className="btn-ghost">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AccountBar from "@/app/components/AccountBar";
 import ClosetLibrary from "@/app/components/ClosetLibrary";
+import Watches from "@/app/components/Watches";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,10 @@ export default function ClosetsPage() {
         </div>
       </header>
 
-      <ClosetLibrary />
+      <div className="space-y-10">
+        <Watches />
+        <ClosetLibrary />
+      </div>
     </main>
   );
 }

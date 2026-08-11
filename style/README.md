@@ -77,6 +77,8 @@ npm run dev
 | `EBAY_ENV` | Optional. `sandbox` or `production` (default). | — |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Saving closets, and the yes/no feedback. Without them everything else still works; results just aren't kept and the vote control doesn't appear. | Vercel → Storage → Marketplace → Upstash |
 | `SERPAPI_KEY` | Optional. Adds mainstream retail alongside eBay. | [serpapi.com](https://serpapi.com/manage-api-key) |
+| `CRON_SECRET` | Standing searches. The sweep endpoint refuses everything without it, so a route that spends money is never open. | Any long random string |
+| `MEMBER_EMAILS` | Optional. Comma-separated addresses granted membership until there's a payment provider. | — |
 | `RESEND_API_KEY` / `MAIL_FROM` | Optional. Sending the sign-in link. Without them the app stays anonymous in production; locally the link is printed to the server console instead. | [resend.com](https://resend.com/api-keys) |
 
 With `SERPAPI_KEY` unset the app searches eBay only and says so in the UI — a supported
@@ -269,6 +271,19 @@ vote control simply doesn't render and both passes run without a memo. `renderMe
 newest-first and skips titles it has already placed, so changing your mind about something replaces
 the earlier verdict instead of leaving it in both lists.
 
+**A watch is the whole reason to subscribe, and it exists because of one fact.** Secondhand
+inventory is ephemeral: the right jacket in your size at your price is listed on a Tuesday and gone
+by Wednesday. A search run the moment someone presses a button is structurally blind to almost
+everything that would have suited them. `lib/watches.ts` keeps the queries running; `lib/sweep.ts`
+throws away everything already reported, judges what's left exactly as a normal run would, and only
+forwards what scores above `ALERT_SCORE`. **That bar is higher than a normal run's on purpose** — a
+closet someone asked for can afford a merely-good piece, an unprompted email cannot, and an alert
+that's wrong twice gets muted.
+
+Two ordering decisions matter. Listings are marked seen **after** the email is away, so a failed
+send means being told twice rather than never being told. And everything a sweep *considered* is
+marked, not just what it sent, or the same rejected listings get re-judged and re-paid-for forever.
+
 **Signing in is optional, and anonymous work is never stranded.** Every closet has always persisted
 under its own code with a ninety-day life; what was missing was any way back to one you hadn't
 written down. `lib/library.ts` indexes them against an owner, which is an account when you're signed
@@ -343,6 +358,11 @@ lib/
   sources/                            ebay.ts + serpapi.ts behind one normalized shape
                                       menswear.ts holds the title filters; ebayCategories.ts
                                       resolves men's category IDs at runtime
+  plans.ts                            what each tier allows, and the monthly meter
+  watches.ts                          standing searches, their seen-sets, and the
+                                      roster the sweep reads
+  sweep.ts                            running one watch and deciding what's worth
+                                      interrupting someone for
   thumbnails.ts                       fetches candidate photos for curation, because
                                       the API's own fetcher honours robots.txt and one
                                       rejected URL fails the whole message

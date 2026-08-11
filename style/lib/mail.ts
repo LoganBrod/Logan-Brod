@@ -91,3 +91,105 @@ export async function sendLoginLink(email: string, url: string): Promise<Deliver
 
   return "sent";
 }
+
+/**
+ * The email a watch sends when it finds something.
+ *
+ * Every piece carries the same one-line reason the app writes on screen. That
+ * line is the whole difference between this and a keyword alert: it says why
+ * *this* piece, for *this* person, which is the only thing that makes an
+ * unprompted email welcome rather than noise.
+ */
+export function digestBody(
+  watchName: string,
+  items: Array<{ title: string; price: number; url: string; whyItFits: string; condition?: string }>
+): { html: string; text: string; subject: string } {
+  const one = items.length === 1;
+  const subject = one
+    ? `A piece for "${watchName}"`
+    : `${items.length} pieces for "${watchName}"`;
+
+  const text = [
+    one ? "Something turned up:" : "A few things turned up:",
+    "",
+    ...items.flatMap((item) => [
+      `${item.title} — $${item.price.toFixed(2)}${item.condition ? ` (${item.condition})` : ""}`,
+      item.whyItFits,
+      item.url,
+      "",
+    ]),
+    "These are live listings and secondhand stock moves fast.",
+  ].join("\n");
+
+  const rows = items
+    .map(
+      (item) => `
+    <tr><td style="padding:0 0 22px">
+      <p style="margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.4;color:#1B1A17">${escapeHtml(item.title)}</p>
+      <p style="margin:0 0 6px;font-size:13px;color:#6F6A62">$${item.price.toFixed(2)}${
+        item.condition ? ` &middot; ${escapeHtml(item.condition)}` : ""
+      }</p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#1B1A17">${escapeHtml(item.whyItFits)}</p>
+      <a href="${item.url}" style="font-size:13px;font-weight:600;color:#8A7448">View the listing &rarr;</a>
+    </td></tr>`
+    )
+    .join("");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:32px;background:#EDEAE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
+  <div style="max-width:34rem;margin:0 auto;background:#F7F5F1;border:1px solid #D6D1C7;border-radius:16px;padding:32px">
+    <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#9A948B">${escapeHtml(watchName)}</p>
+    <p style="margin:0 0 26px;font-family:Georgia,serif;font-size:22px;line-height:1.3;color:#1B1A17">${
+      one ? "Something turned up." : "A few things turned up."
+    }</p>
+    <table style="width:100%;border-collapse:collapse">${rows}</table>
+    <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #D6D1C7;font-size:12px;line-height:1.6;color:#9A948B">
+      These are live listings and secondhand stock moves fast. Stop this watch any time from your closets page.
+    </p>
+  </div>
+</body></html>`;
+
+  return { html, text, subject };
+}
+
+/** Titles come from sellers, so they go through this before they go in a page. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Send one watch's findings. Throws if the provider refuses — the caller decides what that means. */
+export async function sendDigest(
+  email: string,
+  watchName: string,
+  items: Parameters<typeof digestBody>[1]
+): Promise<Delivery> {
+  const { html, text, subject } = digestBody(watchName, items);
+
+  if (!mailConfigured()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Email isn't configured, so watch digests can't be sent.");
+    }
+    console.log(`\n[mail] digest for ${email} — ${subject}\n${text}\n`);
+    return "logged";
+  }
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from: process.env.MAIL_FROM, to: [email], subject, html, text }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Couldn't send the digest (${res.status}). ${detail.slice(0, 200)}`);
+  }
+  return "sent";
+}
