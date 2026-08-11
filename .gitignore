@@ -1,9 +1,13 @@
 # dependencies
+# Unrooted, so a subdirectory app can never accidentally commit 150MB of
+# native binaries the way style/ did when its own .gitignore moved away.
+node_modules/
 /node_modules
 /.pnp
 .pnp.js
 
 # Next.js
+.next/
 /.next/
 /out/
 

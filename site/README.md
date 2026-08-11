@@ -1,41 +1,52 @@
-# LevoZ Labs — marketing site
+# LevoZ Labs
 
-One page, scroll-driven: the whole site is one continuous walk deeper into a closet.
-Built from `site-assets/levoz-site-prompt` spec with the Higgsfield-generated footage
-(see `site-assets/RUN-NOTES.md` for how every asset was made).
+One Next.js app serving both halves of the company:
 
-## The one thing left to do
+| Route | What it is |
+|---|---|
+| `/` | The marketing site — one scroll-driven walk down a wardrobe corridor |
+| `/closet` | The product: upload pieces you like, get a closet built from real listings |
+| `/closet/[code]` | A saved closet |
+| `/closets` | Every closet you've built |
+| `/api/**` | The product's endpoints (Claude, eBay, Google Shopping, auth, taste) |
 
-**The copy.** Every word the site says lives in `lib/copy.ts`, currently as visible
-`TODO` placeholders: the hero line (under 8 words), four bays (label / heading / two
-sentences), and the closing. Replace the strings; nothing else needs touching.
+## Layout
+
+- `app/components/SideNav.tsx` — the shared rail: About / Closet / Saved, plus
+  the wordmark and a contact link. Mounted once in the root layout, so it is the
+  same on both halves. A column down the left on desktop, a bar across the top on
+  phones, with `aria-current` following the route.
+- `app/(marketing)/` — the corridor walk. Its layout mounts Lenis smooth scroll
+  and the custom cursor. Neither loads on product routes.
+- `app/(app)/` — the product. Its layout only clears the rail.
+- `app/api/` — unchanged from the standalone product; paths did not move.
+- `lib/copy.ts` — every word the marketing side says, in one file.
+- `public/frames/` — 197 JPEGs: the doors opening, then the corridor walk.
+  Fetched only by the marketing route.
 
 ## Run it
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+cp .env.local.example .env.local   # fill in at least ANTHROPIC_API_KEY + the eBay pair
+npm run dev                        # http://localhost:3000
+npm test                           # the product's suite
 ```
 
-## Deploy (Vercel)
+## Deploy
 
-This directory is a self-contained Next.js app inside the repo:
+One Vercel project, **Root Directory `site`**. The marketing page prerenders as
+static; product routes are server-rendered on demand. Set the env vars from
+`.env.local.example` in the Vercel project — the marketing half needs none of
+them, but the product will not run without them.
 
-1. vercel.com → Add New → Project → import `LoganBrod/Logan-Brod`
-2. Set **Root Directory** to `site` (critical — the repo root is a different app)
-3. Framework preset: Next.js, defaults everywhere else
-4. After the first deploy, add `levozlabs.com` under Domains and follow the DNS
-   instructions it gives you
+## How the product works
 
-## How it's put together
+`PRODUCT.md` is the product's own documentation — the pipeline, why it recommends
+what it does, how sign-in and saved closets work. It moved here unchanged when the
+two apps merged.
 
-- `app/components/SmoothScroll.tsx` — Lenis wired into GSAP's ticker (one rAF loop)
-- `app/components/Hero.tsx` — the wardrobe opens, plays once, never scrubbed
-- `app/components/FrameScrubber.tsx` — the corridor walk: 160 preloaded JPEGs painted
-  to a canvas from scroll progress; poster below `lg` and under reduced motion
-- `app/components/Corridor.tsx` — real 3D corridor: fixed bays, one scrubbed camera;
-  parallax comes from the projection, not per-layer speeds
-- `app/components/GarmentBag.tsx` — the company's silhouette as a clip-path
-- `app/components/ClosingBay.tsx` — the end wall, decelerating to rest
-- Below 1024px the corridor is abandoned for a vertical stack, and
-  `prefers-reduced-motion` turns the whole page into a plain document.
+## Still TODO
+
+`lib/copy.ts` carries visible `TODO` placeholders for the website section's
+heading and body, and `app/layout.tsx` for the meta description.

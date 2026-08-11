@@ -53,8 +53,8 @@ export const stops: Stop[] = [
 export const siteSection = {
   heading: "TODO — what LevoZ is, in one heading",
   body: "TODO — two or three sentences about the company.",
-  /** The live Closet app. Replace with the real URL when it's deployed. */
-  appUrl: "TODO",
+  /** The product, now served from this same app. */
+  appUrl: "/closet",
   appLabel: "Open the closet",
   contactLabel: "Get in touch",
   contactHref: "mailto:levoz.labs@gmail.com",

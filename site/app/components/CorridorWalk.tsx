@@ -180,7 +180,9 @@ export default function CorridorWalk() {
     <section ref={sectionRef} aria-label="The corridor" className="relative w-full lg:h-screen">
       {/* The frame: a rounded rectangle inset from the page, everything
           animated lives inside it. */}
-      <div className="lg:absolute lg:inset-x-[4vw] lg:bottom-[5vh] lg:top-[9vh] max-lg:mx-4 max-lg:mt-20 max-lg:mb-4">
+      {/* Insets clear the shared rail: the left edge starts past it on
+          desktop, and on phones the frame sits below the top bar. */}
+      <div className="lg:absolute lg:bottom-[6vh] lg:left-[calc(13rem+2.5vw)] lg:right-[2.5vw] lg:top-[6vh] max-lg:mx-4 max-lg:mb-4 max-lg:mt-20">
         <div className="relative h-full w-full overflow-hidden rounded-3xl shadow-[0_30px_60px_-30px_rgba(27,26,23,0.45)] max-lg:aspect-video">
           {/* Poster for mobile, reduced motion, and the moment before preload. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}

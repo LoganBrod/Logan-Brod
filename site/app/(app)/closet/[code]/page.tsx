@@ -13,7 +13,7 @@ export default async function ClosetPage({ params }: { params: { code: string } 
   if (!closet) notFound();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
       <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="label mb-2">Saved closet</p>
@@ -22,7 +22,7 @@ export default async function ClosetPage({ params }: { params: { code: string } 
             Updated {new Date(closet.updatedAt).toLocaleDateString()}
           </p>
         </div>
-        <Link href="/" className="btn-ghost">
+        <Link href="/closet" className="btn-ghost">
           Start a new one
         </Link>
       </header>
