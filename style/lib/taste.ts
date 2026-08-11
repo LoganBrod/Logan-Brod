@@ -116,6 +116,25 @@ export function newTasteId(): string {
   return randomUUID().replace(/-/g, "");
 }
 
+/**
+ * The cookie that carries the browser's identity.
+ *
+ * httpOnly: nothing in the page needs to read it, and it's the key to a record
+ * of what someone likes.
+ */
+export function tasteCookie(id: string): string {
+  return [
+    `${TASTE_COOKIE}=${id}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${TASTE_TTL_SECONDS}`,
+    process.env.NODE_ENV === "production" ? "Secure" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
 export function readTasteId(cookieHeader: string | null): string | null {
   const raw = cookieHeader?.match(new RegExp(`${TASTE_COOKIE}=([^;]+)`))?.[1];
   if (!raw) return null;
@@ -402,6 +421,68 @@ export async function writeSizes(id: string, input: unknown): Promise<Sizes> {
   const sizes = cleanSizes(input);
   await setJson(`${key(id)}:sizes`, sizes, TASTE_TTL_SECONDS);
   return sizes;
+}
+
+// --------------------------------------------------------------- adoption
+
+/**
+ * Fold one browser's taste into another identity's.
+ *
+ * This runs when someone signs in, and what it protects is the work they did
+ * before they had an account — the votes, the impressions, the sizes they
+ * typed. Stranding all of that behind a cookie the moment they create an
+ * account would punish exactly the people who liked the app enough to sign up.
+ *
+ * Counters are summed rather than replaced, because they're counts of things
+ * that really happened on both sides. Sizes defer to whatever the account
+ * already has: those were typed deliberately, and the newer statement of
+ * intent is the one to trust.
+ */
+export async function adoptTaste(fromId: string, intoId: string): Promise<void> {
+  if (!isValidTasteId(fromId) || !isValidTasteId(intoId) || fromId === intoId) return;
+  if (!redisConfigured()) return;
+
+  try {
+    const [fromVotes, intoVotes, fromStats, intoStats, fromSizes, intoSizes] = await Promise.all([
+      readVotes(fromId),
+      readVotes(intoId),
+      readStats(fromId),
+      readStats(intoId),
+      readSizes(fromId),
+      readSizes(intoId),
+    ]);
+
+    // Newest first across both, deduped by title so a piece judged on each side
+    // keeps only its most recent verdict.
+    const votes = [...intoVotes, ...fromVotes]
+      .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""))
+      .filter(
+        (vote, index, all) =>
+          all.findIndex((other) => other.title?.toLowerCase() === vote.title?.toLowerCase()) ===
+          index
+      )
+      .slice(0, MAX_STORED);
+
+    const stats: Stats = { ...intoStats };
+    for (const [facet, counter] of Object.entries(fromStats)) {
+      const existing = stats[facet] ?? emptyCounter();
+      for (const signal of SIGNALS) {
+        existing[signal] += counter[signal] ?? 0;
+      }
+      stats[facet] = existing;
+    }
+
+    await Promise.all([
+      setJson(key(intoId), votes, TASTE_TTL_SECONDS),
+      setJson(`${key(intoId)}:stats`, stats, TASTE_TTL_SECONDS),
+      hasSizes(intoSizes)
+        ? Promise.resolve()
+        : setJson(`${key(intoId)}:sizes`, fromSizes, TASTE_TTL_SECONDS),
+    ]);
+  } catch {
+    // Signing in has to work even if the merge doesn't. Losing the anonymous
+    // history is a disappointment; failing the sign-in is a broken product.
+  }
 }
 
 // ---------------------------------------------------------------- the memo

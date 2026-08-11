@@ -17,6 +17,7 @@ import {
   type TasteEvent,
   type Verdict,
 } from "@/lib/taste";
+import { readViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +46,11 @@ function cookieHeader(id: string): string {
  */
 export async function GET(req: Request) {
   const configured = redisConfigured();
-  const existing = readTasteId(req.headers.get("cookie"));
-  const id = existing ?? newTasteId();
+  // The browser always gets an id, signed in or not: it's what anonymous work
+  // is filed under, and what gets adopted if an account appears later.
+  const browserId = readTasteId(req.headers.get("cookie")) ?? newTasteId();
+  const { tasteId } = await readViewer(req);
+  const id = tasteId ?? browserId;
 
   let votes: Awaited<ReturnType<typeof readVotes>> = [];
   let sizes = {};
@@ -68,7 +72,7 @@ export async function GET(req: Request) {
     { configured, count: votes.length, verdicts, sizes, memo: renderMemo(votes) },
     {
       headers: {
-        "Set-Cookie": cookieHeader(id),
+        "Set-Cookie": cookieHeader(browserId),
         "Cache-Control": "no-store",
       },
     }
@@ -104,10 +108,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Body must be JSON." }, { status: 400 });
   }
 
-  const id = readTasteId(req.headers.get("cookie")) ?? newTasteId();
+  const browserId = readTasteId(req.headers.get("cookie")) ?? newTasteId();
+  const { tasteId } = await readViewer(req);
+  const id = tasteId ?? browserId;
+
   const respond = (payload: object) =>
     NextResponse.json(payload, {
-      headers: { "Set-Cookie": cookieHeader(id), "Cache-Control": "no-store" },
+      headers: { "Set-Cookie": cookieHeader(browserId), "Cache-Control": "no-store" },
     });
 
   try {

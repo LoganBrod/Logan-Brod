@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import AccountBar from "./components/AccountBar";
 import StyleRunner from "./components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
 
@@ -24,11 +25,14 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14">
-      <header className="mb-10">
-        <p className="label mb-3">Menswear</p>
-        <h1 className="font-serif text-5xl leading-none text-room-ink md:text-6xl">
-          Show me what you like.
-        </h1>
+      <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
+        <div>
+          <p className="label mb-3">Menswear</p>
+          <h1 className="font-serif text-5xl leading-none text-room-ink md:text-6xl">
+            Show me what you like.
+          </h1>
+        </div>
+        <AccountBar />
       </header>
 
       <StyleRunner initialCloset={closet} />

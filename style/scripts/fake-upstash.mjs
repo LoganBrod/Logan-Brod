@@ -45,6 +45,33 @@ export function startFakeUpstash(port = 0) {
       }
       case "DEL":
         return store.delete(rest[0]) ? 1 : 0;
+      case "TTL": {
+        // -2 missing, -1 no expiry, otherwise seconds remaining.
+        const entry = live(rest[0]);
+        if (!entry) return -2;
+        if (entry.expiresAt === null) return -1;
+        return Math.ceil((entry.expiresAt - Date.now()) / 1000);
+      }
+      case "PERSIST": {
+        // What keeping a closet does: drop the expiry, leave the value.
+        const entry = live(rest[0]);
+        if (!entry || entry.expiresAt === null) return 0;
+        entry.expiresAt = null;
+        return 1;
+      }
+      case "GETDEL": {
+        // Read and delete atomically. A sign-in link's single use depends on
+        // this being one operation rather than two.
+        const entry = live(rest[0]);
+        store.delete(rest[0]);
+        return entry?.value ?? null;
+      }
+      case "INCR": {
+        const entry = live(rest[0]);
+        const next = Number(entry?.value ?? 0) + 1;
+        store.set(rest[0], { value: String(next), expiresAt: entry?.expiresAt ?? null });
+        return next;
+      }
       default:
         throw new Error(`fake-upstash: unsupported command ${command}`);
     }
