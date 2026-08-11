@@ -78,3 +78,11 @@ trousers + knit, "What you get back") with pieces hanging from the corridor
 rails, then releases into the end-wall arrival and the website section.
 New generations: oatmeal Shetland knit (33ec89cd) + background removals for
 the jacket (round-1 shirt take) and knit.
+
+## Addendum — framed layout
+
+Hero video and end-wall sections dropped. The page is now a wordmark header, the
+corridor walk inside a pinned rounded rectangle inset from the page edges (the
+illoca.com idiom the user asked for), and the website section below. The hero line
+and both stops live inside the frame; the dust loop is clipped to the frame too.
+Unused assets kept in public/ for now: closet-building.*, end-wall.*, bay-*.webp.

@@ -3,32 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { stops, isTodo } from "@/lib/copy";
+import { stops, heroLine, isTodo } from "@/lib/copy";
 import { MOTION, isDesktop, prefersReducedMotion } from "@/lib/motion";
 
 const FRAME_COUNT = 160;
 const framePath = (i: number) => `/frames/f_${String(i + 1).padStart(4, "0")}.jpg`;
 
 /**
- * The whole walk as one pinned timeline. Scroll drives the corridor frame
- * sequence; twice along the way the camera comes to rest, pieces swing down
- * from the corridor rails on both sides, and the writing appears between
- * them. Then the pieces lift away, the walk resumes, and the section releases
- * into the page below — no cut, no scene change.
- *
- * The frame mapping and every stop live on a single scrubbed timeline, so
- * scrolling back up reverses all of it exactly.
+ * The whole site's motion lives inside one rounded rectangle, inset from the
+ * page edges, pinned while scroll drives it: the hero line dissolves, the
+ * corridor walks, the camera rests twice while pieces hang from the rails and
+ * the writing appears between them, and then the page releases into the
+ * section below. Scrolling back reverses all of it exactly.
  */
 
 // Segments of pinned progress. Frames advance only in "walk" spans; during a
 // stop the frame holds still — the camera is resting.
 const WALKS: Array<{ from: number; to: number; f0: number; f1: number }> = [
-  { from: 0.0, to: 0.24, f0: 0, f1: 62 },
-  { from: 0.42, to: 0.62, f0: 62, f1: 120 },
+  { from: 0.06, to: 0.26, f0: 0, f1: 62 },
+  { from: 0.44, to: 0.62, f0: 62, f1: 120 },
   { from: 0.8, to: 1.0, f0: 120, f1: 159 },
 ];
 const STOP_SPANS: Array<{ enter: number; exit: number }> = [
-  { enter: 0.24, exit: 0.42 },
+  { enter: 0.26, exit: 0.44 },
   { enter: 0.62, exit: 0.8 },
 ];
 
@@ -36,6 +33,7 @@ export default function CorridorWalk() {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -94,10 +92,7 @@ export default function CorridorWalk() {
 
     const stopEls = Array.from(overlay.querySelectorAll<HTMLElement>("[data-stop]"));
 
-    // Everything below is driven by one number: pinned progress.
     const setStop = (el: HTMLElement, t: number) => {
-      // t: 0 = hidden, 1 = fully presented. Pieces drop from above the rail
-      // line; text follows. Nothing overshoots.
       const pieces = el.querySelectorAll<HTMLElement>("[data-piece]");
       const text = el.querySelector<HTMLElement>("[data-stop-text]");
       const ease = gsap.parseEase("power2.out")(Math.min(1, Math.max(0, t)));
@@ -127,10 +122,17 @@ export default function CorridorWalk() {
         const p = self.progress;
         draw(frameAt(p));
 
+        // The hero line lives on the first frame and dissolves as the walk
+        // begins.
+        if (introRef.current) {
+          const t = Math.min(1, p / 0.06);
+          gsap.set(introRef.current, { opacity: 1 - t, y: t * -24 });
+        }
+
         STOP_SPANS.forEach((span, i) => {
           const el = stopEls[i];
           if (!el) return;
-          const mid = 0.3; // fraction of the span spent arriving/leaving
+          const mid = 0.3;
           const inEnd = span.enter + (span.exit - span.enter) * mid;
           const outStart = span.exit - (span.exit - span.enter) * mid;
           let t = 0;
@@ -149,54 +151,91 @@ export default function CorridorWalk() {
   }, []);
 
   return (
-    <section ref={sectionRef} aria-label="The corridor" className="relative w-full overflow-hidden lg:h-screen">
-      {/* Poster for mobile, reduced motion, and the moment before preload. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={framePath(0)}
-        alt=""
-        aria-hidden
-        className={`w-full object-cover max-lg:h-[52vh] lg:absolute lg:inset-0 lg:h-full ${ready ? "lg:opacity-0" : ""}`}
-      />
-      <canvas ref={canvasRef} aria-hidden className="absolute inset-0 hidden h-full w-full lg:block" />
+    <section ref={sectionRef} aria-label="The corridor" className="relative w-full lg:h-screen">
+      {/* The frame: a rounded rectangle inset from the page, everything
+          animated lives inside it. */}
+      <div className="lg:absolute lg:inset-x-[4vw] lg:bottom-[5vh] lg:top-[9vh] max-lg:mx-4 max-lg:mt-20 max-lg:mb-4">
+        <div className="relative h-full w-full overflow-hidden rounded-3xl shadow-[0_30px_60px_-30px_rgba(27,26,23,0.45)] max-lg:aspect-video">
+          {/* Poster for mobile, reduced motion, and the moment before preload. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={framePath(0)}
+            alt=""
+            aria-hidden
+            className={`absolute inset-0 h-full w-full object-cover ${ready ? "lg:opacity-0" : ""}`}
+          />
+          <canvas ref={canvasRef} aria-hidden className="absolute inset-0 hidden h-full w-full lg:block" />
 
-      {/* Desktop: the stops, driven by the pinned timeline above. */}
-      <div ref={overlayRef} aria-hidden className="absolute inset-0 hidden lg:block">
-        {stops.map((stop, i) => (
-          <div key={i} data-stop className="absolute inset-0">
-            <div className="absolute left-[10%] top-[12%] w-[17vw]" data-piece style={{ opacity: 0 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={stop.pieces[0]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
-            </div>
-            <div className="absolute right-[10%] top-[12%] w-[17vw]" data-piece style={{ opacity: 0 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={stop.pieces[1]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
-            </div>
-            <div
-              data-stop-text
-              className="absolute left-1/2 top-[34%] flex w-[min(44vw,560px)] -translate-x-1/2 flex-col items-center gap-4 text-center"
-              style={{ opacity: 0 }}
+          {/* The dust breathes inside the frame only. */}
+          <video
+            muted
+            loop
+            autoPlay
+            playsInline
+            aria-hidden
+            className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover opacity-[0.12] mix-blend-screen lg:block"
+          >
+            <source src="/dust.webm" type="video/webm" />
+            <source src="/dust.mp4" type="video/mp4" />
+          </video>
+
+          {/* The hero line, on the first frame of the walk. */}
+          <div
+            ref={introRef}
+            className="absolute inset-0 hidden items-center justify-center lg:flex"
+          >
+            <h1
+              data-cursor-target="text"
+              className={`px-10 text-center font-serif text-room-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
+                isTodo(heroLine) ? "opacity-40" : ""
+              }`}
             >
-              <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
-              <h2
-                className={`font-serif text-room-ink [font-size:clamp(1.8rem,3vw,2.8rem)] leading-tight ${
-                  isTodo(stop.heading) ? "opacity-40" : ""
-                }`}
-              >
-                {stop.heading}
-              </h2>
-              <p className={`max-w-[46ch] text-[15px] leading-relaxed text-room-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>
-                {stop.body}
-              </p>
-            </div>
+              {heroLine}
+            </h1>
           </div>
-        ))}
+
+          {/* Desktop: the stops, driven by the pinned timeline. */}
+          <div ref={overlayRef} aria-hidden className="absolute inset-0 hidden lg:block">
+            {stops.map((stop, i) => (
+              <div key={i} data-stop className="absolute inset-0">
+                <div className="absolute left-[9%] top-[10%] w-[15%]" data-piece style={{ opacity: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={stop.pieces[0]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
+                </div>
+                <div className="absolute right-[9%] top-[10%] w-[15%]" data-piece style={{ opacity: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={stop.pieces[1]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
+                </div>
+                <div
+                  data-stop-text
+                  className="absolute left-1/2 top-[32%] flex w-[min(46%,560px)] -translate-x-1/2 flex-col items-center gap-4 text-center"
+                  style={{ opacity: 0 }}
+                >
+                  <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
+                  <h2
+                    className={`font-serif text-room-ink [font-size:clamp(1.6rem,2.6vw,2.5rem)] leading-tight ${
+                      isTodo(stop.heading) ? "opacity-40" : ""
+                    }`}
+                  >
+                    {stop.heading}
+                  </h2>
+                  <p className={`max-w-[46ch] text-[15px] leading-relaxed text-room-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>
+                    {stop.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Mobile and reduced motion: the stops as a plain readable flow. */}
+      {/* Mobile and reduced motion: the hero line and stops as a plain flow. */}
       <div className="relative lg:hidden">
+        <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center font-serif text-4xl leading-tight text-room-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
+          {heroLine}
+        </h1>
         {stops.map((stop, i) => (
-          <section key={i} className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-20 text-center">
+          <section key={i} className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-16 text-center">
             <div className="flex items-start justify-center gap-6">
               {stop.pieces.map((src, j) => (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -209,7 +248,7 @@ export default function CorridorWalk() {
               ))}
             </div>
             <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
-            <h2 className={`font-serif text-room-ink text-3xl leading-tight ${isTodo(stop.heading) ? "opacity-40" : ""}`}>
+            <h2 className={`font-serif text-3xl leading-tight text-room-ink ${isTodo(stop.heading) ? "opacity-40" : ""}`}>
               {stop.heading}
             </h2>
             <p className={`text-[15px] leading-relaxed text-room-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>{stop.body}</p>
