@@ -69,3 +69,12 @@ website section with the Closet app link and contact. New generations: olive ove
 and grey wool trousers on hangers (Nano Banana Pro 2k 3:4), background-removed via
 `image_background_remover`, shipped as `site/public/garment-{shirt,pants}.webp`.
 Balance after rework: 102.5 credits.
+
+## Addendum — continuous-flow rework
+
+The walk is now one pinned timeline: hero pushes in as it exits, the corridor
+scrub pauses twice (stop 1: shirt + chore jacket, "How it works"; stop 2:
+trousers + knit, "What you get back") with pieces hanging from the corridor
+rails, then releases into the end-wall arrival and the website section.
+New generations: oatmeal Shetland knit (33ec89cd) + background removals for
+the jacket (round-1 shirt take) and knit.

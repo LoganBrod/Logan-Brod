@@ -66,5 +66,14 @@
   "garment_pants_cutout": {
     "job_id": "319fe562-b5e3-4c0c-b315-e02b847c5690",
     "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3He7i967BQ20nQfpbuXRqbYfWAF/hf_20260810_020136_319fe562-b5e3-4c0c-b315-e02b847c5690.png"
+  },
+  "garment_knit": {
+    "job_id": "33ec89cd-e5a9-4e38-9a94-7c5f2c7b6c73"
+  },
+  "garment_jacket_cutout": {
+    "job_id": "c35ef8e3-be64-4663-a881-3d88629f3d56"
+  },
+  "garment_knit_cutout": {
+    "job_id": "5b2e4564-53da-451f-8b70-16308c1e257d"
   }
 }

@@ -17,35 +17,35 @@ export const company = "LevoZ Labs";
 export const heroLine = "TODO — the hero line, under 8 words";
 
 /**
- * The garments hanging on the end wall. Each one carries a piece of writing;
- * hovering (or tapping, or focusing) a garment presents it.
- * Draft text below describes the Closet app the way its own README does —
- * rewrite freely.
+ * The two stops on the corridor walk. At each stop the camera rests, pieces
+ * hang from the corridor rails, and the writing appears between them.
+ * Draft text describes the Closet app the way its own README does — rewrite
+ * freely.
  */
-export type Garment = {
-  /** Cut-out image in /public, hung from the rail. */
-  image: string;
-  /** Accessible name for the garment itself. */
-  name: string;
+export type Stop = {
   label: string;
   heading: string;
   body: string;
+  /** Cut-out images in /public: [left rail, right rail]. */
+  pieces: [string, string];
+  /** Accessible names for the pieces, same order. */
+  pieceNames: [string, string];
 };
 
-export const garments: Garment[] = [
+export const stops: Stop[] = [
   {
-    image: "/garment-shirt.webp",
-    name: "A shirt on the rail",
     label: "How it works",
     heading: "Show it a few pieces you like.",
     body: "Upload photos of clothes you own or want. The closet reads the style across them — palette, silhouette, fabric — then searches real listings and keeps only what fits the way you actually dress.",
+    pieces: ["/garment-shirt.webp", "/garment-jacket.webp"],
+    pieceNames: ["An olive shirt on the rail", "A chore jacket on the rail"],
   },
   {
-    image: "/garment-pants.webp",
-    name: "A pair of trousers on the rail",
     label: "What you get back",
     heading: "A closet that fills itself.",
     body: "Real pieces in your price range and your size, each with a line on why it suits you. Say yes or no to anything — the next run listens.",
+    pieces: ["/garment-pants.webp", "/garment-knit.webp"],
+    pieceNames: ["Grey wool trousers on the rail", "An oatmeal sweater on the rail"],
   },
 ];
 

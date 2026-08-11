@@ -1,14 +1,15 @@
 import SmoothScroll from "./components/SmoothScroll";
 import Cursor from "./components/Cursor";
 import Hero from "./components/Hero";
-import FrameScrubber from "./components/FrameScrubber";
+import CorridorWalk from "./components/CorridorWalk";
 import EndWall from "./components/EndWall";
 import SiteSection from "./components/SiteSection";
 import DustOverlay from "./components/DustOverlay";
 
-// One page: the wardrobe opens, the camera walks the corridor as you scroll,
-// arrives at the end wall where the clothes carry the writing — then the page
-// settles into the actual website. Must read completely with CSS disabled.
+// One continuous move: the wardrobe opens, the walk begins, the camera rests
+// twice while the clothes present the writing, then the corridor releases into
+// the arrival and the page settles into the actual website. Must read
+// completely with CSS disabled.
 export default function Page() {
   return (
     <main>
@@ -17,7 +18,7 @@ export default function Page() {
       <DustOverlay />
 
       <Hero />
-      <FrameScrubber />
+      <CorridorWalk />
       <EndWall />
       <SiteSection />
     </main>
