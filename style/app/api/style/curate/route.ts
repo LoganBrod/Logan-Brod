@@ -3,7 +3,8 @@ import { curate } from "@/lib/curate";
 import { PICKS_PER_BATCH } from "@/lib/batching";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
-import { readTasteId, tasteMemo } from "@/lib/taste";
+import { tasteMemo } from "@/lib/taste";
+import { readViewer } from "@/lib/viewer";
 import type { ProductListing } from "@/lib/sources/types";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     const limit =
       Number.isFinite(asked) && asked > 0 ? Math.min(Math.round(asked), 10) : PICKS_PER_BATCH;
 
-    const memo = await tasteMemo(readTasteId(req.headers.get("cookie")));
+    const memo = await tasteMemo((await readViewer(req)).tasteId);
     const curation = await curate(parsedProfile.data, candidates, memo, limit);
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },

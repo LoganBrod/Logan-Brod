@@ -77,6 +77,7 @@ npm run dev
 | `EBAY_ENV` | Optional. `sandbox` or `production` (default). | — |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Saving closets, and the yes/no feedback. Without them everything else still works; results just aren't kept and the vote control doesn't appear. | Vercel → Storage → Marketplace → Upstash |
 | `SERPAPI_KEY` | Optional. Adds mainstream retail alongside eBay. | [serpapi.com](https://serpapi.com/manage-api-key) |
+| `RESEND_API_KEY` / `MAIL_FROM` | Optional. Sending the sign-in link. Without them the app stays anonymous in production; locally the link is printed to the server console instead. | [resend.com](https://resend.com/api-keys) |
 
 With `SERPAPI_KEY` unset the app searches eBay only and says so in the UI — a supported
 configuration, not a broken one. Swapping SerpAPI for another provider (Oxylabs, Rainforest) means
@@ -107,8 +108,8 @@ npm run build
 The tests cover the logic that doesn't need network: dedupe, per-query interleaving, the SerpAPI
 query cap, both sources surviving the merge, closet-code validation, taste-memo and statistics
 rendering, size parsing out of listing titles, thumbnail fetching against a local server, the
-curation batch plan, wardrobe layout, API-error translation, and the full closet round-trip against
-an in-memory stand-in for Upstash.
+curation batch plan, wardrobe layout, API-error translation, single-use sign-in links, closet
+ownership, and the full closet round-trip against an in-memory stand-in for Upstash.
 
 To exercise saved closets locally without an Upstash account:
 
@@ -268,6 +269,25 @@ vote control simply doesn't render and both passes run without a memo. `renderMe
 newest-first and skips titles it has already placed, so changing your mind about something replaces
 the earlier verdict instead of leaving it in both lists.
 
+**Signing in is optional, and anonymous work is never stranded.** Every closet has always persisted
+under its own code with a ninety-day life; what was missing was any way back to one you hadn't
+written down. `lib/library.ts` indexes them against an owner, which is an account when you're signed
+in and the anonymous browser id when you aren't — the same shape either way, which is what lets
+signing in **adopt** everything you built beforehand: closets, votes, statistics, sizes. Punishing
+the people who liked the app enough to make an account would be the wrong way round.
+
+**Keeping is what makes a closet permanent.** An unkept closet is a run you happened to make and
+expires as it always did; pressing Keep removes the expiry (`PERSIST`) and asks for a name, because
+the point of keeping something is that you know why. Keep and release only touch codes already in
+your own list, so knowing a code is enough to *open* a closet — as it always has been — but not to
+pin someone else's open forever.
+
+**Sign-in is a link, not a password.** A password is a thing to store, leak, reset, and reuse from
+somewhere else; for an app that remembers what clothes you like, proving you can read an email is
+the right amount of ceremony. Links are single-use through `GETDEL`, so two clicks race and exactly
+one wins, and expire in fifteen minutes. Requests are rate limited per address — anyone can type
+someone else's address into the form, and the cost of that lands on someone who didn't do anything.
+
 **A closet code is the only credential.** Anyone with the code can open that closet. There are no
 accounts. Codes are 6 characters from a 31-character alphabet with `0/O/1/I/L` excluded so they
 survive being read aloud, and are allocated with `SET NX` so a collision can never overwrite
@@ -289,6 +309,10 @@ app/
   api/style/{analyze,shop,curate}/route.ts
   api/closet/route.ts
   api/taste/route.ts        yes/no votes, and the memo they render into
+  api/auth/route.ts         request a sign-in link, see who's signed in, sign out
+  api/auth/callback/route.ts  spend the link, adopt anonymous work, start a session
+  api/closets/route.ts      the list, and keep / release / remove
+  closets/page.tsx          every closet you've built
   components/               StyleRunner owns the form→exiting→building→open→filled sequence;
                             ClosetStage is the wardrobe, the detail panel, and the vote control;
                             GarmentBag is one piece hanging on the rail in its bag
@@ -310,6 +334,13 @@ lib/
   thumbnails.ts                       fetches candidate photos for curation, because
                                       the API's own fetcher honours robots.txt and one
                                       rejected URL fails the whole message
+  accounts.ts                         users, sessions, and single-use sign-in links
+  library.ts                          every closet an owner has built, and which
+                                      of them they kept
+  viewer.ts                           who a request belongs to — an account, or the
+                                      anonymous browser behind it
+  mail.ts                             sends the sign-in link; prints it to the console
+                                      when no provider is configured
   taste.ts                            what this browser said yes and no to, what it
                                       clicked, and the memo both Claude passes are given
   sizing.ts                           the sizing profile, and reading sizes out of titles

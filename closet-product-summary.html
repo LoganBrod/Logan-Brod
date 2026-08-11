@@ -1,0 +1,532 @@
+<title>Closet — product summary</title>
+<style>
+  /* Palette lifted from the product itself: the warm seamless backdrop of the
+     wardrobe render, brushed-metal rail, and the restrained brass used only for
+     emphasis. Dark is the same room with the lights down, not an inversion. */
+  :root {
+    --ground: #EDEAE4;
+    --raised: #F7F5F1;
+    --sunk:   #E4E0D8;
+    --ink:    #1B1A17;
+    --muted:  #6F6A62;
+    --faint:  #9A948B;
+    --line:   #D6D1C7;
+    --rail:   #9E9A92;
+    --brass:  #8A7448;
+    --vignette: radial-gradient(120% 70% at 50% 0%, #F4F2EE 0%, #EDEAE4 45%, #E3DFD7 100%);
+
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #171613;
+      --raised: #1F1E1A;
+      --sunk:   #121110;
+      --ink:    #EAE6DF;
+      --muted:  #A29C93;
+      --faint:  #7A746C;
+      --line:   #2E2C27;
+      --rail:   #6B665F;
+      --brass:  #C0A76F;
+      --vignette: radial-gradient(120% 70% at 50% 0%, #201E1A 0%, #171613 50%, #100F0D 100%);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #171613;
+    --raised: #1F1E1A;
+    --sunk:   #121110;
+    --ink:    #EAE6DF;
+    --muted:  #A29C93;
+    --faint:  #7A746C;
+    --line:   #2E2C27;
+    --rail:   #6B665F;
+    --brass:  #C0A76F;
+    --vignette: radial-gradient(120% 70% at 50% 0%, #201E1A 0%, #171613 50%, #100F0D 100%);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--ground);
+    background-image: var(--vignette);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: clamp(3rem, 8vw, 6rem) clamp(1.25rem, 5vw, 3rem) 6rem;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 1.25rem;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.75rem, 8vw, 4.25rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(1.1rem, 2.4vw, 1.3rem);
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 34rem;
+    margin: 0 0 3.5rem;
+    text-wrap: pretty;
+  }
+
+  /* The rail. Everything in the document hangs off it, the way everything in
+     the product hangs off the one in the wardrobe — each section marked by the
+     same hook the garment bags use. */
+  .rail {
+    border-left: 1px solid var(--line);
+    padding-left: clamp(1.25rem, 4vw, 2.25rem);
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  section { position: relative; }
+
+  section > h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.4rem;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+
+  section > h2::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * clamp(1.25rem, 4vw, 2.25rem) - 5px);
+    top: 0.42em;
+    width: 10px;
+    height: 7px;
+    border: 1.5px solid var(--rail);
+    border-bottom: 0;
+    border-radius: 999px 999px 0 0;
+  }
+
+  p { margin: 0 0 1rem; max-width: 36rem; }
+  p:last-child { margin-bottom: 0; }
+
+  strong { font-weight: 600; }
+  em { font-style: italic; color: var(--muted); }
+
+  a {
+    color: var(--brass);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  a:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* The pipeline is genuinely sequential — each pass can only run on what the
+     one before it produced — so the numbering carries information. */
+  ol.pipeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    counter-reset: step;
+  }
+
+  ol.pipeline > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0 0.75rem;
+    align-items: baseline;
+  }
+
+  ol.pipeline > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: var(--brass);
+    font-variant-numeric: tabular-nums;
+  }
+
+  ol.pipeline h3 {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 0 0 0.35rem;
+  }
+
+  ol.pipeline p {
+    grid-column: 2;
+    color: var(--muted);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  ul.points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  ul.points h3 {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 0.3rem;
+  }
+
+  ul.points p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .table-scroll { overflow-x: auto; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.7rem 1rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding-bottom: 0.5rem;
+  }
+
+  tbody th { font-weight: 500; white-space: nowrap; }
+  td { color: var(--muted); }
+
+  /* State reads at a glance from the mark, not only from the word. */
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .state::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .state.live::before     { background: var(--brass); }
+  .state.optional::before { background: var(--rail); }
+  .state.unproven::before { background: transparent; border: 1.5px solid var(--rail); }
+
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 1.75rem 2rem;
+    padding: 1.75rem 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .figure .n {
+    display: block;
+    font-family: var(--serif);
+    font-size: 1.9rem;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 0.4rem;
+  }
+
+  .figure .l {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--faint);
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--faint);
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">LevoZ Labs · Product summary</p>
+  <h1>Closet</h1>
+  <p class="standfirst">
+    Show it a few pieces you already think look good. It works out what they have in common, goes
+    and finds real things to buy that extend it, throws out everything that doesn&rsquo;t fit, and
+    hangs what&rsquo;s left in a wardrobe you can come back to.
+  </p>
+
+  <div class="rail">
+    <section>
+      <h2>The problem it actually solves</h2>
+      <p>
+        Most people know what they like when they see it and cannot describe it. Ask someone their
+        style and you get &ldquo;casual, I guess&rdquo;; show them two jackets and they will pick
+        the right one instantly. Every shopping tool built so far asks for the description.
+      </p>
+      <p>
+        Closet asks for the pictures. Taste goes in as evidence rather than vocabulary, and what
+        comes back is not inspiration or a mood board &mdash; it is specific listings, in stock, in
+        your size, at a price you set, with a link.
+      </p>
+    </section>
+
+    <section>
+      <h2>How a run works</h2>
+      <ol class="pipeline">
+        <li>
+          <h3>Upload</h3>
+          <p>
+            One to six photos, downscaled in the browser and sent straight to the model. Nothing is
+            uploaded to a storage service; the photos are never hosted anywhere.
+          </p>
+        </li>
+        <li>
+          <h3>Read the style</h3>
+          <p>
+            A vision pass reads aesthetic, palette, silhouette, fabrics and formality across the
+            set, works out what is <em>missing</em> rather than what is already there, and writes
+            eight to ten specific shopping queries. &ldquo;Brown suede chelsea boot&rdquo;, not
+            &ldquo;men&rsquo;s shoes&rdquo;.
+          </p>
+        </li>
+        <li>
+          <h3>Search</h3>
+          <p>
+            Every query runs against eBay and Google Shopping at once, scoped to menswear
+            categories resolved live rather than hardcoded. Results are deduped, interleaved so no
+            single query or source can crowd out the others, and anything whose title states a size
+            that cannot fit is dropped before the model sees it.
+          </p>
+        </li>
+        <li>
+          <h3>Choose</h3>
+          <p>
+            Three passes run in parallel over slices of the pool, each looking at the actual
+            photographs. A listing captioned &ldquo;waxed cotton jacket&rdquo; showing a
+            woman&rsquo;s cropped jacket is dropped on sight. Each surviving piece gets one sentence
+            on why it suits you and is tagged by category, maker, material and colour.
+          </p>
+        </li>
+      </ol>
+    </section>
+
+    <div class="figures">
+      <div class="figure">
+        <span class="n">~120</span>
+        <span class="l">candidates gathered per run</span>
+      </div>
+      <div class="figure">
+        <span class="n">9</span>
+        <span class="l">pieces shown, at most</span>
+      </div>
+      <div class="figure">
+        <span class="n">3&times;</span>
+        <span class="l">judging passes, run at once</span>
+      </div>
+      <div class="figure">
+        <span class="n">1&nbsp;yr</span>
+        <span class="l">it remembers your taste</span>
+      </div>
+    </div>
+
+    <section>
+      <h2>Why it is different from a recommendation feed</h2>
+      <ul class="points">
+        <li>
+          <h3>The photograph is the evidence, the title is a claim</h3>
+          <p>
+            Every candidate is judged on its actual product image. Sellers mislabel constantly, and
+            on secondhand marketplaces the picture is the only honest part of a listing.
+          </p>
+        </li>
+        <li>
+          <h3>A wide net, a tight result</h3>
+          <p>
+            It gathers around 120 candidates and shows at most nine. Being selective requires having
+            something to select between, and the value is in what gets thrown away.
+          </p>
+        </li>
+        <li>
+          <h3>It has to fit</h3>
+          <p>
+            Sizes are asked for once and remembered. A beautiful jacket two sizes wrong is worth
+            nothing, and no amount of watching someone browse ever reveals their inseam.
+          </p>
+        </li>
+        <li>
+          <h3>Secondhand is a first-class source</h3>
+          <p>
+            Most of what is genuinely good at a given price has already been owned once. Searching
+            eBay on relevance rather than price is what surfaces it.
+          </p>
+        </li>
+        <li>
+          <h3>The result is an object, not a page</h3>
+          <p>
+            Pieces hang in a wardrobe that builds itself as the run completes, each in a garment bag
+            that clears when you look at it. The closet is saved under a short code, so it is
+            somewhere you return to rather than a list you scroll once.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What it learns</h2>
+      <p>
+        Every closet is scored against you without asking you to fill anything in. Each piece
+        counts as an impression; opening it, clicking through to the listing, and answering
+        <strong>Right for you?</strong> are progressively stronger signals. Those accumulate against
+        the piece&rsquo;s material, colour, category and maker &mdash; and maker <em>within</em> a
+        category, because someone excellent at waxed jackets has told you nothing about their boots.
+      </p>
+      <p>
+        The care is in not over-reading it. One click on three impressions is not a 33% preference,
+        it is noise, so an attribute has to be seen five times before it counts at all, and what it
+        reports is a confidence interval measured against your own average rather than a raw rate.
+        What survives that goes into both the searching and the choosing on every later run, so the
+        wardrobe moves toward you instead of repeating itself.
+      </p>
+      <p>
+        All of it is per browser, under an anonymous identifier. There are no accounts, no sign-up,
+        and no email required to use the product at all.
+      </p>
+    </section>
+
+    <section>
+      <h2>State of play</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Capability</th><th scope="col">Status</th><th scope="col">Depends on</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Style reading &amp; curation</th>
+              <td><span class="state live">Live</span></td>
+              <td>Claude Opus</td>
+            </tr>
+            <tr>
+              <th scope="row">eBay search</th>
+              <td><span class="state live">Live</span></td>
+              <td>eBay Browse API</td>
+            </tr>
+            <tr>
+              <th scope="row">Google Shopping</th>
+              <td><span class="state unproven">Not yet validated</span></td>
+              <td>SerpAPI key</td>
+            </tr>
+            <tr>
+              <th scope="row">Saved closets &amp; codes</th>
+              <td><span class="state optional">Live, optional</span></td>
+              <td>Upstash Redis</td>
+            </tr>
+            <tr>
+              <th scope="row">Sizing &amp; taste memory</th>
+              <td><span class="state optional">Live, optional</span></td>
+              <td>Upstash Redis</td>
+            </tr>
+            <tr>
+              <th scope="row">Affiliate revenue</th>
+              <td><span class="state unproven">Not built</span></td>
+              <td>eBay Partner Network</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:1.25rem">
+        The app runs without Upstash or SerpAPI &mdash; those are enhancements, not requirements.
+        Google Shopping is wired and behind a key; its response mapping has not yet been confirmed
+        against live results end to end.
+      </p>
+    </section>
+
+    <section>
+      <h2>Economics</h2>
+      <p>
+        Roughly $0.20&ndash;0.30 in model cost per full run, almost all of it in the two vision
+        passes. That figure predates splitting the judging into parallel batches and has not been
+        re-measured since.
+      </p>
+      <p>
+        There is no revenue path connected yet. The obvious one is affiliate: eBay pays 4% on
+        fashion, and because the product already produces a small list of specific listings that
+        someone asked for, the click-through it generates is unusually qualified. Wiring it is a
+        header and one field on the search call &mdash; the work is the programme sign-up, not the
+        code.
+      </p>
+    </section>
+
+    <section>
+      <h2>What is worth building next</h2>
+      <p>
+        <strong>Prove the second source.</strong> Retail listings alongside secondhand roughly
+        doubles the pool and is the difference between a marketplace tool and a shopping product.
+        It is wired; it needs one live run against real results.
+      </p>
+      <p>
+        <strong>Connect the revenue.</strong> Affiliate links are the smallest piece of work here
+        with the largest change in what the product is.
+      </p>
+      <p>
+        <strong>Carry taste across devices.</strong> Everything learned is tied to one browser. The
+        closet code already travels; the taste behind it does not.
+      </p>
+    </section>
+  </div>
+
+  <footer>
+    LevoZ Labs &middot; <a href="mailto:levoz.labs@gmail.com">levoz.labs@gmail.com</a>
+  </footer>
+</div>

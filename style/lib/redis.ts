@@ -84,6 +84,41 @@ export async function expire(key: string, ttlSeconds: number): Promise<void> {
   await command("EXPIRE", key, ttlSeconds);
 }
 
+/** Drop a key's expiry, so it lives until it's deleted. What "keeping" a closet means. */
+export async function persist(key: string): Promise<void> {
+  await command("PERSIST", key);
+}
+
+/**
+ * Read a key and delete it in the same round trip.
+ *
+ * This is what makes a sign-in link single-use: two clicks on the same link
+ * race for one value, and only one of them can win. Doing it as a read then a
+ * delete would leave a window where both succeed.
+ */
+export async function takeJson<T>(key: string): Promise<T | null> {
+  const raw = await command<string | null>("GETDEL", key);
+  if (raw == null) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Increment a counter that expires, and return the new value.
+ *
+ * The expiry is set every time rather than only on creation. That makes this a
+ * sliding window instead of a fixed one, which is the stricter reading and the
+ * right one for "stop sending this address emails".
+ */
+export async function bump(key: string, ttlSeconds: number): Promise<number> {
+  const count = await command<number>("INCR", key);
+  await command("EXPIRE", key, ttlSeconds);
+  return count;
+}
+
 export async function deleteKey(key: string): Promise<void> {
   await command("DEL", key);
 }

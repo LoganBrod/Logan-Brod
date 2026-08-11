@@ -9,8 +9,11 @@ import {
   updateCloset,
   type ClosetDraft,
 } from "@/lib/closet";
+import { addToLibrary } from "@/lib/library";
 import { redisConfigured } from "@/lib/redis";
 import { StyleProfileSchema } from "@/lib/schemas";
+import { newTasteId, tasteCookie } from "@/lib/taste";
+import { readViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -127,10 +130,35 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json(
-      { closet },
-      { headers: { "Set-Cookie": cookieHeader(closet.code), "Cache-Control": "no-store" } }
-    );
+    // Index it against whoever built it, so it can be found again without the
+    // code. Best-effort by design: a closet that saved but didn't get listed is
+    // still reachable, and failing the save over bookkeeping would be worse.
+    //
+    // A brand-new browser may not have an id yet — the taste route is what
+    // usually mints one, and a first run can save before anything has called
+    // it. Minting here means the very first closet someone builds is owned,
+    // rather than being the one that silently never appears in their list.
+    const viewer = await readViewer(req);
+    const minted = viewer.owner ? null : newTasteId();
+    const owner = viewer.owner ?? { kind: "browser" as const, id: minted! };
+
+    await addToLibrary(owner, {
+      code: closet.code,
+      createdAt: closet.createdAt,
+      itemCount: closet.items.length,
+      range: closet.range,
+    });
+
+    // Two cookies when an owner was just minted: the closet code as always,
+    // and the browser id the closet is now filed under.
+    const cookies = minted
+      ? [cookieHeader(closet.code), tasteCookie(minted)]
+      : [cookieHeader(closet.code)];
+
+    const headers = new Headers({ "Cache-Control": "no-store" });
+    for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+
+    return NextResponse.json({ closet }, { headers });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 502 });
