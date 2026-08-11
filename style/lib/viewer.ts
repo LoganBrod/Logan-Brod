@@ -11,6 +11,7 @@
 // can't collide with a minted browser id.
 
 import { readSession, type User } from "./accounts";
+import { planFor, type Plan } from "./plans";
 import { readTasteId } from "./taste";
 import type { Owner } from "./library";
 
@@ -22,6 +23,10 @@ export interface Viewer {
   owner: Owner | null;
   /** The key taste is stored under, or null when there's nowhere to put it. */
   tasteId: string | null;
+  /** Free unless an account says otherwise. Anonymous is always free. */
+  plan: Plan;
+  /** What usage is metered against — the account, or the browser. */
+  meterId: string | null;
 }
 
 /** Accounts and browsers share a namespace, so account ids are prefixed. */
@@ -47,5 +52,9 @@ export async function readViewer(req: Request): Promise<Viewer> {
     browserId,
     owner,
     tasteId: owner ? tasteIdFor(owner) : null,
+    plan: planFor(user),
+    // Metered against the same identity that owns the work, so signing out
+    // doesn't reset anyone's month.
+    meterId: owner ? tasteIdFor(owner) : null,
   };
 }

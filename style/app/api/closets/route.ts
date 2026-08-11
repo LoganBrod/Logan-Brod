@@ -7,6 +7,7 @@ import {
   releaseCloset,
   type LibraryEntry,
 } from "@/lib/library";
+import { allowance, limitMessage, spend } from "@/lib/plans";
 import { redisConfigured } from "@/lib/redis";
 import { readViewer } from "@/lib/viewer";
 
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
 
 /** PATCH /api/closets — keep a closet under a name, or let it go again. */
 export async function PATCH(req: Request) {
-  const { owner } = await readViewer(req);
+  const { owner, plan, meterId } = await readViewer(req);
   if (!owner) {
     return NextResponse.json({ error: "Nothing identifies this browser yet." }, { status: 401 });
   }
@@ -72,6 +73,22 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Give it a name so you'll recognise it." }, { status: 400 });
   }
 
+  // Keeping is the metered action; letting one go always works, so nobody is
+  // ever stuck at their limit with no way down.
+  if (keep) {
+    const already = await readLibrary(owner);
+    const isNew = !already.find((entry) => entry.code === code)?.keptAt;
+    if (isNew) {
+      const room = await allowance(meterId, plan, "keeps");
+      if (!room.allowed) {
+        return NextResponse.json(
+          { error: limitMessage("keeps", room.plan), limit: room },
+          { status: 402 }
+        );
+      }
+    }
+  }
+
   try {
     // Ownership is enforced by the library itself: keep and release only touch
     // codes already in this owner's list, so knowing a code is not enough to
@@ -83,6 +100,7 @@ export async function PATCH(req: Request) {
     if (!entry) {
       return NextResponse.json({ error: "That closet isn't one of yours." }, { status: 404 });
     }
+    if (keep) await spend(meterId, "keeps");
     return NextResponse.json({ ok: true, closet: entry }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Couldn't update that closet.";

@@ -16,14 +16,27 @@ import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/passwords";
 import { adoptTaste, readTasteId } from "@/lib/taste";
 import { readViewer, tasteIdFor } from "@/lib/viewer";
 import { mailConfigured, sendLoginLink } from "@/lib/mail";
+import { LIMITS, usage } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
 /** GET /api/auth — who is signed in, and whether signing in is possible at all. */
 export async function GET(req: Request) {
-  const { user } = await readViewer(req);
+  const { user, plan, meterId } = await readViewer(req);
+
+  // What's left this month, so the UI can say so before someone presses a
+  // button that's going to refuse them.
+  const [closets, judgements, keeps] = await Promise.all([
+    usage(meterId, "closets"),
+    usage(meterId, "judgements"),
+    usage(meterId, "keeps"),
+  ]);
+
   return NextResponse.json(
     {
+      plan,
+      limits: LIMITS[plan],
+      used: { closets, judgements, keeps },
       // Passwords need nothing but storage. A link needs a way to arrive, so
       // it can be off while passwords stay on — the UI hides what isn't there
       // rather than offering a control that can only fail.

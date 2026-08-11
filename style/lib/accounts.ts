@@ -46,6 +46,8 @@ export interface User {
   createdAt: string;
   /** Absent for accounts that have only ever signed in by link. */
   passwordHash?: string;
+  /** Absent means free. Set by `grantPlan` in lib/plans.ts. */
+  plan?: "free" | "member";
 }
 
 function token(): string {
