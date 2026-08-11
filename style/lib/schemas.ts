@@ -120,3 +120,35 @@ export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 export type StyleProfile = z.infer<typeof StyleProfileSchema>;
 export type Pick = z.infer<typeof PickSchema>;
 export type Curation = z.infer<typeof CurationSchema>;
+
+/**
+ * A verdict on one piece.
+ *
+ * Deliberately not a score out of ten. The question people ask is "should I buy
+ * this", and an answer that hedges into a number makes them do the deciding
+ * again — so the verdict comes first and everything else explains it.
+ */
+export const JudgementSchema = z.object({
+  verdict: z
+    .enum(["yes", "maybe", "no"])
+    .describe("Straight answer. 'maybe' only when it genuinely turns on something you can't see."),
+  headline: z
+    .string()
+    .describe("One sentence to the wearer, saying the answer and the single reason behind it."),
+  forIt: z
+    .array(z.string())
+    .describe("Up to three short points in its favour, each pointing at something in the photo."),
+  againstIt: z
+    .array(z.string())
+    .describe("Up to three honest reservations. Never empty for a 'maybe' or a 'no'."),
+  onPrice: z
+    .string()
+    .describe("One line on whether the asking price is fair for this piece in this condition."),
+  onFit: z
+    .string()
+    .describe(
+      "One line on size and cut against what they wear. Say plainly when the listing doesn't state a size."
+    ),
+});
+
+export type Judgement = z.infer<typeof JudgementSchema>;

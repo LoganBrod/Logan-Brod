@@ -10,6 +10,7 @@ import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import { PICKS_PER_BATCH, appendPicks, planBatches } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
+import JudgePanel from "./JudgePanel";
 
 type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
 
@@ -681,6 +682,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           <p className="mt-5 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800">
             {error}
           </p>
+        )}
+
+        {!busy && (
+          <div className="mt-6 border-t border-room-line pt-5">
+            <JudgePanel range={{ min, max }} />
+          </div>
         )}
 
         {eBayOnly && !busy && (
