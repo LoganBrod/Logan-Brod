@@ -568,7 +568,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           </div>
           {/* Sizes. Optional, remembered per browser, and asked here rather than
               learned because no amount of watching someone browse reveals their
-              inseam \u2014 while a listing in the wrong size is worthless however
+              inseam — while a listing in the wrong size is worthless however
               good the piece is. Anything left blank simply isn't used. */}
           {sizesAvailable && (
             <>
@@ -600,7 +600,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   type="number"
                   min={26}
                   max={50}
-                  placeholder="\u2014"
                   value={sizes.waist ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ waist: numberOrUndefined(e.target.value) })}
@@ -616,7 +615,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   type="number"
                   min={26}
                   max={40}
-                  placeholder="\u2014"
                   value={sizes.inseam ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ inseam: numberOrUndefined(e.target.value) })}
@@ -633,7 +631,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   min={5}
                   max={16}
                   step={0.5}
-                  placeholder="\u2014"
                   value={sizes.shoe ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ shoe: numberOrUndefined(e.target.value) })}

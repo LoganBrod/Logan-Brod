@@ -282,11 +282,23 @@ the point of keeping something is that you know why. Keep and release only touch
 your own list, so knowing a code is enough to *open* a closet — as it always has been — but not to
 pin someone else's open forever.
 
-**Sign-in is a link, not a password.** A password is a thing to store, leak, reset, and reuse from
-somewhere else; for an app that remembers what clothes you like, proving you can read an email is
-the right amount of ceremony. Links are single-use through `GETDEL`, so two clicks race and exactly
-one wins, and expire in fifteen minutes. Requests are rate limited per address — anyone can type
-someone else's address into the form, and the cost of that lands on someone who didn't do anything.
+**Two ways in, and the link is also the reset.** A password is the fast way back for someone who
+returns often; a sign-in link is how you get in having forgotten it, and the only way in for an
+account that has never set one. Building the link first was deliberate — password auth needs a reset
+flow, and a reset flow *is* this machinery, so there was never a second thing to build.
+
+Links are single-use through `GETDEL`, so two clicks race and exactly one wins, and expire in
+fifteen minutes. Passwords are scrypt from the standard library (`lib/passwords.ts`) rather than
+bcrypt or argon2 — both are native modules, which means a compile on every deploy and a dependency
+that can fail on a platform you didn't test; scrypt is memory-hard, purpose-built for this, and
+already there. Cost parameters are stored inside each hash, so raising the work factor later doesn't
+invalidate anyone's password.
+
+Both paths are rate limited per address, because anyone can type someone else's address into that
+form. Two failure modes are deliberately indistinguishable — a wrong password and an address with no
+account read identically and take the same time to answer, so the form can't be used to ask who has
+an account here. The one exception is an account that exists with no password set, which has to be
+distinguishable or there'd be no way to tell someone to use a link instead.
 
 **A closet code is the only credential.** Anyone with the code can open that closet. There are no
 accounts. Codes are 6 characters from a 31-character alphabet with `0/O/1/I/L` excluded so they
@@ -334,7 +346,9 @@ lib/
   thumbnails.ts                       fetches candidate photos for curation, because
                                       the API's own fetcher honours robots.txt and one
                                       rejected URL fails the whole message
-  accounts.ts                         users, sessions, and single-use sign-in links
+  accounts.ts                         users, sessions, passwords, and single-use links
+  passwords.ts                        scrypt hashing — no native dependency, and the
+                                      cost parameters travel inside each hash
   library.ts                          every closet an owner has built, and which
                                       of them they kept
   viewer.ts                           who a request belongs to — an account, or the

@@ -12,6 +12,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { bump, deleteKey, expire, getJson, redisConfigured, setJson, takeJson } from "./redis";
+import { fakeVerify, hashPassword, verifyPassword } from "./passwords";
 
 export const SESSION_COOKIE = "sid";
 
@@ -29,10 +30,22 @@ export const LOGIN_TTL_SECONDS = 15 * 60;
 /** Sign-in emails per address per hour. Enough for a few honest retries. */
 const LOGIN_REQUESTS_PER_HOUR = 5;
 
+/**
+ * Password attempts per address per fifteen minutes.
+ *
+ * Generous for someone who genuinely can't remember, and useless for guessing:
+ * even a hundred attempts an hour against one address gets nowhere, and the
+ * hashing cost means each one is paid for in CPU as well.
+ */
+const PASSWORD_ATTEMPTS = 10;
+const PASSWORD_WINDOW_SECONDS = 15 * 60;
+
 export interface User {
   id: string;
   email: string;
   createdAt: string;
+  /** Absent for accounts that have only ever signed in by link. */
+  passwordHash?: string;
 }
 
 function token(): string {
@@ -216,4 +229,56 @@ export async function consumeLoginLink(
 
   const user = await upsertUser(record.email);
   return { user, tasteId: record.tasteId };
+}
+
+// ------------------------------------------------------------------ passwords
+
+/** Give an account a password, or change the one it has. */
+export async function setPassword(userId: string, password: string): Promise<void> {
+  const user = await readUser(userId);
+  if (!user) throw new Error("No such account.");
+  await setJson(`user:${user.id}`, { ...user, passwordHash: await hashPassword(password) });
+}
+
+export type SignInResult =
+  | { ok: true; user: User }
+  | { ok: false; reason: "wrong" | "no-password" | "rate-limited" };
+
+/**
+ * Sign in with an address and a password.
+ *
+ * Every failure path returns the same "wrong" to the caller, and the address
+ * that has no account still pays the cost of a hash — so neither the message
+ * nor the timing says whether an account exists. The one exception is an
+ * account that exists and has never set a password, which has to be
+ * distinguishable or there'd be no way to tell someone to use a link instead.
+ */
+export async function signInWithPassword(
+  email: string,
+  password: string
+): Promise<SignInResult> {
+  const attempts = await bump(`rate:pw:${emailKey(email)}`, PASSWORD_WINDOW_SECONDS);
+  if (attempts > PASSWORD_ATTEMPTS) return { ok: false, reason: "rate-limited" };
+
+  const user = await findUserByEmail(email);
+  if (!user) {
+    await fakeVerify(password);
+    return { ok: false, reason: "wrong" };
+  }
+  if (!user.passwordHash) return { ok: false, reason: "no-password" };
+
+  const correct = await verifyPassword(password, user.passwordHash);
+  return correct ? { ok: true, user } : { ok: false, reason: "wrong" };
+}
+
+/** Create an account with a password. Fails if the address is already taken. */
+export async function registerWithPassword(
+  email: string,
+  password: string
+): Promise<{ ok: true; user: User } | { ok: false; reason: "taken" }> {
+  if (await findUserByEmail(email)) return { ok: false, reason: "taken" };
+
+  const user = await upsertUser(email);
+  await setPassword(user.id, password);
+  return { ok: true, user: (await readUser(user.id))! };
 }
