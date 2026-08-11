@@ -36,6 +36,12 @@ static; product routes are server-rendered on demand. Set the env vars from
 `.env.local.example` in the Vercel project — the marketing half needs none of
 them, but the product will not run without them.
 
+## How the product works
+
+`PRODUCT.md` is the product's own documentation — the pipeline, why it recommends
+what it does, how sign-in and saved closets work. It moved here unchanged when the
+two apps merged.
+
 ## Still TODO
 
 `lib/copy.ts` carries visible `TODO` placeholders for the website section's

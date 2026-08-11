@@ -210,3 +210,99 @@ test("a browser with nothing to adopt changes nothing", () => {
   const account = [entry("KEEPME")];
   assert.deepEqual(library.mergeLibraries(account, []), account);
 });
+
+// ---------------------------------------------------------------- passwords
+
+const passwords = await import("../lib/passwords.ts");
+
+test("a password verifies against its own hash and nothing else", async () => {
+  const hash = await passwords.hashPassword("correct horse battery");
+  assert.equal(await passwords.verifyPassword("correct horse battery", hash), true);
+  assert.equal(await passwords.verifyPassword("correct horse batterz", hash), false);
+  assert.equal(await passwords.verifyPassword("", hash), false);
+});
+
+test("the same password hashes differently every time", async () => {
+  // Salted, so two people with the same password don't share a hash and a
+  // leaked table can't be attacked once for all of them.
+  const a = await passwords.hashPassword("the same password");
+  const b = await passwords.hashPassword("the same password");
+  assert.notEqual(a, b);
+  assert.equal(await passwords.verifyPassword("the same password", a), true);
+  assert.equal(await passwords.verifyPassword("the same password", b), true);
+});
+
+test("the stored hash carries its own cost parameters", async () => {
+  // So raising the work factor later doesn't invalidate existing passwords.
+  const hash = await passwords.hashPassword("parameters travel");
+  const [scheme, n, r, p] = hash.split("$");
+  assert.equal(scheme, "scrypt");
+  assert.ok(Number(n) >= 16384, `work factor ${n} is too low`);
+  assert.ok(Number(r) > 0 && Number(p) > 0);
+});
+
+test("a mangled stored hash is a failed sign-in, not a crash", async () => {
+  for (const junk of ["", "nonsense", "bcrypt$1$2$3$4$5", "scrypt$$$$$"]) {
+    assert.equal(await passwords.verifyPassword("anything", junk), false, junk);
+  }
+});
+
+test("passwords are refused for length, not for punctuation", () => {
+  assert.ok(passwords.passwordProblem("short"));
+  assert.ok(passwords.passwordProblem("x".repeat(500)));
+  assert.ok(passwords.passwordProblem(12345678901));
+  // No composition rules: a long ordinary phrase is a good password.
+  assert.equal(passwords.passwordProblem("a reasonably long passphrase"), null);
+});
+
+test("signing in with a password works, and a wrong one doesn't", async () => {
+  const created = await accounts.registerWithPassword("pw@example.com", "a long enough one");
+  assert.ok(created.ok);
+
+  const good = await accounts.signInWithPassword("pw@example.com", "a long enough one");
+  assert.equal(good.ok, true);
+
+  const bad = await accounts.signInWithPassword("pw@example.com", "a long enough two");
+  assert.deepEqual(bad, { ok: false, reason: "wrong" });
+});
+
+test("an address with no account fails the same way as a wrong password", async () => {
+  // Both "wrong", so the form never answers whether an account exists.
+  const missing = await accounts.signInWithPassword("nobody@example.com", "a long enough one");
+  assert.deepEqual(missing, { ok: false, reason: "wrong" });
+});
+
+test("an account that has only ever used links says so", async () => {
+  // This one has to be distinguishable, or there's no way to tell someone to
+  // use a link instead of guessing at a password they never set.
+  await accounts.upsertUser("linkonly@example.com");
+  const result = await accounts.signInWithPassword("linkonly@example.com", "a long enough one");
+  assert.deepEqual(result, { ok: false, reason: "no-password" });
+});
+
+test("an address that already exists can't be registered over", async () => {
+  await accounts.registerWithPassword("taken@example.com", "a long enough one");
+  const again = await accounts.registerWithPassword("taken@example.com", "something else here");
+  assert.deepEqual(again, { ok: false, reason: "taken" });
+});
+
+test("setting a password is how a link-only account gets one", async () => {
+  const user = await accounts.upsertUser("later@example.com");
+  assert.deepEqual(await accounts.signInWithPassword("later@example.com", "a long enough one"), {
+    ok: false,
+    reason: "no-password",
+  });
+
+  await accounts.setPassword(user.id, "a long enough one");
+  assert.equal((await accounts.signInWithPassword("later@example.com", "a long enough one")).ok, true);
+});
+
+test("guessing at one address is throttled", async () => {
+  await accounts.registerWithPassword("guess@example.com", "a long enough one");
+  let limited = false;
+  for (let i = 0; i < 14; i += 1) {
+    const result = await accounts.signInWithPassword("guess@example.com", `wrong guess ${i}`);
+    if (!result.ok && result.reason === "rate-limited") limited = true;
+  }
+  assert.ok(limited, "no limit was ever hit");
+});
