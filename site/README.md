@@ -5,10 +5,14 @@ One Next.js app serving both halves of the company:
 | Route | What it is |
 |---|---|
 | `/` | The marketing site — one scroll-driven walk down a wardrobe corridor |
-| `/closet` | The product: upload pieces you like, get a closet built from real listings |
+| `/closet` | Upload pieces you like, get a closet built from real listings |
 | `/closet/[code]` | A saved closet |
+| `/wardrobe` | Photograph what you own; outfits built from it |
+| `/sizing` | Your measurements, and how a given brand's sizes run |
+| `/scan` | Standing searches that keep running after you close the tab |
+| `/discover` | Closets other people chose to share, and likes |
 | `/closets` | Every closet you've built |
-| `/api/**` | The product's endpoints (Claude, eBay, Google Shopping, auth, taste) |
+| `/api/**` | The endpoints (Claude, eBay, Google Shopping, auth, taste, fit, social) |
 
 ## Layout
 

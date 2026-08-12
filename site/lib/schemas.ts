@@ -201,3 +201,43 @@ export const OutfitsSchema = z.object({
 export type OwnedItem = z.infer<typeof OwnedItemSchema>;
 export type Outfit = z.infer<typeof OutfitSchema>;
 export type Outfits = z.infer<typeof OutfitsSchema>;
+
+/**
+ * What size to buy from one brand, read off that brand's own size guide and
+ * whatever the internet says about how it fits.
+ *
+ * `confidence` is load-bearing rather than decorative. This pass reads pages
+ * that may not mention the brand at all, and an answer given with the same
+ * certainty whether it found a size chart or a single forum post is worse than
+ * no answer — so the schema forces the model to say which it had.
+ */
+export const FitAdviceSchema = z.object({
+  recommendation: z
+    .string()
+    .describe(
+      "The size to buy, as that brand writes it: 'L', '42R', '34x32', 'US 10'. If the sources genuinely don't support a specific size, say so in a few words instead of guessing."
+    ),
+  runs: z
+    .enum(["small", "true", "large", "unknown"])
+    .describe("How this brand fits relative to a standard US size, according to the sources."),
+  confidence: z
+    .enum(["high", "medium", "low"])
+    .describe(
+      "high only when a source gave an actual size chart with measurements. medium for consistent fit reports without a chart. low for thin or conflicting evidence."
+    ),
+  reasoning: z
+    .string()
+    .describe(
+      "Two or three sentences addressed to the wearer, citing what the sources actually said. Name the measurement you matched against when there was one."
+    ),
+  cautions: z
+    .array(z.string())
+    .describe(
+      "Short warnings worth knowing before buying — vintage sizing differing from current, a cut that's slim through the chest, shrinkage on wash. Empty when there are none."
+    ),
+  sources: z
+    .array(z.string())
+    .describe("The titles of the pages the advice actually came from. Never invent one."),
+});
+
+export type FitAdvice = z.infer<typeof FitAdviceSchema>;

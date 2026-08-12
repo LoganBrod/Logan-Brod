@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   // The browser always gets an id, signed in or not: it's what anonymous work
   // is filed under, and what gets adopted if an account appears later.
   const browserId = readTasteId(req.headers.get("cookie")) ?? newTasteId();
-  const { tasteId } = await readViewer(req);
+  const { tasteId, plan } = await readViewer(req);
   const id = tasteId ?? browserId;
 
   let votes: Awaited<ReturnType<typeof readVotes>> = [];
@@ -69,7 +69,9 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json(
-    { configured, count: votes.length, verdicts, sizes, memo: renderMemo(votes) },
+    // `plan` rides along because the closet page already makes this call and
+    // needs to know whether a standing scan is available before it offers one.
+    { configured, plan, count: votes.length, verdicts, sizes, memo: renderMemo(votes) },
     {
       headers: {
         "Set-Cookie": cookieHeader(browserId),
