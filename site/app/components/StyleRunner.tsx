@@ -11,6 +11,8 @@ import { PICKS_PER_BATCH, appendPicks, planBatches } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
+import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
+import ShareCard from "./ShareCard";
 
 type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
 
@@ -40,6 +42,11 @@ function partiallyJudged(count: number): string {
 }
 
 const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Shopping" };
+
+/** What a closet's standing scan is called, taken from what the style turned out to be. */
+function watchName(profile: StyleProfile): string {
+  return profile.aesthetics.slice(0, 2).join(" & ") || "Your closet";
+}
 
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
   preparing: "Preparing your photos…",
@@ -107,15 +114,21 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   // the best description of what someone is looking for, so a standing search
   // is a continuation of the closet rather than a form to fill in.
   const [watchState, setWatchState] = useState<"hidden" | "offer" | "saving" | "on">("hidden");
+  // The modal is a separate piece of state from the inline offer above it: the
+  // popup is shown once, when a run finishes, and the panel stays afterwards so
+  // there's still a way to say yes to someone who dismissed it.
+  const [prompting, setPrompting] = useState(false);
+  const [plan, setPlan] = useState<"free" | "member">("free");
 
   useEffect(() => {
     let alive = true;
     fetch("/api/taste")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json: { configured?: boolean; sizes?: Sizes } | null) => {
+      .then((json: { configured?: boolean; sizes?: Sizes; plan?: "free" | "member" } | null) => {
         if (!alive || !json) return;
         setSizesAvailable(Boolean(json.configured));
         setSizes(json.sizes ?? {});
+        setPlan(json.plan ?? "free");
       })
       .catch(() => {});
     return () => {
@@ -409,6 +422,9 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
       await save(contents);
       setWatchState("offer");
+      // Asked once per finished run, unless they've turned it off. Checked here
+      // rather than at render so muting mid-session takes effect immediately.
+      if (!scanPromptMuted()) setPrompting(true);
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -439,15 +455,21 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     }
   }
 
-  /** Leave this closet's searches running. */
-  async function startWatch(profile: StyleProfile) {
+  /**
+   * Leave this closet's searches running.
+   *
+   * Returns whether it worked, because the modal needs to know: a refusal there
+   * is the upgrade pitch rather than an error, and it should stay open to make
+   * it. The inline panel goes on reporting failures through the page banner.
+   */
+  async function startWatch(profile: StyleProfile): Promise<boolean> {
     setWatchState("saving");
     try {
       const res = await fetch("/api/watches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: profile.aesthetics.slice(0, 2).join(" & ") || "Your closet",
+          name: watchName(profile),
           queries: profile.searchQueries.map((q) => q.query),
           range: { min, max },
         }),
@@ -455,9 +477,11 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error ?? "Couldn't start that watch.");
       setWatchState("on");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't start that watch.");
       setWatchState("offer");
+      return false;
     }
   }
 
@@ -798,10 +822,30 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             </div>
           )}
 
-          <button type="button" onClick={() => setPhase("form")} className="btn-ghost">
-            Start another
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => setPhase("form")} className="btn-ghost">
+              Start another
+            </button>
+            {code && (
+              <ShareCard
+                code={code}
+                name={watchName(results.profile)}
+                items={results.items}
+                palette={results.profile.palette}
+              />
+            )}
+          </div>
         </>
+      )}
+
+      {prompting && results?.profile && (
+        <ScanPrompt
+          name={watchName(results.profile)}
+          itemCount={results.items.length}
+          plan={plan}
+          onStart={() => startWatch(results.profile)}
+          onClose={() => setPrompting(false)}
+        />
       )}
     </div>
   );

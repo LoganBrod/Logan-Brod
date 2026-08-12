@@ -6,6 +6,7 @@
 // subscription — so this reports nothing rather than something adequate.
 
 import { curate } from "./curate";
+import { fitNoteFor, readHistory } from "./fit";
 import { dedupeKey, shop } from "./sources";
 import { conflictsWithSizes, hasSizes } from "./sizing";
 import { readSizes, tasteMemo } from "./taste";
@@ -30,9 +31,18 @@ const MAX_PER_ALERT = 4;
 /** One sweep looks at a smaller pool than a full run — it's checking, not searching. */
 const SWEEP_CAP = 24;
 
+/**
+ * A find, plus what this person already knows about the brand's sizing.
+ *
+ * Kept as an extension of `CuratedItem` rather than a field on it: a curated
+ * item is what the curation pass produced, and the fit note is something this
+ * app knows about the reader. Only alerts carry it.
+ */
+export type Alert = CuratedItem & { fitNote?: string };
+
 export interface SweepResult {
   watch: Watch;
-  found: CuratedItem[];
+  found: Alert[];
   /**
    * Everything this sweep looked at, not just what it forwarded. Marking only
    * the winners would mean re-judging — and re-paying for — the same rejected
@@ -78,10 +88,11 @@ export async function sweepWatch(
   if (watch.paused || !watch.queries.length) return { watch, found: [], consideredKeys: [] };
 
   try {
-    const [seen, sizes, memo] = await Promise.all([
+    const [seen, sizes, memo, fitHistory] = await Promise.all([
       readSeen(owner, watch.id),
       tasteId ? readSizes(tasteId) : Promise.resolve({}),
       tasteId ? tasteMemo(tasteId) : Promise.resolve(null),
+      readHistory(tasteId),
     ]);
 
     const seenSet = new Set(seen);
@@ -103,7 +114,15 @@ export async function sweepWatch(
     const consideredKeys = fresh.map(dedupeKey);
 
     const curation = await curate(profileFor(watch), fresh, memo, MAX_PER_ALERT);
-    const worth = curation.items.filter((item) => item.score >= ALERT_SCORE);
+    const worth = curation.items
+      .filter((item) => item.score >= ALERT_SCORE)
+      // A piece from a brand they've already looked up carries what they were
+      // told about it. Attached here rather than in the mailer so the same note
+      // is available to anything else that reports a find.
+      .map((item): Alert => {
+        const fitNote = fitNoteFor(fitHistory, item.title);
+        return fitNote ? { ...item, fitNote } : item;
+      });
 
     await updateWatch(owner, watch.id, {
       lastSweptAt: new Date().toISOString(),

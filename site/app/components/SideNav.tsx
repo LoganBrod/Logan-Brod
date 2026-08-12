@@ -15,6 +15,10 @@ import { company, siteSection } from "@/lib/copy";
 const LINKS = [
   { href: "/", label: "About" },
   { href: "/closet", label: "Closet" },
+  { href: "/wardrobe", label: "Wardrobe" },
+  { href: "/sizing", label: "Sizing" },
+  { href: "/scan", label: "Scan" },
+  { href: "/discover", label: "Discover" },
   { href: "/closets", label: "Saved" },
 ] as const;
 
@@ -28,21 +32,25 @@ export default function SideNav() {
   return (
     <nav
       aria-label="Site"
-      className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-6 border-b border-room-line/70 bg-room-bg/85 px-5 backdrop-blur lg:inset-y-0 lg:right-auto lg:h-auto lg:w-52 lg:flex-col lg:items-start lg:gap-0 lg:border-b-0 lg:border-r lg:px-8 lg:py-9"
+      className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-4 border-b border-room-line/70 bg-room-bg/85 px-5 backdrop-blur lg:inset-y-0 lg:right-auto lg:h-auto lg:w-52 lg:flex-col lg:items-start lg:gap-0 lg:border-b-0 lg:border-r lg:px-8 lg:py-9"
     >
       <Link
         href="/"
         data-cursor-target="bag"
-        className="whitespace-nowrap font-serif text-base tracking-wide text-room-ink transition-colors duration-200 ease-out hover:text-accent lg:mb-14 lg:text-lg"
+        className="shrink-0 whitespace-nowrap font-serif text-base tracking-wide text-room-ink transition-colors duration-200 ease-out hover:text-accent lg:mb-14 lg:text-lg"
       >
         {company}
       </Link>
 
-      <ul className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-5">
+      {/* Seven destinations don't fit a phone bar, so it scrolls sideways there
+          and becomes an ordinary column on the rail. `-mx-1 px-1` keeps the
+          focus ring on the first and last link from being clipped by the
+          scroll container. */}
+      <ul className="-mx-1 flex flex-1 items-center gap-4 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-none lg:flex-col lg:items-start lg:gap-5 lg:overflow-visible lg:px-0">
         {LINKS.map((link) => {
           const current = isCurrent(link.href);
           return (
-            <li key={link.href}>
+            <li key={link.href} className="shrink-0">
               <Link
                 href={link.href}
                 aria-current={current ? "page" : undefined}

@@ -102,7 +102,20 @@ export async function sendLoginLink(email: string, url: string): Promise<Deliver
  */
 export function digestBody(
   watchName: string,
-  items: Array<{ title: string; price: number; url: string; whyItFits: string; condition?: string }>
+  items: Array<{
+    title: string;
+    price: number;
+    url: string;
+    whyItFits: string;
+    condition?: string;
+    /**
+     * What this person was already told about how the brand sizes, when the
+     * piece is from a brand they've looked up. This is the whole point of the
+     * sizing feature being remembered rather than answered once: the moment it
+     * is worth knowing that Barbour runs small is the moment a Barbour turns up.
+     */
+    fitNote?: string;
+  }>
 ): { html: string; text: string; subject: string } {
   const one = items.length === 1;
   const subject = one
@@ -115,6 +128,7 @@ export function digestBody(
     ...items.flatMap((item) => [
       `${item.title} — $${item.price.toFixed(2)}${item.condition ? ` (${item.condition})` : ""}`,
       item.whyItFits,
+      ...(item.fitNote ? [`Sizing — ${item.fitNote}`] : []),
       item.url,
       "",
     ]),
@@ -129,7 +143,12 @@ export function digestBody(
       <p style="margin:0 0 6px;font-size:13px;color:#6F6A62">$${item.price.toFixed(2)}${
         item.condition ? ` &middot; ${escapeHtml(item.condition)}` : ""
       }</p>
-      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#1B1A17">${escapeHtml(item.whyItFits)}</p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#1B1A17">${escapeHtml(item.whyItFits)}</p>${
+        item.fitNote
+          ? `
+      <p style="margin:0 0 10px;padding:8px 12px;background:#EDEAE4;border-radius:8px;font-size:13px;line-height:1.5;color:#6F6A62">Sizing &mdash; ${escapeHtml(item.fitNote)}</p>`
+          : ""
+      }
       <a href="${item.url}" style="font-size:13px;font-weight:600;color:#8A7448">View the listing &rarr;</a>
     </td></tr>`
     )
@@ -144,7 +163,7 @@ export function digestBody(
     }</p>
     <table style="width:100%;border-collapse:collapse">${rows}</table>
     <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #D6D1C7;font-size:12px;line-height:1.6;color:#9A948B">
-      These are live listings and secondhand stock moves fast. Stop this watch any time from your closets page.
+      These are live listings and secondhand stock moves fast. Stop this scan any time from your Scan page.
     </p>
   </div>
 </body></html>`;
