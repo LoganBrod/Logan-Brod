@@ -13,6 +13,7 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { JudgementSchema, type Judgement } from "./schemas";
+import { imageSize, meter } from "./meter";
 import { fetchThumbnail, type InlineImage } from "./thumbnails";
 
 const SYSTEM = `You are telling one man whether a specific garment is worth buying, for him.
@@ -87,6 +88,13 @@ export async function judge(input: JudgeInput): Promise<Judgement> {
   });
 
   assertNotRefused(message, "judgement");
+
+  meter({
+    op: "judge",
+    model: MODEL,
+    usage: message.usage,
+    images: [imageSize(input.image.data)],
+  });
   return requireParsed(message.parsed_output, "judgement") as Judgement;
 }
 

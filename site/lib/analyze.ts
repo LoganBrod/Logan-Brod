@@ -1,5 +1,6 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { imageSize, meter } from "./meter";
 import { StyleProfileSchema, type StyleProfile } from "./schemas";
 import type { PriceRange } from "./sources/types";
 
@@ -73,6 +74,13 @@ Read the style across them, then give me eight to ten things to buy that would e
   });
 
   assertNotRefused(message, "style analysis");
+
+  meter({
+    op: "closet.analyze",
+    model: MODEL,
+    usage: message.usage,
+    images: photos.map((photo) => imageSize(photo.data)),
+  });
   const profile = requireParsed(message.parsed_output, "style analysis");
 
   // The schema can't express a count (structured outputs reject array length
