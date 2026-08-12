@@ -40,6 +40,30 @@ static; product routes are server-rendered on demand. Set the env vars from
 `.env.local.example` in the Vercel project — the marketing half needs none of
 them, but the product will not run without them.
 
+`vercel.json` registers the twice-daily standing-closet sweep. It needs
+`CRON_SECRET` set, or `/api/cron/sweep` refuses every request — deliberately, so
+an endpoint that spends money on model calls is never left open.
+
+### Four things that will make a green build serve the wrong thing
+
+Each of these cost us a round of "why can't I see the changes".
+
+1. **Root Directory must be `site`.** The repository root is a *second*, unrelated
+   Next app. Leave the field empty and Vercel builds that one instead, with no
+   error to tell you so.
+2. **Empty commits never deploy.** The project has *skip deployments when there
+   are no changes to the root directory* enabled — right, because commits that
+   only touch the repo root shouldn't rebuild this app. The consequence is that
+   `git commit --allow-empty` is silently discarded. To force a rebuild, change a
+   file under `site/` or use Vercel's Redeploy button.
+3. **`--ff-only` merges don't produce a production build.** Fast-forwarding
+   `master` to the feature branch leaves both refs on the same SHA. Vercel builds
+   a SHA once and credits it to whichever ref it saw first — the branch — so the
+   build lands as a Preview and `master` never gets a Production one. Merge with
+   `--no-ff`, or push a `site/` change to `master` directly.
+4. **The product is at `/closet`, not `/`.** `/` has been the marketing corridor
+   since the two apps merged. A bookmark to `/` looks like the app disappeared.
+
 ## How the product works
 
 `PRODUCT.md` is the product's own documentation — the pipeline, why it recommends
