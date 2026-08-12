@@ -1,0 +1,98 @@
+# Runs the standing-closet sweep on a schedule.
+#
+# This used to be a Vercel cron in site/vercel.json. Vercel's Hobby plan allows
+# at most two cron jobs and will only trigger them once a day, so a twice-daily
+# schedule isn't available there. The sweep endpoint was never coupled to Vercel
+# Cron — it's a plain authenticated GET — so the scheduler lives here instead,
+# where the frequency is ours to choose and costs nothing.
+#
+# Setup, once:
+#   Settings -> Secrets and variables -> Actions
+#     Secret    CRON_SECRET   same value as the deployment's CRON_SECRET
+#     Variable  SITE_ORIGIN   e.g. https://www.levozlabs.com  (no trailing path)
+#
+# If you later move to a platform without a cron frequency limit, delete this
+# file and put the schedule back where the app is deployed.
+name: Sweep standing closets
+
+on:
+  schedule:
+    # 08:00 and 20:00 UTC. GitHub's scheduler is best-effort and runs late under
+    # load, which is fine: the sweep is resumable by design, so a late run or a
+    # missed one costs nothing but a delay.
+    - cron: "0 8,20 * * *"
+  workflow_dispatch:
+
+# Never let two sweeps overlap. They'd duplicate work rather than corrupt
+# anything — the seen sets make a second pass a no-op — but there's no reason to
+# pay for the same model calls twice.
+concurrency:
+  group: sweep
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Call the sweep endpoint
+        env:
+          ORIGIN: ${{ vars.SITE_ORIGIN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ORIGIN}" ]; then
+            echo "::error::The SITE_ORIGIN repository variable is not set."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::The CRON_SECRET repository secret is not set."
+            exit 1
+          fi
+
+          url="${ORIGIN%/}/api/cron/sweep"
+          echo "Sweeping ${url}"
+
+          for attempt in 1 2 3; do
+            # Truncated first, so a failed attempt can never print the previous
+            # attempt's body and read as though it succeeded.
+            : > body.json
+            code="$(curl -sS -o body.json -w '%{http_code}' \
+                      --max-time 300 \
+                      -H "Authorization: Bearer ${CRON_SECRET}" \
+                      "${url}" || true)"
+
+            if [ "${code}" = "200" ]; then
+              echo "Sweep finished."
+              cat body.json
+              {
+                echo "### Sweep"
+                echo '```json'
+                cat body.json
+                echo '```'
+              } >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+
+            # 401 means the secret is wrong, and no amount of retrying fixes
+            # that. Fail immediately rather than spending two more minutes.
+            if [ "${code}" = "401" ]; then
+              echo "::error::Rejected (401). CRON_SECRET here does not match the deployment's."
+              exit 1
+            fi
+
+            echo "Attempt ${attempt} got HTTP ${code:-000}"
+            if [ -s body.json ]; then
+              cat body.json
+              echo
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              sleep "$((attempt * 15))"
+            fi
+          done
+
+          echo "::error::Sweep failed after 3 attempts."
+          exit 1

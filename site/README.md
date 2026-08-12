@@ -40,9 +40,25 @@ static; product routes are server-rendered on demand. Set the env vars from
 `.env.local.example` in the Vercel project — the marketing half needs none of
 them, but the product will not run without them.
 
-`vercel.json` registers the twice-daily standing-closet sweep. It needs
-`CRON_SECRET` set, or `/api/cron/sweep` refuses every request — deliberately, so
-an endpoint that spends money on model calls is never left open.
+The twice-daily standing-closet sweep is scheduled from
+`.github/workflows/sweep.yml`, not from the host. Vercel's Hobby plan allows two
+cron jobs and triggers them once a day, which a twice-daily sweep doesn't fit;
+`/api/cron/sweep` is a plain authenticated `GET`, so any scheduler can drive it
+and GitHub Actions is free. It needs two settings under the repository's
+Settings → Secrets and variables → Actions:
+
+| | |
+|---|---|
+| secret `CRON_SECRET` | the same value as the deployment's |
+| variable `SITE_ORIGIN` | e.g. `https://www.levozlabs.com` |
+
+Without `CRON_SECRET` set on the deployment the endpoint refuses every request —
+deliberately, so an endpoint that spends money on model calls is never left open.
+GitHub disables scheduled workflows after 60 days without a push, so if sweeps
+stop arriving after a quiet stretch, re-enable it on the Actions tab.
+
+Four routes declare a `maxDuration` above 60s, which is the Hobby ceiling — see
+`RAILWAY.md` for what that costs and what to do about it.
 
 ### Four things that will make a green build serve the wrong thing
 
