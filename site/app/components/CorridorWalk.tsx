@@ -6,8 +6,39 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { stops, heroLine, isTodo } from "@/lib/copy";
 import { MOTION, isDesktop, prefersReducedMotion } from "@/lib/motion";
 
+/**
+ * The canonical walk. Every frame index in this file is a position in these
+ * 197, whichever set is actually on screen.
+ */
 const FRAME_COUNT = 197;
 const framePath = (i: number) => `/frames/f_${String(i + 1).padStart(4, "0")}.jpg`;
+
+/**
+ * The same walk, for a phone: 66 frames at 760px instead of 197 at 1400px,
+ * 0.85MB instead of 7.2MB. Built by scripts/build-phone-frames.mjs, which is
+ * where the sampling and the quality live.
+ *
+ * The payload is the entire reason the corridor used to stop at lg. A third of
+ * the frames is a real reduction in smoothness, but the camera moves slowly
+ * enough that it reads as a slow pan rather than a stutter — and the phone's
+ * pin is shorter to match, so the frames are spread over less scrolling than
+ * the desktop's.
+ */
+const PHONE_FRAME_COUNT = 66;
+const phoneFramePath = (i: number) => `/frames-sm/f_${String(i + 1).padStart(4, "0")}.jpg`;
+
+/**
+ * The phone's copy of a garment cut-out. Same technique and same script as the
+ * frames: the originals are drawn about 110px wide on a phone and cost 813KB
+ * across the four to do it.
+ */
+const smallPiece = (src: string) => `/garments-sm${src}`;
+
+/** Which of a set's frames stands in for a position on the canonical walk. */
+function scaleIndex(canonical: number, count: number): number {
+  if (count === FRAME_COUNT) return canonical;
+  return Math.round((canonical * (count - 1)) / (FRAME_COUNT - 1));
+}
 
 /**
  * The whole site's motion lives inside one rounded rectangle, inset from the
@@ -62,12 +93,22 @@ export default function CorridorWalk() {
    * runtime rather than by a media query.
    */
   const [staticMode, setStaticMode] = useState(false);
+  /** Desktop, decided once on mount — gates the decoration a phone shouldn't pay for. */
+  const [wide, setWide] = useState(false);
 
   useEffect(() => {
-    if (!isDesktop() || prefersReducedMotion()) {
+    // Only a stated preference for less movement stops the walk now. Width
+    // decides which set of frames to fetch and how far to pin, not whether the
+    // corridor happens at all.
+    if (prefersReducedMotion()) {
       setStaticMode(true);
       return;
     }
+
+    const phone = !isDesktop();
+    setWide(!phone);
+    const count = phone ? PHONE_FRAME_COUNT : FRAME_COUNT;
+    const pathFor = phone ? phoneFramePath : framePath;
 
     gsap.registerPlugin(ScrollTrigger);
     const section = sectionRef.current;
@@ -121,19 +162,19 @@ export default function CorridorWalk() {
     const settle = () => {
       if (cancelled) return;
       settled += 1;
-      if (settled === FRAME_COUNT && loaded > 0) setReady(true);
+      if (settled === count && loaded > 0) setReady(true);
     };
 
     // And a floor under the whole thing: a connection that stalls rather than
     // failing never fires either handler, so nothing above would ever run.
     // Once most of the walk is in, start it regardless of the stragglers.
     const timeout = window.setTimeout(() => {
-      if (!cancelled && loaded > FRAME_COUNT / 2) setReady(true);
+      if (!cancelled && loaded > count / 2) setReady(true);
     }, 10000);
 
-    for (let i = 0; i < FRAME_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       const img = new Image();
-      img.src = framePath(i);
+      img.src = pathFor(i);
       img.onload = () => {
         if (cancelled) return;
         loaded += 1;
@@ -195,12 +236,12 @@ export default function CorridorWalk() {
     const st = ScrollTrigger.create({
       trigger: section,
       start: "top top",
-      end: "+=520%",
+      end: phone ? "+=320%" : "+=520%",
       pin: true,
       scrub: MOTION.cameraScrub,
       onUpdate: (self) => {
         const p = self.progress;
-        draw(frameAt(p));
+        draw(scaleIndex(frameAt(p), count));
 
         // The hero line holds on the shut doors, then dissolves as they part.
         if (introRef.current) {
@@ -232,40 +273,78 @@ export default function CorridorWalk() {
   }, []);
 
   return (
-    <section ref={sectionRef} aria-label="The corridor" className="relative w-full lg:h-screen">
+    <section
+      ref={sectionRef}
+      aria-label="The corridor"
+      data-corridor
+      /* svh, not vh: iOS measures vh against the viewport with the URL bar
+         hidden, so a 100vh pinned section is taller than the screen actually is
+         and the walk starts partly under the fold. */
+      className={`relative w-full ${staticMode ? "" : "h-[100svh]"}`}
+    >
       {/* The frame: a rounded rectangle inset from the page, everything
-          animated lives inside it. */}
-      {/* Insets clear the shared rail: the left edge starts past it on
-          desktop, and on phones the frame sits below the top bar. */}
-      <div className="lg:absolute lg:bottom-[6vh] lg:left-[calc(13rem+2.5vw)] lg:right-[2.5vw] lg:top-[6vh] max-lg:mx-4 max-lg:mb-4 max-lg:mt-20">
-        <div className="relative h-full w-full overflow-hidden rounded-3xl shadow-[0_30px_60px_-30px_rgba(27,26,23,0.45)] max-lg:aspect-video">
-          {/* Poster for mobile, reduced motion, and the moment before preload. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={framePath(0)}
-            alt=""
+          animated lives inside it. When the walk runs it fills the screen;
+          when it doesn't it's a still at the top of a plain document. */}
+      <div
+        data-frame
+        className={
+          staticMode
+            ? "mx-4 mb-4 mt-20"
+            : "absolute inset-x-3 bottom-[5vh] top-[5vh] lg:inset-x-[2.5vw] lg:bottom-[6vh] lg:top-[6vh]"
+        }
+      >
+        <div
+          data-frame-inner
+          className={`relative h-full w-full overflow-hidden rounded-3xl shadow-[0_30px_60px_-30px_rgba(27,26,23,0.45)] ${
+            staticMode ? "aspect-video" : ""
+          }`}
+        >
+          {/* The still under everything: what a phone sees before the frames
+              land, and all anyone sees in reduced motion. A phone never fetches
+              the 1400px one — it would cost more than three frames of the walk
+              it's standing in for. */}
+          <picture>
+            <source media="(min-width: 1024px)" srcSet={framePath(0)} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={phoneFramePath(0)}
+              alt=""
+              aria-hidden
+              className={`absolute inset-0 h-full w-full object-cover ${
+                ready && !staticMode ? "opacity-0" : ""
+              }`}
+            />
+          </picture>
+          <canvas
+            ref={canvasRef}
             aria-hidden
-            className={`absolute inset-0 h-full w-full object-cover ${ready ? "lg:opacity-0" : ""}`}
+            className={`absolute inset-0 h-full w-full ${staticMode ? "hidden" : ""}`}
           />
-          <canvas ref={canvasRef} aria-hidden className="absolute inset-0 hidden h-full w-full lg:block" />
 
-          {/* The dust breathes inside the frame only. */}
-          <video
-            muted
-            loop
-            autoPlay
-            playsInline
-            aria-hidden
-            className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover opacity-[0.12] mix-blend-screen lg:block"
-          >
-            <source src="/dust.webm" type="video/webm" />
-            <source src="/dust.mp4" type="video/mp4" />
-          </video>
+          {/* The dust breathes inside the frame, on a desktop only. `hidden` was
+              not enough on its own: an autoplaying video is fetched whether or
+              not it is on screen, so a phone paid 240KB for a film it never
+              got shown. Not rendering it at all is the only thing that stops
+              the download. */}
+          {wide && (
+            <video
+              muted
+              loop
+              autoPlay
+              playsInline
+              aria-hidden
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.12] mix-blend-screen"
+            >
+              <source src="/dust.webm" type="video/webm" />
+              <source src="/dust.mp4" type="video/mp4" />
+            </video>
+          )}
 
           {/* The hero line, on the first frame of the walk. */}
           <div
             ref={introRef}
-            className={`absolute inset-0 hidden items-center justify-center ${staticMode ? "" : "lg:flex"}`}
+            data-intro
+            className={`absolute inset-0 items-center justify-center ${staticMode ? "hidden" : "flex"}`}
           >
             <h1
               className={`px-10 text-center font-serif text-room-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
@@ -277,31 +356,47 @@ export default function CorridorWalk() {
           </div>
 
           {/* Desktop: the stops, driven by the pinned timeline. */}
-          <div ref={overlayRef} aria-hidden className={`absolute inset-0 hidden ${staticMode ? "" : "lg:block"}`}>
+          <div ref={overlayRef} aria-hidden data-overlay className={`absolute inset-0 ${staticMode ? "hidden" : "block"}`}>
             {stops.map((stop, i) => (
               <div key={i} data-stop className="absolute inset-0">
-                <div className="absolute left-[9%] top-[10%] w-[15%]" data-piece style={{ opacity: 0 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={stop.pieces[0]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
+                <div className="absolute left-[3%] top-[7%] w-[27%] lg:left-[9%] lg:top-[10%] lg:w-[15%]" data-piece style={{ opacity: 0 }}>
+                  <picture>
+                    <source media="(min-width: 1024px)" srcSet={stop.pieces[0]} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={smallPiece(stop.pieces[0])}
+                      alt=""
+                      draggable={false}
+                      className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]"
+                    />
+                  </picture>
                 </div>
-                <div className="absolute right-[9%] top-[10%] w-[15%]" data-piece style={{ opacity: 0 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={stop.pieces[1]} alt="" draggable={false} className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]" />
+                <div className="absolute right-[3%] top-[7%] w-[27%] lg:right-[9%] lg:top-[10%] lg:w-[15%]" data-piece style={{ opacity: 0 }}>
+                  <picture>
+                    <source media="(min-width: 1024px)" srcSet={stop.pieces[1]} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={smallPiece(stop.pieces[1])}
+                      alt=""
+                      draggable={false}
+                      className="w-full select-none drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]"
+                    />
+                  </picture>
                 </div>
                 <div
                   data-stop-text
-                  className="absolute left-1/2 top-[32%] flex w-[min(46%,560px)] -translate-x-1/2 flex-col items-center gap-4 text-center"
+                  className="absolute left-1/2 top-[34%] flex w-[86%] -translate-x-1/2 flex-col items-center gap-3 text-center lg:top-[32%] lg:w-[min(46%,560px)] lg:gap-4"
                   style={{ opacity: 0 }}
                 >
                   <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
                   <h2
-                    className={`font-serif text-room-ink [font-size:clamp(1.6rem,2.6vw,2.5rem)] leading-tight ${
+                    className={`font-serif text-room-ink [font-size:clamp(1.5rem,6.5vw,2.5rem)] leading-tight lg:[font-size:clamp(1.6rem,2.6vw,2.5rem)] ${
                       isTodo(stop.heading) ? "opacity-40" : ""
                     }`}
                   >
                     {stop.heading}
                   </h2>
-                  <p className={`max-w-[46ch] text-[15px] leading-relaxed text-room-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>
+                  <p className={`max-w-[46ch] text-[13.5px] leading-relaxed text-room-muted lg:text-[15px] ${isTodo(stop.body) ? "opacity-40" : ""}`}>
                     {stop.body}
                   </p>
                 </div>
@@ -311,22 +406,50 @@ export default function CorridorWalk() {
         </div>
       </div>
 
-      {/* Mobile and reduced motion: the hero line and stops as a plain flow. */}
-      <div className={staticMode ? "relative" : "relative lg:hidden"}>
+      {/*
+        Without JavaScript there is no walk, and the markup above defaults to
+        the walk because that is what almost everyone gets — so the fallback has
+        to be reasserted here rather than chosen at render time. This puts the
+        page back to a still and a document: the same thing reduced motion sees.
+
+        A <noscript> block rather than a default-static render because the
+        alternative is a visible jump from document to pinned corridor on every
+        load, for every visitor, to serve the ones who have JS switched off.
+      */}
+      <noscript>
+        <style>{`
+          [data-corridor] { height: auto !important; }
+          [data-frame] { position: static !important; inset: auto !important; margin: 5rem 1rem 1rem !important; }
+          [data-frame-inner] { aspect-ratio: 16 / 9 !important; }
+          [data-intro], [data-overlay] { display: none !important; }
+          [data-flow] { display: block !important; }
+        `}</style>
+      </noscript>
+
+      {/* Reduced motion, no JavaScript: the hero line and stops as a plain flow. */}
+      <div data-flow className={staticMode ? "relative" : "hidden"}>
         <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center font-serif text-4xl leading-tight text-room-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
           {heroLine}
         </h1>
         {stops.map((stop, i) => (
           <section key={i} className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-16 text-center">
             <div className="flex items-start justify-center gap-6">
+              {/* Sized the same way as the overlay's copies, and for a sharper
+                  reason than bandwidth alone: display:none does not stop
+                  Chrome fetching an image, so while this flow is hidden behind
+                  the running walk it was still pulling all four originals —
+                  a phone downloaded 813KB of cut-outs it would never show on
+                  top of the 120KB of cut-outs it did. */}
               {stop.pieces.map((src, j) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={j}
-                  src={src}
-                  alt={stop.pieceNames[j]}
-                  className="w-[34vw] max-w-[180px] drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]"
-                />
+                <picture key={j}>
+                  <source media="(min-width: 1024px)" srcSet={src} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={smallPiece(src)}
+                    alt={stop.pieceNames[j]}
+                    className="w-[34vw] max-w-[180px] drop-shadow-[0_14px_18px_rgba(27,26,23,0.30)]"
+                  />
+                </picture>
               ))}
             </div>
             <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
