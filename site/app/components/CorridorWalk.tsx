@@ -65,7 +65,9 @@ export default function CorridorWalk() {
 
     const draw = (index: number) => {
       const img = images[index];
-      if (!img?.complete || index === current) return;
+      // naturalWidth as well as complete: a request that failed still reports
+      // complete, and handing drawImage a broken image throws.
+      if (!img?.complete || img.naturalWidth === 0 || index === current) return;
       current = index;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth * dpr;
@@ -78,6 +80,37 @@ export default function CorridorWalk() {
       ctx.drawImage(img, (w - img.width * scale) / 2, (h - img.height * scale) / 2, img.width * scale, img.height * scale);
     };
 
+    /*
+     * Reveal the canvas when the frames have finished arriving — not when all
+     * of them have arrived successfully.
+     *
+     * This used to be `loaded === FRAME_COUNT` with no error handler at all,
+     * which meant a single dropped request out of 197 left `ready` false
+     * forever: the poster never faded, the canvas stayed underneath it, and the
+     * whole corridor silently degraded to a still of the shut doors. 197
+     * requests and 7MB over a real network drops one eventually, so this was a
+     * matter of time rather than bad luck, and it failed in the one way nobody
+     * reports usefully — the page looked deliberate.
+     *
+     * A missing frame in the middle is survivable on its own: `draw` skips any
+     * image that isn't there, so the walk holds the previous frame for a beat
+     * instead of stuttering. Only the total absence of frames is fatal, and
+     * that's what the `loaded` check below is for.
+     */
+    let settled = 0;
+    const settle = () => {
+      if (cancelled) return;
+      settled += 1;
+      if (settled === FRAME_COUNT && loaded > 0) setReady(true);
+    };
+
+    // And a floor under the whole thing: a connection that stalls rather than
+    // failing never fires either handler, so nothing above would ever run.
+    // Once most of the walk is in, start it regardless of the stragglers.
+    const timeout = window.setTimeout(() => {
+      if (!cancelled && loaded > FRAME_COUNT / 2) setReady(true);
+    }, 10000);
+
     for (let i = 0; i < FRAME_COUNT; i++) {
       const img = new Image();
       img.src = framePath(i);
@@ -85,8 +118,9 @@ export default function CorridorWalk() {
         if (cancelled) return;
         loaded += 1;
         if (i === 0) draw(0);
-        if (loaded === FRAME_COUNT) setReady(true);
+        settle();
       };
+      img.onerror = settle;
       images.push(img);
     }
 
@@ -172,6 +206,7 @@ export default function CorridorWalk() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
       st.kill();
     };
   }, []);
