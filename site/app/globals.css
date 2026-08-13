@@ -8,24 +8,34 @@
     scroll-behavior: auto;
   }
 
+  /*
+   * The room, in four layers.
+   *
+   * A flat gradient read as "unfinished page" rather than as a space. These
+   * layers give it somewhere to be without putting an image in front of the
+   * content: warm light from above, faint vertical panelling that echoes the
+   * wardrobe doors, a paper grain so large flat areas aren't dead, and a
+   * vignette to stop the edges glowing. All CSS — no asset, no request.
+   */
   body {
     background-color: #edeae4;
-    background-image: radial-gradient(
-      120% 80% at 50% 0%,
-      #f4f2ee 0%,
-      #edeae4 45%,
-      #e3dfd7 100%
-    );
+    background-image:
+      /* grain — one inline SVG turbulence, tiled */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+      /* panelling — a wide, very low-contrast stripe */
+      repeating-linear-gradient(
+        90deg,
+        rgba(27, 26, 23, 0.014) 0px,
+        rgba(27, 26, 23, 0.014) 1px,
+        transparent 1px,
+        transparent 168px
+      ),
+      /* vignette */
+      radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(27, 26, 23, 0.05) 100%),
+      /* the warm wash that was already here */
+      radial-gradient(120% 80% at 50% 0%, #f4f2ee 0%, #edeae4 45%, #e3dfd7 100%);
     background-attachment: fixed;
     color: #1b1a17;
-  }
-
-  /* The ring is only hidden where a real pointer exists to replace it. */
-  @media (hover: hover) and (pointer: fine) {
-    body[data-cursor="custom"],
-    body[data-cursor="custom"] * {
-      cursor: none;
-    }
   }
 
   :focus-visible {

@@ -20,7 +20,7 @@ export default function DiscoverPage() {
             What everyone else built.
           </h1>
           <p className="mt-5 text-sm leading-relaxed text-room-muted">
-            Closets people chose to share. Nothing is here unless its owner put it here, and they
+            Clozets people chose to share. Nothing is here unless its owner put it here, and they
             can take it down whenever they like.
           </p>
         </div>

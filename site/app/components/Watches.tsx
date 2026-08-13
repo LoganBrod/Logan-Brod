@@ -71,7 +71,7 @@ export default function Watches() {
           {state.limit > 0 ? (
             <>
               Nothing on watch. Secondhand stock moves fast &mdash; the right piece is listed on a
-              Tuesday and gone by Wednesday. Finish a closet and you can leave its searches running.
+              Tuesday and gone by Wednesday. Finish a clozet and you can leave its searches running.
             </>
           ) : (
             <>

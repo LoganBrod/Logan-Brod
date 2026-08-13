@@ -38,14 +38,14 @@ function numberOrUndefined(value: string): number | undefined {
  * already hanging.
  */
 function partiallyJudged(count: number): string {
-  return `${count === 1 ? "One batch" : `${count} batches`} of the search couldn't be judged, so this closet is thinner than it should be. Try again to fill it out.`;
+  return `${count === 1 ? "One batch" : `${count} batches`} of the search couldn't be judged, so this clozet is thinner than it should be. Try again to fill it out.`;
 }
 
 const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Shopping" };
 
 /** What a closet's standing scan is called, taken from what the style turned out to be. */
 function watchName(profile: StyleProfile): string {
-  return profile.aesthetics.slice(0, 2).join(" & ") || "Your closet";
+  return profile.aesthetics.slice(0, 2).join(" & ") || "Your clozet";
 }
 
 const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
@@ -53,7 +53,7 @@ const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
   analyzing: "Reading the style…",
   shopping: "Searching for pieces…",
   curating: "Picking the ones that fit…",
-  saving: "Saving your closet…",
+  saving: "Saving your clozet…",
 };
 
 interface Selected {
@@ -229,7 +229,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setSaveNotice(
         err instanceof Error
           ? err.message
-          : "Couldn't save this closet, so there's no code for it."
+          : "Couldn't save this clozet, so there's no code for it."
       );
     }
   }
@@ -444,14 +444,14 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     try {
       const res = await fetch(`/api/closet?code=${encodeURIComponent(wanted)}`);
       const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? "Could not load that closet.");
+      if (!res.ok) throw new Error(json?.error ?? "Could not load that clozet.");
       setResults(json.closet);
       setCode(json.closet.code);
       setSaveNotice(null);
       setCodeInput("");
       setPhase("filled");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load that closet.");
+      setError(err instanceof Error ? err.message : "Could not load that clozet.");
     }
   }
 
@@ -515,7 +515,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value)}
               placeholder="Code"
-              aria-label="Load a saved closet by code"
+              aria-label="Load a saved clozet by code"
               className="field w-28 uppercase tracking-widest"
               maxLength={8}
             />
@@ -698,7 +698,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             disabled={busy || photos.length === 0}
             className="btn-primary ml-auto"
           >
-            {busy ? "Building\u2026" : "Build my closet"}
+            {busy ? "Building\u2026" : "Build my clozet"}
           </button>
         </div>
 
@@ -753,7 +753,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       {/* A source that is configured and still didn't deliver.
 
           Worth its own line, because it is otherwise completely invisible: the
-          run succeeds, the closet fills from whatever did answer, and there is
+          run succeeds, the clozet fills from whatever did answer, and there is
           nothing at all to say the key you just added isn't working. That's a
           bad way to spend an afternoon. */}
       {phase === "filled" && sourceTrouble.length > 0 && (
@@ -776,7 +776,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           {code ? (
             <div className="panel flex flex-wrap items-center justify-between gap-3 px-6 py-4">
               <div>
-                <p className="label mb-1">Closet code</p>
+                <p className="label mb-1">Clozet code</p>
                 <p className="font-mono text-2xl tracking-[0.3em] text-room-ink">{code}</p>
               </div>
               <p className="max-w-xs text-xs leading-relaxed text-room-muted">

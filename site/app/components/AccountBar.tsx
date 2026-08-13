@@ -106,7 +106,7 @@ export default function AccountBar() {
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-room-faint">
           <Link href="/closets" className="font-semibold text-room-muted hover:text-room-ink">
-            Your closets
+            Your clozets
           </Link>
           <span aria-hidden>&middot;</span>
           <span className="truncate">{auth.user.email}</span>
@@ -156,7 +156,7 @@ export default function AccountBar() {
             href="/closets"
             className="text-xs font-semibold text-room-muted hover:text-room-ink"
           >
-            Your closets
+            Your clozets
           </Link>
           <button type="button" onClick={() => setMode("signin")} className="btn-ghost">
             Sign in

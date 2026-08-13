@@ -32,7 +32,7 @@ export default function WardrobePage() {
         <div className="flex flex-col items-end gap-3">
           <AccountBar />
           <Link href="/closet" className="btn-ghost">
-            Build a closet
+            Build a clozet
           </Link>
         </div>
       </header>

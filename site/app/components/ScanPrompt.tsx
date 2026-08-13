@@ -154,7 +154,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
           page &mdash; and turn this prompt back on there too.
         </p>
 
-        <p className="sr-only">Closet: {name}</p>
+        <p className="sr-only">Clozet: {name}</p>
       </div>
     </div>
   );

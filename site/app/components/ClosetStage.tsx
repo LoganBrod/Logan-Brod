@@ -366,7 +366,7 @@ export default function ClosetStage({
 
           It sits in a slot of its own with a reserved height instead of floating
           over the wardrobe — with two rows the lower one now hangs where an
-          overlay would land, and a panel that covered half the closet every time
+          overlay would land, and a panel that covered half the clozet every time
           you moved the pointer was worse than the problem it solved. The height
           is reserved so the page doesn't jump on every hover; when nothing is
           open the slot holds the hint instead of sitting empty.
@@ -385,7 +385,7 @@ export default function ClosetStage({
           }`}
         >
           {canVote
-            ? "Say yes or no on a piece and the next closet is picked around it."
+            ? "Say yes or no on a piece and the next clozet is picked around it."
             : "Hover or tap a piece to see why it's here."}
         </p>
 

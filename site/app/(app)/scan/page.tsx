@@ -24,20 +24,20 @@ export default function ScanPage() {
             Keep looking after you close the tab.
           </h1>
           <p className="mt-5 text-sm leading-relaxed text-room-muted">
-            A closet is one search on one day. Secondhand stock turns over daily, so almost
+            A clozet is one search on one day. Secondhand stock turns over daily, so almost
             everything that would suit you isn&rsquo;t listed at the moment you look &mdash; the
             right jacket in your size at your price goes up on a Tuesday and is gone by Wednesday.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-room-muted">
             A scan runs your searches twice a day, throws away everything it has already shown you,
-            judges what&rsquo;s left exactly as a closet would, and emails you only what clears the
+            judges what&rsquo;s left exactly as a clozet would, and emails you only what clears the
             same bar. Most days it finds nothing and says nothing.
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
           <AccountBar />
           <Link href="/closet" className="btn-ghost">
-            Build a closet
+            Build a clozet
           </Link>
         </div>
       </header>
