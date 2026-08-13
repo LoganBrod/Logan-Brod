@@ -31,7 +31,7 @@ export default function ScanSettings() {
             muteScanPrompt(next);
             setMuted(next);
           }}
-          className="mt-0.5 h-4 w-4 rounded border-room-line accent-[#8A7448]"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-room-line accent-[#8A7448] sm:h-4 sm:w-4"
         />
         <span className="text-sm leading-relaxed text-room-muted">
           Ask whether I want a standing scan when a clozet finishes.

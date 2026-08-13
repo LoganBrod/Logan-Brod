@@ -74,7 +74,7 @@ export default function JudgePanel({ range }: { range: { min: number; max: numbe
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-semibold text-room-muted underline-offset-4 hover:text-room-ink hover:underline"
+        className="-my-2 py-2 text-xs font-semibold text-room-muted underline-offset-4 hover:text-room-ink hover:underline sm:my-0 sm:py-0"
       >
         Found something? Ask if it&rsquo;s any good &rarr;
       </button>

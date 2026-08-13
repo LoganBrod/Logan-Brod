@@ -364,23 +364,25 @@ export default function ClosetStage({
           garment: even at this size a bag is too small to hold readable text,
           and a floating card would cover the pieces hanging next to it.
 
-          It sits in a slot of its own with a reserved height instead of floating
-          over the wardrobe — with two rows the lower one now hangs where an
-          overlay would land, and a panel that covered half the clozet every time
-          you moved the pointer was worse than the problem it solved. The height
-          is reserved so the page doesn't jump on every hover; when nothing is
-          open the slot holds the hint instead of sitting empty.
+          Where a pointer is, it sits in a slot of its own with a reserved height
+          instead of floating over the wardrobe — with two rows the lower one now
+          hangs where an overlay would land, and a panel that covered half the
+          clozet every time you moved the pointer was worse than the problem it
+          solved. The height is reserved so the page doesn't jump on every hover;
+          when nothing is open the slot holds the hint instead of sitting empty.
+          On a phone none of that applies and it becomes a bottom sheet — see the
+          note on the panel itself.
 
           It holds a link and buttons, so it has to take the pointer — and it
           stays open while the pointer is over either the bag or the panel, with
           a short delay so crossing the gap doesn't dismiss it. */}
       <div
         className={`relative transition-[min-height] duration-300 ${
-          showGarments ? "mt-4 min-h-[196px] sm:min-h-[180px]" : "min-h-0"
+          showGarments ? "mt-4 min-h-[72px] sm:min-h-[180px]" : "min-h-0"
         }`}
       >
         <p
-          className={`absolute inset-x-0 top-6 text-center text-xs text-room-faint transition-opacity duration-200 ${
+          className={`absolute inset-x-0 top-4 text-center text-xs text-room-faint transition-opacity duration-200 sm:top-6 ${
             active || !showGarments ? "opacity-0" : "opacity-100"
           }`}
         >
@@ -389,19 +391,34 @@ export default function ClosetStage({
             : "Hover or tap a piece to see why it's here."}
         </p>
 
+        {/*
+          On a phone this is a sheet pinned to the bottom of the screen; from sm
+          up it stays in the reserved slot below the wardrobe.
+
+          The slot was the bug. A phone screen holds the header, the heading and
+          a 4:5 wardrobe and nothing else, so the slot beneath it sat a couple of
+          hundred pixels below the fold: tapping a piece opened a panel nobody
+          could see, and the piece looked broken rather than busy. Pinning it to
+          the viewport is the only placement that's guaranteed visible whatever
+          the person has scrolled to — and it's what a phone does with detail
+          anyway. The reserved height shrinks to just what the hint line needs,
+          since nothing is going to land in it any more.
+        */}
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className={`absolute inset-x-0 top-0 flex justify-center transition-all duration-200 ${
-            active ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+          className={`fixed inset-x-0 bottom-0 z-40 flex justify-center transition-all duration-200 sm:absolute sm:inset-x-0 sm:bottom-auto sm:top-0 sm:z-auto ${
+            active
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-full opacity-0 sm:translate-y-2"
           }`}
         >
-          <div className="panel relative w-full max-w-md px-5 py-3.5 text-left shadow-lift">
+          <div className="panel relative w-full max-w-md rounded-b-none px-5 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3.5 text-left shadow-lift sm:rounded-b-2xl sm:py-3.5">
             <button
               type="button"
               onClick={(e) => dismiss(e)}
               aria-label="Close"
-              className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full text-room-faint transition-colors hover:bg-room-sunk hover:text-room-ink"
+              className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-full text-room-faint transition-colors hover:bg-room-sunk hover:text-room-ink sm:right-2.5 sm:top-2.5 sm:h-6 sm:w-6"
             >
               &times;
             </button>
@@ -432,7 +449,7 @@ export default function ClosetStage({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => active && record([{ item: active, signal: "clicked" }])}
-                className="text-xs font-semibold text-accent underline-offset-4 hover:underline"
+                className="-my-2 py-2 text-xs font-semibold text-accent underline-offset-4 hover:underline sm:my-0 sm:py-0"
               >
                 View the listing &rarr;
               </a>
@@ -450,7 +467,7 @@ export default function ClosetStage({
                         type="button"
                         onClick={() => vote(active, verdict)}
                         aria-pressed={chosen}
-                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors sm:px-2.5 sm:py-1 ${
                           chosen
                             ? "border-room-ink bg-room-ink text-room-bg"
                             : "border-room-line text-room-muted hover:border-room-ink/40 hover:text-room-ink"

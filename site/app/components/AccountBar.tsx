@@ -105,7 +105,7 @@ export default function AccountBar() {
     return (
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-room-faint">
-          <Link href="/closets" className="font-semibold text-room-muted hover:text-room-ink">
+          <Link href="/closets" className="-my-2 py-2 font-semibold text-room-muted hover:text-room-ink sm:my-0 sm:py-0">
             Your clozets
           </Link>
           <span aria-hidden>&middot;</span>
@@ -123,7 +123,7 @@ export default function AccountBar() {
         </div>
 
         {mode === "password" && (
-          <form onSubmit={submit} className="flex items-center gap-2">
+          <form onSubmit={submit} className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <input
               type="password"
               required
@@ -134,7 +134,7 @@ export default function AccountBar() {
               placeholder={`At least ${auth.minPasswordLength} characters`}
               aria-label="New password"
               autoComplete="new-password"
-              className="field w-56"
+              className="field w-full sm:w-56"
             />
             <button type="submit" disabled={busy} className="btn-primary">
               {busy ? "Saving…" : "Save"}
@@ -154,7 +154,7 @@ export default function AccountBar() {
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Link
             href="/closets"
-            className="text-xs font-semibold text-room-muted hover:text-room-ink"
+            className="-my-2 py-2 text-xs font-semibold text-room-muted hover:text-room-ink sm:my-0 sm:py-0"
           >
             Your clozets
           </Link>
@@ -171,7 +171,7 @@ export default function AccountBar() {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <form onSubmit={submit} className="flex flex-wrap items-center justify-end gap-2">
+      <form onSubmit={submit} className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <input
           type="email"
           required
@@ -181,7 +181,7 @@ export default function AccountBar() {
           placeholder="you@example.com"
           aria-label="Email address"
           autoComplete="email"
-          className="field w-52"
+          className="field w-full sm:w-52"
         />
         <input
           type="password"
@@ -192,7 +192,7 @@ export default function AccountBar() {
           placeholder="Password"
           aria-label="Password"
           autoComplete={creating ? "new-password" : "current-password"}
-          className="field w-44"
+          className="field w-full sm:w-44"
         />
         <button type="submit" disabled={busy} className="btn-primary">
           {busy ? "…" : creating ? "Create account" : "Sign in"}

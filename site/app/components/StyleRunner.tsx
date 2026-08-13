@@ -589,7 +589,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           </div>
         )}
 
-        <div className="mt-7 flex flex-wrap items-end gap-4">
+        {/* A two-column grid on phones, the original row from sm up.
+            Wrapping fixed-width fields at 390px dealt the last size field and
+            the build button the same line, so "Shoe" sat beside the thing you
+            press to start — which read as a caption for it. A grid can't do
+            that: the fields fill the columns and the button gets its own row. */}
+        <div className="mt-7 grid grid-cols-2 items-end gap-4 sm:flex sm:flex-wrap">
           <div>
             <label htmlFor="min" className="label mb-2 block">
               Min per piece
@@ -601,7 +606,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               value={min}
               disabled={busy}
               onChange={(e) => setMin(Number(e.target.value))}
-              className="field w-28"
+              className="field w-full sm:w-28"
             />
           </div>
           <div>
@@ -615,7 +620,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               value={max}
               disabled={busy}
               onChange={(e) => setMax(Number(e.target.value))}
-              className="field w-28"
+              className="field w-full sm:w-28"
             />
           </div>
           {/* Sizes. Optional, remembered per browser, and asked here rather than
@@ -633,7 +638,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   value={sizes.tops ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ tops: e.target.value || undefined })}
-                  className="field w-24"
+                  className="field w-full sm:w-24"
                 >
                   <option value="">Any</option>
                   {LETTER_SIZES.map((size) => (
@@ -655,7 +660,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   value={sizes.waist ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ waist: numberOrUndefined(e.target.value) })}
-                  className="field w-20"
+                  className="field w-full sm:w-20"
                 />
               </div>
               <div>
@@ -670,7 +675,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   value={sizes.inseam ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ inseam: numberOrUndefined(e.target.value) })}
-                  className="field w-20"
+                  className="field w-full sm:w-20"
                 />
               </div>
               <div>
@@ -686,7 +691,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                   value={sizes.shoe ?? ""}
                   disabled={busy}
                   onChange={(e) => updateSizes({ shoe: numberOrUndefined(e.target.value) })}
-                  className="field w-20"
+                  className="field w-full sm:w-20"
                 />
               </div>
             </>
@@ -696,7 +701,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             type="button"
             onClick={run}
             disabled={busy || photos.length === 0}
-            className="btn-primary ml-auto"
+            className="btn-primary col-span-2 w-full sm:ml-auto sm:w-auto"
           >
             {busy ? "Building\u2026" : "Build my clozet"}
           </button>

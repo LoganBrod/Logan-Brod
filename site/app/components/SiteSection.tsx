@@ -68,13 +68,15 @@ export default function SiteSection() {
           for a hamburger to find out what else exists. */}
       <nav
         aria-label="Sections"
-        className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-room-line/70 px-6 py-10"
+        className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-8 border-t border-room-line/70 px-6 py-8 sm:gap-y-3 sm:py-10"
       >
         {SECTIONS.map((section) => (
           <Link
             key={section.href}
             href={section.href}
-            className="text-[12px] uppercase tracking-[0.22em] text-room-muted transition-colors duration-200 ease-out hover:text-accent"
+            /* py-2 on phones only: six 18px-tall links in a wrapped row are
+               three of them under a thumb at once. */
+            className="py-2 text-[12px] uppercase tracking-[0.22em] text-room-muted transition-colors duration-200 ease-out hover:text-accent sm:py-0"
           >
             {section.label}
           </Link>

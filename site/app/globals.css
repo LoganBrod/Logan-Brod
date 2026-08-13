@@ -34,8 +34,17 @@
       radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(27, 26, 23, 0.05) 100%),
       /* the warm wash that was already here */
       radial-gradient(120% 80% at 50% 0%, #f4f2ee 0%, #edeae4 45%, #e3dfd7 100%);
-    background-attachment: fixed;
     color: #1b1a17;
+  }
+
+  /* A fixed background is painted against the viewport, which on a phone is a
+     moving target: iOS resizes it as the URL bar hides and shows, so the wash
+     visibly jumps mid-scroll and every frame repaints the whole layer stack.
+     Attach it to the page below lg and let it scroll with the content. */
+  @media (min-width: 1024px) {
+    body {
+      background-attachment: fixed;
+    }
   }
 
   :focus-visible {
@@ -163,8 +172,11 @@
     @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-room-faint;
   }
 
+  /* py-3 on phones and py-2.5 from sm up: a finger needs roughly 44px of
+     target, a pointer needs none of it, and the desktop proportions were
+     already right. */
   .btn {
-    @apply rounded-full px-5 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40;
+    @apply rounded-full px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5;
   }
 
   .btn-primary {
@@ -175,8 +187,19 @@
     @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/30 hover:text-room-ink;
   }
 
+  /*
+   * 16px on phones, 14px from sm up.
+   *
+   * This is not a taste decision. Mobile Safari zooms the whole page in when
+   * you focus an input whose text is smaller than 16px, and it does not zoom
+   * back out when you leave — so every size field on this site left the person
+   * scrolled sideways through a page they now had to pinch to escape. 16px is
+   * the threshold, exactly; 14px is fine everywhere a pointer is.
+   *
+   * The extra vertical padding comes along for the same reason as .btn.
+   */
   .field {
-    @apply rounded-full border border-room-line bg-room-panel px-4 py-2 text-sm text-room-ink placeholder:text-room-faint focus:border-room-ink/40 focus:outline-none;
+    @apply rounded-full border border-room-line bg-room-panel px-4 py-2.5 text-base text-room-ink placeholder:text-room-faint focus:border-room-ink/40 focus:outline-none sm:py-2 sm:text-sm;
   }
 }
 
