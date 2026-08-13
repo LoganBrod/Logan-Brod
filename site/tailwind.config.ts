@@ -29,6 +29,10 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["var(--font-serif)", "Georgia", "serif"],
+        // Explicit rather than inherited: leaving `sans` to Tailwind's default
+        // resolves to the system UI stack, which is the face every web form on
+        // the internet is set in.
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       boxShadow: {
         hang: "0 10px 14px rgba(27, 26, 23, 0.28)",

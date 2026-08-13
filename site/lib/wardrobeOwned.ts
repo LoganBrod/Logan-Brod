@@ -13,6 +13,7 @@
 
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { imageSize, meter } from "./meter";
 import { OutfitsSchema, WardrobeReadSchema, type Outfits, type OwnedItem } from "./schemas";
 import { getJson, redisConfigured, setJson } from "./redis";
 import type { InlineImage } from "./thumbnails";
@@ -100,6 +101,13 @@ export async function readWardrobePhotos(images: InlineImage[]): Promise<OwnedIt
   });
 
   assertNotRefused(message, "wardrobe reading");
+
+  meter({
+    op: "wardrobe.read",
+    model: MODEL,
+    usage: message.usage,
+    images: images.map((image) => imageSize(image.data)),
+  });
   const read = requireParsed(message.parsed_output, "wardrobe reading");
   return read.items;
 }
@@ -162,6 +170,13 @@ export async function buildOutfits(
   });
 
   assertNotRefused(message, "outfits");
+
+  meter({
+    op: "wardrobe.outfits",
+    model: MODEL,
+    usage: message.usage,
+    extra: { garments: owned.length },
+  });
   const built = requireParsed(message.parsed_output, "outfits");
 
   // Drop any index that isn't a real garment. A hallucinated index would render

@@ -39,7 +39,7 @@ export default function ClosetLibrary() {
     fetch("/api/closets")
       .then((res) => (res.ok ? res.json() : null))
       .then((json: Library | null) => json && setLibrary(json))
-      .catch(() => setError("Couldn't load your closets."));
+      .catch(() => setError("Couldn't load your clozets."));
   }, []);
 
   useEffect(load, [load]);
@@ -79,7 +79,7 @@ export default function ClosetLibrary() {
     return (
       <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
         Saving isn&rsquo;t set up, so there&rsquo;s nothing to list. Add Upstash Redis
-        (Vercel &rarr; Storage &rarr; Marketplace) and closets will start appearing here.
+        (Vercel &rarr; Storage &rarr; Marketplace) and clozets will start appearing here.
       </p>
     );
   }
@@ -88,7 +88,7 @@ export default function ClosetLibrary() {
     return (
       <div className="panel px-6 py-8 text-center">
         <p className="mb-4 text-sm text-room-muted">
-          Nothing here yet. Every closet you build shows up on this page automatically.
+          Nothing here yet. Every clozet you build shows up on this page automatically.
         </p>
         <Link href="/closet" className="btn-primary inline-block">
           Build one
@@ -127,7 +127,7 @@ export default function ClosetLibrary() {
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
             placeholder="Call it something"
-            aria-label="Name for this closet"
+            aria-label="Name for this clozet"
             className="field w-48"
           />
           <button type="submit" className="btn-primary">

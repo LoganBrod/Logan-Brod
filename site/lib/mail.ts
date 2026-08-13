@@ -24,7 +24,7 @@ export type Delivery = "sent" | "logged";
  */
 function body(url: string): { html: string; text: string } {
   const text = [
-    "Here's your link to sign in to Closet.",
+    "Here's your link to sign in to Clozet.",
     "",
     url,
     "",
@@ -35,7 +35,7 @@ function body(url: string): { html: string; text: string } {
   const html = `<!doctype html>
 <html><body style="margin:0;padding:32px;background:#EDEAE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#1B1A17">
   <div style="max-width:32rem;margin:0 auto;background:#F7F5F1;border:1px solid #D6D1C7;border-radius:16px;padding:32px">
-    <p style="margin:0 0 24px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#9A948B">Closet</p>
+    <p style="margin:0 0 24px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#9A948B">Clozet</p>
     <p style="margin:0 0 24px;font-size:16px;line-height:1.6">Here&rsquo;s your link to sign in.</p>
     <p style="margin:0 0 28px">
       <a href="${url}" style="display:inline-block;background:#1B1A17;color:#EDEAE4;text-decoration:none;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600">Sign in</a>
@@ -77,7 +77,7 @@ export async function sendLoginLink(email: string, url: string): Promise<Deliver
     body: JSON.stringify({
       from: process.env.MAIL_FROM,
       to: [email],
-      subject: "Your link to sign in to Closet",
+      subject: "Your link to sign in to Clozet",
       html,
       text,
     }),

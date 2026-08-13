@@ -140,7 +140,7 @@ export default function Discover() {
 
         {state.yours.length === 0 ? (
           <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
-            Keep a closet and you can publish it here. Only kept closets can be shared &mdash; an
+            Keep a Clozet and you can publish it here. Only kept Clozets can be shared &mdash; an
             ordinary run expires after ninety days, and a feed of dead links helps nobody.
           </p>
         ) : (

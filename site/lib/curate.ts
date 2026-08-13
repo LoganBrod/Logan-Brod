@@ -1,5 +1,6 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { imageSize, meter } from "./meter";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
 import type { ItemAttributes } from "./taste";
 import { MAX_VIEWED, PICKS_PER_BATCH } from "./batching";
@@ -113,6 +114,14 @@ export async function curate(
   });
 
   assertNotRefused(message, "curation");
+
+  meter({
+    op: "curate",
+    model: MODEL,
+    usage: message.usage,
+    images: fetched.map(({ image }) => imageSize(image.data)),
+    extra: { candidatesOffered: candidates.length, candidatesViewed: viewed.length, limit },
+  });
   const curation = requireParsed(message.parsed_output, "curation");
 
   // Rejoin against the real listings and drop anything hallucinated — a pick

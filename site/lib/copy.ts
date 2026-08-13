@@ -51,13 +51,22 @@ export const stops: Stop[] = [
 
 /** The section below the corridor — the actual website. */
 export const siteSection = {
-  heading: "TODO — what LevoZ is, in one heading",
-  body: "TODO — two or three sentences about the company.",
+  // Written from what the product demonstrably does, and nothing else: no
+  // claims about the company, its size, or its history that aren't true today.
+  heading: "We build one thing, properly.",
+  body: "LevoZ Labs makes Clozet — a menswear tool that reads the clothes you already like and finds real secondhand pieces that belong with them. Not a feed, not a marketplace, and not a search box with a bigger budget behind it. It looks at photographs the way a person would, tells you plainly when something isn't worth buying, and keeps looking after you've closed the tab.",
   /** The product, now served from this same app. */
   appUrl: "/closet",
-  appLabel: "Open the closet",
+  appLabel: "Open Clozet",
   contactLabel: "Get in touch",
   contactHref: "mailto:levoz.labs@gmail.com",
 };
 
-export const legal = `© ${new Date().getFullYear()} ${company}`;
+/**
+ * The footer line.
+ *
+ * Deliberately not a copyright notice: the symbol adds nothing a reader wants,
+ * and asserting a claim in the footer of a site that hasn't launched is the
+ * kind of boilerplate that makes a small company read as a template.
+ */
+export const legal = `${company} — ${new Date().getFullYear()}`;

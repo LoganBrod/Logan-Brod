@@ -161,9 +161,9 @@ export function limitMessage(meter: Meter, plan: Plan): string {
 
   switch (meter) {
     case "closets":
-      return "That's your closet for this month. Membership builds as many as you like.";
+      return "That's your clozet for this month. Membership builds as many as you like.";
     case "keeps":
-      return "Free keeps one closet permanently. Membership keeps all of them.";
+      return "Free keeps one clozet permanently. Membership keeps all of them.";
     case "judgements":
       return "That's three pieces judged this month. Membership doesn't count them.";
     case "watches":

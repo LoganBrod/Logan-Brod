@@ -14,6 +14,7 @@
 
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { meter } from "./meter";
 import { getJson, redisConfigured, setJson } from "./redis";
 import { FitAdviceSchema, type FitAdvice } from "./schemas";
 import { hasSizes, renderSizes, type Sizes } from "./sizing";
@@ -144,6 +145,13 @@ ${corpus}`,
   });
 
   assertNotRefused(message, "fit");
+
+  meter({
+    op: "fit.advise",
+    model: MODEL,
+    usage: message.usage,
+    extra: { brand, category, sourcesRead: sources.length, sourcesCached: Boolean(cached) },
+  });
   const advice = requireParsed(message.parsed_output, "fit");
 
   return {

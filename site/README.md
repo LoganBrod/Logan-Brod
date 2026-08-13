@@ -5,24 +5,27 @@ One Next.js app serving both halves of the company:
 | Route | What it is |
 |---|---|
 | `/` | The marketing site — one scroll-driven walk down a wardrobe corridor |
-| `/closet` | Upload pieces you like, get a closet built from real listings |
-| `/closet/[code]` | A saved closet |
+| `/closet` | Clozet — upload pieces you like, get one built from real listings |
+| `/closet/[code]` | A saved Clozet |
 | `/wardrobe` | Photograph what you own; outfits built from it |
 | `/sizing` | Your measurements, and how a given brand's sizes run |
 | `/scan` | Standing searches that keep running after you close the tab |
-| `/discover` | Closets other people chose to share, and likes |
-| `/closets` | Every closet you've built |
+| `/discover` | Clozets other people chose to share, and likes |
+| `/closets` | Every Clozet you've built |
 | `/api/**` | The endpoints (Claude, eBay, Google Shopping, auth, taste, fit, social) |
 
 ## Layout
 
-- `app/components/SideNav.tsx` — the shared rail: About / Closet / Saved, plus
-  the wordmark and a contact link. Mounted once in the root layout, so it is the
-  same on both halves. A column down the left on desktop, a bar across the top on
-  phones, with `aria-current` following the route.
-- `app/(marketing)/` — the corridor walk. Its layout mounts Lenis smooth scroll
-  and the custom cursor. Neither loads on product routes.
-- `app/(app)/` — the product. Its layout only clears the rail.
+- `app/components/SideNav.tsx` — the shared menu, despite the name: a button
+  fixed top-left that opens a panel. Mounted once in the root layout, so it is
+  the same on both halves. It used to be a permanent rail, which cost 13rem of
+  every page and boxed the marketing walk into a frame. Closes on Escape, on the
+  backdrop, and on arriving somewhere new.
+- `app/(marketing)/` — the corridor walk. Its layout mounts Lenis smooth scroll,
+  which does not load on product routes. There was a custom cursor here too — a
+  dot with a trailing ring — removed because a ring that lags the pointer makes
+  people doubt the page is listening.
+- `app/(app)/` — the product. Its layout only leaves room for the menu button.
 - `app/api/` — unchanged from the standalone product; paths did not move.
 - `lib/copy.ts` — every word the marketing side says, in one file.
 - `public/frames/` — 197 JPEGs: the doors opening, then the corridor walk.
@@ -90,7 +93,11 @@ Each of these cost us a round of "why can't I see the changes".
 what it does, how sign-in and saved closets work. It moved here unchanged when the
 two apps merged.
 
-## Still TODO
+## A note on the name
 
-`lib/copy.ts` carries visible `TODO` placeholders for the website section's
-heading and body, and `app/layout.tsx` for the meta description.
+The product is **Clozet**; the routes are `/closet` and `/closets`. That
+mismatch is deliberate — every saved closet's link, every published entry on
+`/discover`, and every share card carries a `/closet/CODE` URL, so renaming the
+route would break links already in the wild. The spelling is a display
+decision, and it stops at the surface: wire fields, types, cookies and Redis
+keys all still say `closet`.

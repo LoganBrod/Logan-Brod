@@ -213,7 +213,6 @@ export default function CorridorWalk() {
             className="absolute inset-0 hidden items-center justify-center lg:flex"
           >
             <h1
-              data-cursor-target="text"
               className={`px-10 text-center font-serif text-room-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
                 isTodo(heroLine) ? "opacity-40" : ""
               }`}

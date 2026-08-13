@@ -21,7 +21,7 @@ export default function ScanSettings() {
 
   return (
     <section className="space-y-3">
-      <h2 className="label">After a closet</h2>
+      <h2 className="label">After a clozet</h2>
       <label className="panel flex cursor-pointer items-start gap-3 px-6 py-5">
         <input
           type="checkbox"
@@ -34,7 +34,7 @@ export default function ScanSettings() {
           className="mt-0.5 h-4 w-4 rounded border-room-line accent-[#8A7448]"
         />
         <span className="text-sm leading-relaxed text-room-muted">
-          Ask whether I want a standing scan when a closet finishes.
+          Ask whether I want a standing scan when a clozet finishes.
           <span className="mt-1 block text-xs text-room-faint">
             Stored in this browser, so it&rsquo;s per-device rather than per-account.
           </span>
