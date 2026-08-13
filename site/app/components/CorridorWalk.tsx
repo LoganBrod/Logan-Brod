@@ -45,9 +45,29 @@ export default function CorridorWalk() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  /**
+   * True when the walk isn't going to run and the page has to carry the writing
+   * on its own.
+   *
+   * The two stops only ever existed twice: as an overlay the scrubber fades in,
+   * and as a plain flow below it marked `lg:hidden`. That pairing assumed the
+   * only reason not to animate was a narrow screen — so a desktop visitor with
+   * "reduce motion" turned on got neither. The overlay sat at opacity 0 waiting
+   * for a timeline that returns on the line below, and the flow was hidden by a
+   * breakpoint that had nothing to do with it. What was left was the hero line,
+   * a still of the shut doors, and the footer: both headings and both
+   * paragraphs — the entire description of what this thing does — gone.
+   *
+   * Reduced motion is a common setting, not an edge case, so this is decided at
+   * runtime rather than by a media query.
+   */
+  const [staticMode, setStaticMode] = useState(false);
 
   useEffect(() => {
-    if (!isDesktop() || prefersReducedMotion()) return;
+    if (!isDesktop() || prefersReducedMotion()) {
+      setStaticMode(true);
+      return;
+    }
 
     gsap.registerPlugin(ScrollTrigger);
     const section = sectionRef.current;
@@ -245,7 +265,7 @@ export default function CorridorWalk() {
           {/* The hero line, on the first frame of the walk. */}
           <div
             ref={introRef}
-            className="absolute inset-0 hidden items-center justify-center lg:flex"
+            className={`absolute inset-0 hidden items-center justify-center ${staticMode ? "" : "lg:flex"}`}
           >
             <h1
               className={`px-10 text-center font-serif text-room-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
@@ -257,7 +277,7 @@ export default function CorridorWalk() {
           </div>
 
           {/* Desktop: the stops, driven by the pinned timeline. */}
-          <div ref={overlayRef} aria-hidden className="absolute inset-0 hidden lg:block">
+          <div ref={overlayRef} aria-hidden className={`absolute inset-0 hidden ${staticMode ? "" : "lg:block"}`}>
             {stops.map((stop, i) => (
               <div key={i} data-stop className="absolute inset-0">
                 <div className="absolute left-[9%] top-[10%] w-[15%]" data-piece style={{ opacity: 0 }}>
@@ -292,7 +312,7 @@ export default function CorridorWalk() {
       </div>
 
       {/* Mobile and reduced motion: the hero line and stops as a plain flow. */}
-      <div className="relative lg:hidden">
+      <div className={staticMode ? "relative" : "relative lg:hidden"}>
         <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center font-serif text-4xl leading-tight text-room-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
           {heroLine}
         </h1>
