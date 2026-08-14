@@ -303,3 +303,71 @@
     animation: none;
   }
 }
+
+/* --- footage that belongs to the page ------------------------------------ */
+
+/*
+ * The corridor and the wardrobe used to sit in rounded rectangles with a drop
+ * shadow — a picture of a room, pasted onto a website. Both clips were filmed
+ * against a near-white that is within a few percent of the page itself, so the
+ * frame was the only thing announcing where one ended and the other began.
+ *
+ * Taking the box away and feathering the edges instead lets the room simply be
+ * the page. The mask is elliptical rather than a straight vignette because the
+ * subject sits dead centre in both clips: it holds full opacity across the
+ * middle and gives up the corners, which is where the seam used to show.
+ *
+ * -webkit- first for Safari, which still wants the prefix on mask-image.
+ */
+.bleed {
+  -webkit-mask-image: radial-gradient(
+    118% 108% at 50% 46%,
+    #000 52%,
+    rgba(0, 0, 0, 0.55) 76%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    118% 108% at 50% 46%,
+    #000 52%,
+    rgba(0, 0, 0, 0.55) 76%,
+    transparent 100%
+  );
+}
+
+/* --- the labels, passing -------------------------------------------------- */
+
+/*
+ * A marquee, not a logo wall. It moves because a static row of brand names on a
+ * homepage reads as a client list, and this is the opposite of one — these are
+ * labels the searches turn up, with no arrangement behind any of them.
+ *
+ * Translating exactly -50% works because the list is rendered twice: at the
+ * halfway point the second copy sits precisely where the first began, so the
+ * reset is invisible.
+ */
+@keyframes marquee-run {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee {
+  animation: marquee-run 48s linear infinite;
+}
+
+/* Paused on hover, so a name you want to read stops for you. */
+.marquee-fade:hover .marquee {
+  animation-play-state: paused;
+}
+
+/* Faded at both ends rather than cut, so names arrive and leave rather than
+   appearing at a hard edge. */
+.marquee-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}

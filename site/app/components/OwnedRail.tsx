@@ -81,7 +81,7 @@ export default function OwnedRail({
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-sm bg-room-bg">
+      <div className="bleed relative overflow-hidden">
         <div className="relative aspect-[4/5] w-full sm:aspect-[4/3]">
           <div className="absolute left-1/2 top-0 h-full -translate-x-1/2">
             <div className="relative aspect-video h-full">

@@ -359,7 +359,7 @@ export default function ClosetStage({
   return (
     <div className="animate-fade-in" aria-live="polite" aria-busy={phase !== "filled"}>
       <div
-        className="relative touch-pan-y overflow-hidden rounded-sm bg-room-bg"
+        className="bleed relative touch-pan-y overflow-hidden"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
       >

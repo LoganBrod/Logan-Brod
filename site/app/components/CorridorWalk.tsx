@@ -295,7 +295,7 @@ export default function CorridorWalk() {
       >
         <div
           data-frame-inner
-          className={`relative h-full w-full overflow-hidden rounded-3xl shadow-[0_30px_60px_-30px_rgba(27,26,23,0.45)] ${
+          className={`bleed relative h-full w-full overflow-hidden ${
             staticMode ? "aspect-video" : ""
           }`}
         >
