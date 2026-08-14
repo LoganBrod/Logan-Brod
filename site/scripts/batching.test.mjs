@@ -24,7 +24,9 @@ const pool = (count, over = {}) =>
   }));
 
 test("a full pool splits into the batches that run at once", () => {
-  const batches = planBatches(pool(60));
+  // Sized from the constants rather than a literal: this fixture was 60, which
+  // was a full pool at three batches and silently a short one at six.
+  const batches = planBatches(pool(MAX_BATCHES * MAX_VIEWED));
   assert.equal(batches.length, MAX_BATCHES);
   for (const batch of batches) assert.equal(batch.length, MAX_VIEWED);
 });

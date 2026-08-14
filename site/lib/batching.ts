@@ -30,23 +30,35 @@ export const MAX_VIEWED = 16;
 /**
  * How many batches run at once.
  *
- * Three is a compromise: more batches would finish sooner still, but each one
- * sees a smaller slice, and a batch that only has a handful of candidates to
- * choose between can't be selective — it starts returning the best of a bad
- * set rather than nothing.
+ * Six batches of sixteen is ninety-six candidates, against a pool capped at a
+ * hundred and twenty — so this spends most of what the search already fetched
+ * and paid for, rather than judging a third of it and discarding the rest.
+ *
+ * Each batch is still sixteen candidates, which is the number that matters for
+ * selectivity: a batch that only has a handful to choose between starts
+ * returning the best of a bad set rather than nothing. Widening the count of
+ * batches rather than the size of each one is what lets the rail hold
+ * twenty-four pieces without lowering the bar any single pick had to clear.
+ *
+ * The cost is real and roughly linear: six curation calls where there were
+ * three. Curation is the most expensive step in a run.
  */
-export const MAX_BATCHES = 3;
+export const MAX_BATCHES = 6;
 
 /**
  * Picks asked of each batch.
  *
- * Three of sixteen is about the same selectivity as the old six-to-ten of
- * forty-eight, so the bar hasn't moved — the judging is just spread out. The
- * ceiling this implies (nine pieces) is deliberate: everything a batch returns
- * is hung, so nothing a person has already seen is ever taken back off the rail
- * when a later batch lands.
+ * Four of sixteen, across six batches, is a ceiling of twenty-four pieces — a
+ * rail worth browsing rather than a single screenful. The ceiling is a real
+ * ceiling: everything a batch returns is hung, so nothing a person has already
+ * seen is ever taken back off the rail when a later batch lands.
+ *
+ * Four rather than eight because the alternative way to reach twenty-four is
+ * three batches picking eight of sixteen, and a model asked for half of what it
+ * is shown will find a reason to like half of what it is shown. One in four is
+ * close enough to the old one in five that the bar has barely moved.
  */
-export const PICKS_PER_BATCH = 3;
+export const PICKS_PER_BATCH = 4;
 
 /** Split the pool into the slices each curation call will see. */
 export function planBatches(
