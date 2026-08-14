@@ -166,3 +166,27 @@ export function hangPositions(count: number, garmentW: number): number[] {
   const step = (last - first) / (count - 1);
   return Array.from({ length: count }, (_, i) => first + step * i);
 }
+
+// ----------------------------------------------------------------- paging
+
+/**
+ * How many pieces hang at once.
+ *
+ * The rail is 0.408 of the frame wide. Eight across it leaves each bag about
+ * a hundred pixels at the page's width, which is the smallest a product photo
+ * survives; twenty-four across would be thirty-odd and unreadable. So a closet
+ * of twenty-four is three rails of eight that you move between, rather than one
+ * rail with everything crushed onto it.
+ */
+export const PER_PAGE = 8;
+
+/** How many rails a closet of this size needs. Always at least one. */
+export function pageCount(total: number): number {
+  return Math.max(1, Math.ceil(total / PER_PAGE));
+}
+
+/** The slice hanging on one rail. */
+export function pageSlice<T>(items: T[], page: number): T[] {
+  const first = page * PER_PAGE;
+  return items.slice(first, first + PER_PAGE);
+}

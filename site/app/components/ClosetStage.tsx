@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CuratedItem } from "@/lib/curate";
-import { RAIL, layout } from "@/lib/wardrobe";
+import { PER_PAGE, RAIL, layout, pageCount, pageSlice } from "@/lib/wardrobe";
 import GarmentBag from "./GarmentBag";
 
 export type StagePhase = "building" | "open" | "filled";
@@ -17,6 +17,13 @@ const SOURCE_LABEL: Record<string, string> = { ebay: "eBay", serpapi: "Retail" }
  * stuck open.
  */
 const CLOSE_DELAY_MS = 220;
+
+/** The rail leaving, and the rail arriving. Tuned against the keyframes. */
+const LEAVE_MS = 420 + 8 * 38;
+const ARRIVE_MS = 820 + 8 * 38;
+
+/** How far a drag has to travel sideways before it counts as changing rails. */
+const SWIPE_PX = 45;
 
 export function prefersReducedMotion(): boolean {
   return (
@@ -52,6 +59,10 @@ export default function ClosetStage({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Which rail is hanging, and whether one is currently being changed.
+  const [page, setPage] = useState(0);
+  const [swing, setSwing] = useState<"leaving" | "arriving" | null>(null);
+  const swapping = useRef(false);
   const [pinned, setPinned] = useState(false);
   const [taste, setTaste] = useState<TasteState | null>(null);
   const [votes, setVotes] = useState<Record<string, Verdict>>({});
@@ -264,10 +275,71 @@ export default function ClosetStage({
     }
   }, [votes]);
 
+  const pages = pageCount(items.length);
+  // Pages can vanish under you: batches land while you are browsing, and
+  // removing a piece can shorten the closet.
+  const safePage = Math.min(page, pages - 1);
+  const shown = pageSlice(items, safePage);
+
+  /**
+   * Change rails.
+   *
+   * Two halves rather than one: the rail that is leaving has to be out of frame
+   * before the next one is mounted, or both sets are on screen at once and the
+   * illusion collapses into a crossfade. The ref guards against a second swipe
+   * landing mid-swap, which would leave a rail half-animated.
+   */
+  const turn = useCallback(
+    (delta: number) => {
+      if (swapping.current) return;
+      const next = safePage + delta;
+      if (next < 0 || next >= pages) return;
+
+      swapping.current = true;
+      setActiveId(null);
+      if (prefersReducedMotion()) {
+        setPage(next);
+        swapping.current = false;
+        return;
+      }
+
+      setSwing("leaving");
+      window.setTimeout(() => {
+        setPage(next);
+        setSwing("arriving");
+        window.setTimeout(() => {
+          setSwing(null);
+          swapping.current = false;
+        }, ARRIVE_MS);
+      }, LEAVE_MS);
+    },
+    [pages, safePage]
+  );
+
+  // Swiping is the whole point on a phone, where there is no room for buttons
+  // beside the wardrobe. Horizontal intent only: a mostly-vertical drag is the
+  // page being scrolled and must not turn the rail.
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    drag.current = { x: e.clientX, y: e.clientY };
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const from = drag.current;
+    drag.current = null;
+    if (!from) return;
+    const dx = e.clientX - from.x;
+    const dy = e.clientY - from.y;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    turn(dx < 0 ? 1 : -1);
+  };
+
   const active = items.find((item) => item.id === activeId) ?? null;
   const showGarments = phase === "filled";
 
-  const { width, height, slots, rowYs } = layout(items.length);
+  // The rail that is hanging, not the whole closet. Laying out all twenty-four
+  // put every visible bag in row one at a twelve-per-row width — the geometry
+  // has to describe the eight actually on screen.
+  const { width, height, slots, rowYs } = layout(shown.length);
 
   // Stagger positions, numbered within each arrival rather than across the whole
   // rail. Assigned once per piece and never reassigned, so a re-render can't
@@ -286,7 +358,11 @@ export default function ClosetStage({
 
   return (
     <div className="animate-fade-in" aria-live="polite" aria-busy={phase !== "filled"}>
-      <div className="relative overflow-hidden rounded-2xl bg-room-bg">
+      <div
+        className="relative touch-pan-y overflow-hidden rounded-sm bg-room-bg"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      >
         {/* The stage is narrower than the clip, on purpose. The wardrobe occupies
             the middle 44% of a 16:9 frame and the rest is empty room, so showing
             all of it spends most of the width on nothing and leaves the pieces
@@ -337,12 +413,14 @@ export default function ClosetStage({
 
               {/* Garments only exist once the wardrobe is built and filled. */}
               {phase !== "building" &&
-                items.map((item, index) => (
+                shown.map((item, pageIndex) => {
+                  const index = safePage * PER_PAGE + pageIndex;
+                  return (
                   <GarmentBag
                     key={item.id}
                     item={item}
-                    centreX={slots[index].x}
-                    railY={slots[index].y}
+                    centreX={slots[pageIndex].x}
+                    railY={slots[pageIndex].y}
                     width={width}
                     height={height}
                     index={index}
@@ -352,13 +430,61 @@ export default function ClosetStage({
                     onEnter={(at) => openBag(item.id, at)}
                     onLeave={scheduleClose}
                     onToggle={() => toggleBag(item.id)}
+                    swing={swing}
+                    swingIndex={pageIndex}
                   />
-                ))}
+                  );
+                })}
             </div>
           </div>
         </div>
 
       </div>
+
+      {/* Which rail you are on, and the way between them.
+
+          Shown only when there is more than one, so a closet of six carries no
+          chrome for a thing it cannot do. The dots are a position, not a
+          control-per-piece: at three rails they are cheaper to read than "2 of
+          3", and they stay honest as the count grows. */}
+      {pages > 1 && phase === "filled" && (
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => turn(-1)}
+            disabled={safePage === 0}
+            aria-label="Previous pieces"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-room-line text-room-muted transition-colors hover:border-room-ink/40 hover:text-room-ink disabled:opacity-30"
+          >
+            &larr;
+          </button>
+
+          <div className="flex items-center gap-1.5" aria-hidden>
+            {Array.from({ length: pages }, (_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === safePage ? "w-5 bg-room-ink" : "w-1.5 bg-room-line"
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => turn(1)}
+            disabled={safePage === pages - 1}
+            aria-label="More pieces"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-room-line text-room-muted transition-colors hover:border-room-ink/40 hover:text-room-ink disabled:opacity-30"
+          >
+            &rarr;
+          </button>
+
+          <span className="sr-only" aria-live="polite">
+            Rail {safePage + 1} of {pages}
+          </span>
+        </div>
+      )}
 
       {/* Detail for the open piece, below the wardrobe rather than beside the
           garment: even at this size a bag is too small to hold readable text,

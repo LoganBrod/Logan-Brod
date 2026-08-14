@@ -43,6 +43,8 @@ export default function GarmentBag({
   delayIndex,
   active,
   hidden,
+  swing = null,
+  swingIndex = 0,
   onEnter,
   onLeave,
   onToggle,
@@ -67,6 +69,10 @@ export default function GarmentBag({
   active: boolean;
   /** True once results exist but this piece hasn't dropped in yet. */
   hidden: boolean;
+  /** Which half of a rail change this bag is in, if any. */
+  swing?: "leaving" | "arriving" | null;
+  /** Position along the rail, so the far end lags the near end. */
+  swingIndex?: number;
   /** Carries the pointer position, which the stage uses to tell a real hover from an echo. */
   onEnter: (at?: { x: number; y: number }) => void;
   onLeave: () => void;
@@ -105,8 +111,11 @@ export default function GarmentBag({
       onClick={() => !touch.current && onToggle()}
       aria-label={`${item.title}, $${item.price.toFixed(2)}`}
       aria-expanded={active}
-      className="absolute block cursor-pointer outline-none transition-[transform,opacity] duration-500 ease-out focus-visible:ring-2 focus-visible:ring-accent"
+      className={`absolute block cursor-pointer outline-none transition-[transform,opacity] duration-500 ease-out focus-visible:ring-2 focus-visible:ring-accent ${
+        swing === "leaving" ? "rack-leaving" : swing === "arriving" ? "rack-arriving" : ""
+      }`}
       style={{
+        ["--rack-index" as string]: swingIndex,
         left: `${centreX * 100}%`,
         top: `${railY * 100}%`,
         width: `${width * 100}%`,

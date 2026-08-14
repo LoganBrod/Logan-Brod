@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CARCASS, FRAME_ASPECT, RAIL, layout } from "../lib/wardrobe.ts";
+import { CARCASS, FRAME_ASPECT, PER_PAGE, RAIL, layout, pageCount, pageSlice } from "../lib/wardrobe.ts";
 
 /** Pixel height over pixel width, once the frame's own aspect is accounted for. */
 const drawnRatio = ({ width, height }) => height / (width * FRAME_ASPECT);
@@ -90,4 +90,30 @@ test("no pieces, no layout", () => {
   const empty = layout(0);
   assert.deepEqual(empty.slots, []);
   assert.deepEqual(empty.rowYs, []);
+});
+
+test("a closet is paged into rails of eight", () => {
+  assert.equal(pageCount(0), 1, "an empty closet still has one rail");
+  assert.equal(pageCount(1), 1);
+  assert.equal(pageCount(8), 1);
+  assert.equal(pageCount(9), 2);
+  assert.equal(pageCount(24), 3);
+  assert.equal(pageCount(25), 4);
+});
+
+test("paging covers every piece exactly once", () => {
+  const items = Array.from({ length: 24 }, (_, i) => i);
+  const seen = [];
+  for (let page = 0; page < pageCount(items.length); page += 1) {
+    const slice = pageSlice(items, page);
+    assert.ok(slice.length <= PER_PAGE, "no rail holds more than it can show");
+    seen.push(...slice);
+  }
+  assert.deepEqual(seen, items);
+});
+
+test("the last rail is short rather than padded", () => {
+  const items = Array.from({ length: 19 }, (_, i) => i);
+  assert.equal(pageSlice(items, 2).length, 3);
+  assert.deepEqual(pageSlice(items, 3), [], "past the end is empty, not wrapped");
 });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
+import SizingWalkthrough from "./SizingWalkthrough";
 
 interface FitAdvice {
   recommendation: string;
@@ -129,8 +130,16 @@ export default function SizingDesk() {
 
   if (!state) return null;
 
+  // How many of the five the person has actually given us — shown on the first
+  // card so the form reads as partly done rather than as untouched.
+  const filledCount = [draft.tops, draft.jacket, draft.waist, draft.inseam, draft.shoe].filter(
+    (value) => value !== undefined && value !== null && String(value).trim() !== ""
+  ).length;
+
   return (
     <div className="space-y-10">
+      <SizingWalkthrough filledCount={filledCount} />
+
       {error && (
         <p className="rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}
