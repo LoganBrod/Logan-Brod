@@ -17,36 +17,44 @@ export default function Story() {
   return (
     <>
       <section aria-label="How it works" className="relative w-full">
-        <div className="mx-auto max-w-5xl px-6 py-24 sm:py-32">
-          <ol className="flex flex-col gap-20 sm:gap-28">
-            {beats.map((beat, index) => (
-              <li key={beat.kicker}>
-                <Reveal>
-                  {/* Two columns from sm: the number and kicker hold the left,
-                      so the eye has a rail to run down rather than four
-                      identically-centred blocks. */}
-                  <div className="grid gap-4 sm:grid-cols-[7rem_1fr] sm:gap-10">
-                    <div className="flex items-baseline gap-3 sm:flex-col sm:gap-2">
-                      <span className="font-mono text-[12px] tabular-nums text-accent">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="eyebrow">{beat.kicker}</span>
-                    </div>
+        {/* Proximity snapping, not mandatory: it pulls a beat to centre when you
+            stop near one, and stays out of the way when you are scrolling
+            through. Mandatory would fight the smooth scroll above and trap
+            anyone trying to get past this section quickly. */}
+        <ol className="snap-y snap-proximity">
+          {beats.map((beat, index) => (
+            /*
+              One beat per screen, centred.
 
-                    <div className="max-w-[46ch]">
-                      <h3 className="text-[1.65rem] font-semibold leading-[1.12] tracking-[-0.025em] text-room-ink sm:text-[2.1rem]">
-                        {beat.heading}
-                      </h3>
-                      <p className="mt-4 text-[15px] leading-relaxed text-room-muted">
-                        {beat.body}
-                      </p>
-                    </div>
-                  </div>
-                </Reveal>
-              </li>
-            ))}
-          </ol>
-        </div>
+              These were stacked in a 5xl column with the number in a left
+              gutter, which put every block slightly left of centre in the top
+              third of the page and left the rest of the screen empty — content
+              adrift in the middle of nothing. Giving each beat the full
+              viewport and centring it means the thing you are reading is the
+              only thing on screen, and scrolling advances one idea at a time.
+            */
+            <li
+              key={beat.kicker}
+              className="flex min-h-[85svh] w-full snap-center items-center justify-center px-6 sm:min-h-[100svh]"
+            >
+              <Reveal className="w-full">
+                <div className="mx-auto flex max-w-[52ch] flex-col items-center text-center">
+                  <span className="font-mono text-[12px] tabular-nums text-accent">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="eyebrow mt-3">{beat.kicker}</span>
+
+                  <h3 className="mt-6 text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-room-ink sm:text-[3rem]">
+                    {beat.heading}
+                  </h3>
+                  <p className="mt-6 max-w-[46ch] text-[15px] leading-relaxed text-room-muted sm:text-[16px]">
+                    {beat.body}
+                  </p>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <Sources />
@@ -90,30 +98,34 @@ export function Sources() {
         </Reveal>
       </div>
 
-      {/* The labels themselves, running past. Full-bleed and edge-faded so it
-          reads as something passing rather than as a bordered logo wall. */}
+      {/*
+        A grid of squares rather than a rotating strip.
+
+        The marquee moved, which made it read as decoration you wait out; a
+        block of equal squares reads as a set you can take in at once, and it
+        holds still long enough to actually be read. Sixteen labels land as a
+        4x4 on a wide screen and a 2x8 on a phone, so it stays a square block
+        rather than becoming a long ragged list.
+      */}
       <Reveal delay={0.15}>
-        <div className="marquee-fade relative overflow-hidden border-y border-room-line py-6">
-          <div className="marquee flex w-max items-center gap-10 pl-10">
-            {/* Twice, so the loop has something to run into. aria-hidden on the
-                second copy: a screen reader should hear the list once. */}
-            {[0, 1].map((copy) => (
-              <div key={copy} aria-hidden={copy === 1} className="flex items-center gap-10">
-                {sources.labels.map((label) => (
-                  <span
-                    key={label}
-                    className="whitespace-nowrap text-[15px] font-medium tracking-[-0.01em] text-room-faint"
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
+        <div className="mx-auto max-w-5xl px-6 pb-24 sm:pb-28">
+          <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-room-line bg-room-line sm:grid-cols-3 lg:grid-cols-4">
+            {sources.labels.map((label) => (
+              <li
+                key={label}
+                className="group flex aspect-square items-center justify-center bg-room-panel px-3 text-center transition-colors duration-300 hover:bg-room-sunk"
+              >
+                <span className="text-[14px] font-medium tracking-[-0.01em] text-room-faint transition-colors duration-300 group-hover:text-room-ink sm:text-[15px]">
+                  {label}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
+
+          <p className="pt-5 text-[12px] leading-relaxed text-room-faint">
+            {sources.labelsCaption}
+          </p>
         </div>
-        <p className="mx-auto max-w-5xl px-6 pt-5 text-[12px] leading-relaxed text-room-faint">
-          {sources.labelsCaption}
-        </p>
       </Reveal>
     </section>
   );
