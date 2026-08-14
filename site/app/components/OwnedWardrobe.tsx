@@ -92,7 +92,7 @@ export default function OwnedWardrobe() {
   if (!state.allowed) {
     return (
       <section className="space-y-3">
-        <h2 className="label">What you own</h2>
+        <h2 className="eyebrow">What you own</h2>
         <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
           Photograph your wardrobe once and every recommendation afterwards knows what you already
           have &mdash; including which single piece would unlock the most outfits from it. Part of
@@ -105,7 +105,7 @@ export default function OwnedWardrobe() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="label">What you own</h2>
+        <h2 className="eyebrow">What you own</h2>
         <p className="text-xs text-room-faint">
           {state.items.length === 0
             ? "Photograph what's in your wardrobe — several pieces per photo is fine."
@@ -173,7 +173,7 @@ export default function OwnedWardrobe() {
           <ul className="space-y-3">
             {state.outfits.map((outfit) => (
               <li key={outfit.name} className="panel px-5 py-4">
-                <p className="font-serif text-lg text-room-ink">{outfit.name}</p>
+                <p className="font-semibold tracking-[-0.01em] text-lg text-room-ink">{outfit.name}</p>
                 <p className="mt-0.5 text-xs text-room-faint">{outfit.occasion}</p>
                 <p className="mt-2 text-sm text-room-muted">
                   {outfit.itemIndexes
@@ -190,8 +190,8 @@ export default function OwnedWardrobe() {
               number attached to it. */}
           {state.missing && (
             <div className="panel border-accent/30 px-5 py-4">
-              <p className="label mb-1">The piece you&rsquo;re missing</p>
-              <p className="font-serif text-lg text-room-ink">{state.missing}</p>
+              <p className="eyebrow mb-1">The piece you&rsquo;re missing</p>
+              <p className="font-semibold tracking-[-0.01em] text-lg text-room-ink">{state.missing}</p>
               {typeof state.missingUnlocks === "number" && state.missingUnlocks > 0 && (
                 <p className="mt-1 text-sm text-room-muted">
                   Roughly {state.missingUnlocks} more {state.missingUnlocks === 1 ? "outfit" : "outfits"} from

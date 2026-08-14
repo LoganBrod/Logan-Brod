@@ -86,7 +86,7 @@ export default function JudgePanel({ range }: { range: { min: number; max: numbe
   return (
     <div className="panel space-y-4 px-6 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="label">Is this any good?</p>
+        <p className="eyebrow">Is this any good?</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -148,7 +148,7 @@ export default function JudgePanel({ range }: { range: { min: number; max: numbe
           <div className="grid gap-4 sm:grid-cols-2">
             {result.judgement.forIt.length > 0 && (
               <div>
-                <p className="label mb-1.5">For it</p>
+                <p className="eyebrow mb-1.5">For it</p>
                 <ul className="space-y-1 text-xs leading-relaxed text-room-muted">
                   {result.judgement.forIt.map((point) => (
                     <li key={point}>{point}</li>
@@ -158,7 +158,7 @@ export default function JudgePanel({ range }: { range: { min: number; max: numbe
             )}
             {result.judgement.againstIt.length > 0 && (
               <div>
-                <p className="label mb-1.5">Against it</p>
+                <p className="eyebrow mb-1.5">Against it</p>
                 <ul className="space-y-1 text-xs leading-relaxed text-room-muted">
                   {result.judgement.againstIt.map((point) => (
                     <li key={point}>{point}</li>

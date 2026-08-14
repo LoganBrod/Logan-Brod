@@ -16,8 +16,8 @@ export default function ClosetsPage() {
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
       <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="label mb-2">Your clozets</p>
-          <h1 className="font-serif text-4xl leading-none text-room-ink md:text-5xl">
+          <p className="eyebrow mb-2">Your clozets</p>
+          <h1 className="text-[2.1rem] font-semibold leading-[1.05] tracking-[-0.03em] text-room-ink md:text-[2.75rem]">
             Everything you&rsquo;ve built.
           </h1>
         </div>

@@ -10,7 +10,7 @@ export default function ClosetView({ closet }: { closet: ClosetContents }) {
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-3xl text-room-ink">Your Clozet</h2>
+        <h2 className="font-semibold tracking-[-0.01em] text-3xl text-room-ink">Your Clozet</h2>
         {/* The stage carries its own "hover or tap a piece" line under the
             wardrobe, so this only needs to say what the pieces cost. */}
         <span className="text-xs text-room-faint">

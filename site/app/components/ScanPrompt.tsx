@@ -104,8 +104,8 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
         // that is not part of the room, and it should read as an interruption.
         className="w-full max-w-lg rounded-3xl bg-white p-7 shadow-[0_24px_60px_rgba(27,26,23,0.28)] sm:p-9"
       >
-        <p className="label mb-3">Keep looking</p>
-        <h2 id="scan-prompt-title" className="font-serif text-3xl leading-tight text-room-ink">
+        <p className="eyebrow mb-3">Keep looking</p>
+        <h2 id="scan-prompt-title" className="font-semibold tracking-[-0.01em] text-3xl leading-tight text-room-ink">
           That was one search, on one day.
         </h2>
 

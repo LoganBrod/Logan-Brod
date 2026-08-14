@@ -19,8 +19,7 @@ export default function ScanPage() {
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
       <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
         <div className="max-w-xl">
-          <p className="label mb-3">Standing scans</p>
-          <h1 className="font-serif text-4xl leading-none text-room-ink md:text-5xl">
+          <h1 className="text-[2.1rem] font-semibold leading-[1.05] tracking-[-0.03em] text-room-ink md:text-[2.75rem]">
             Keep looking after you close the tab.
           </h1>
           <p className="mt-5 text-sm leading-relaxed text-room-muted">

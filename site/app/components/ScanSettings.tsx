@@ -21,7 +21,7 @@ export default function ScanSettings() {
 
   return (
     <section className="space-y-3">
-      <h2 className="label">After a clozet</h2>
+      <h2 className="eyebrow">After a clozet</h2>
       <label className="panel flex cursor-pointer items-start gap-3 px-6 py-5">
         <input
           type="checkbox"

@@ -136,7 +136,7 @@ export default function Discover() {
       {/* Publishing your own, kept above the feed because it's the thing a
           returning visitor came here to do. */}
       <section className="space-y-3">
-        <h2 className="label">Share one of yours</h2>
+        <h2 className="eyebrow">Share one of yours</h2>
 
         {state.yours.length === 0 ? (
           <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
@@ -192,7 +192,7 @@ export default function Discover() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="label">Recently shared</h2>
+        <h2 className="eyebrow">Recently shared</h2>
 
         {state.closets.length === 0 ? (
           <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
@@ -226,7 +226,7 @@ export default function Discover() {
                   <div className="min-w-0">
                     <Link
                       href={`/closet/${closet.code}`}
-                      className="font-serif text-lg text-room-ink hover:text-accent"
+                      className="font-semibold tracking-[-0.01em] text-lg text-room-ink hover:text-accent"
                     >
                       {closet.name}
                     </Link>

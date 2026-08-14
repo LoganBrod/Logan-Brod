@@ -120,7 +120,7 @@ export default function SideNav() {
         >
           <Link
             href="/"
-            className="mb-10 font-serif text-2xl tracking-wide text-room-ink transition-colors duration-200 hover:text-accent"
+            className="mb-10 text-[15px] font-bold uppercase tracking-[0.2em] text-room-ink transition-colors duration-200 hover:text-accent"
           >
             {company}
           </Link>

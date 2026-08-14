@@ -66,7 +66,7 @@ export default function Watches() {
   if (!state.watches.length) {
     return (
       <section className="space-y-3">
-        <h2 className="label">Standing searches</h2>
+        <h2 className="eyebrow">Standing searches</h2>
         <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
           {state.limit > 0 ? (
             <>
@@ -87,7 +87,7 @@ export default function Watches() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="label">Standing searches</h2>
+        <h2 className="eyebrow">Standing searches</h2>
         <p className="text-xs text-room-faint">
           {state.canEmail
             ? "Checked twice a day. You'll get an email when something clears the bar."
@@ -105,7 +105,7 @@ export default function Watches() {
         {state.watches.map((watch) => (
           <li key={watch.id} className="panel flex flex-wrap items-center gap-4 px-5 py-4">
             <div className="min-w-0 flex-1">
-              <p className="font-serif text-lg text-room-ink">{watch.name}</p>
+              <p className="font-semibold tracking-[-0.01em] text-lg text-room-ink">{watch.name}</p>
               <p className="mt-0.5 text-xs text-room-faint">
                 {watch.queries.slice(0, 3).join(" · ")}
                 {watch.queries.length > 3 ? ` +${watch.queries.length - 3}` : ""}

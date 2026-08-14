@@ -507,7 +507,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         }`}
       >
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="label">Pieces you like</p>
+          <p className="eyebrow">Pieces you like</p>
           <form onSubmit={loadByCode} className="flex items-center gap-2">
             {/* Placeholder is kept short: the wide letter-spacing that makes an
                 entered code legible clips anything longer. */}
@@ -526,7 +526,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         </div>
 
         <label
-          className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-room-line bg-room-sunk/40 px-6 py-12 text-center transition-colors hover:border-room-ink/30 hover:bg-room-sunk/70"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-sm border border-room-line bg-room-sunk/60 px-6 py-14 text-center transition-colors hover:border-room-ink/30 hover:bg-room-sunk"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -781,7 +781,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           {code ? (
             <div className="panel flex flex-wrap items-center justify-between gap-3 px-6 py-4">
               <div>
-                <p className="label mb-1">Clozet code</p>
+                <p className="eyebrow mb-1">Clozet code</p>
                 <p className="font-mono text-2xl tracking-[0.3em] text-room-ink">{code}</p>
               </div>
               <p className="max-w-xs text-xs leading-relaxed text-room-muted">

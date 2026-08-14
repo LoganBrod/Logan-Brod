@@ -7,14 +7,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Near-white and near-neutral, in the register menswear retail is sold
+        // in. Not pure white: the wardrobe footage is warm cream, and against a
+        // #FFF page it reads as dingy rather than as light. #F6F5F2 is far
+        // enough from the old cream to lose the signature and close enough to
+        // the clip that the two belong to the same room.
         room: {
-          bg: "#EDEAE4",
-          panel: "#F7F5F1",
-          sunk: "#E4E0D8",
-          line: "#D6D1C7",
-          ink: "#1B1A17",
-          muted: "#6F6A62",
-          faint: "#9A948B",
+          bg: "#F6F5F2",
+          panel: "#FFFFFF",
+          sunk: "#F0EFEB",
+          line: "#E2E0DA",
+          ink: "#131211",
+          muted: "#6B6963",
+          faint: "#9C9A94",
         },
         wardrobe: {
           door: "#C6C3BC",

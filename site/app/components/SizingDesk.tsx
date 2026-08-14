@@ -139,7 +139,7 @@ export default function SizingDesk() {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="label">What fits you</h2>
+          <h2 className="eyebrow">What fits you</h2>
           <p className="text-xs text-room-faint">
             Used on every search, every judgement, and every standing scan.
           </p>
@@ -225,7 +225,7 @@ export default function SizingDesk() {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="label">How a brand runs</h2>
+          <h2 className="eyebrow">How a brand runs</h2>
           <p className="text-xs text-room-faint">Reads the brand&rsquo;s size guide and what buyers report.</p>
         </div>
 
@@ -275,13 +275,13 @@ export default function SizingDesk() {
 
       {state.history.length > 0 && (
         <section className="space-y-3">
-          <h2 className="label">Brands you&rsquo;ve checked</h2>
+          <h2 className="eyebrow">Brands you&rsquo;ve checked</h2>
           <ul className="space-y-3">
             {state.history.map((record) => (
               <li key={`${record.brand}-${record.category}`} className="panel px-6 py-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-serif text-xl text-room-ink">
+                    <p className="font-semibold tracking-[-0.01em] text-xl text-room-ink">
                       {record.brand} <span className="text-room-faint">·</span> {record.category}
                     </p>
                     <p className="mt-1 text-sm text-room-muted">

@@ -27,8 +27,7 @@ export default async function Home() {
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
       <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
         <div>
-          <p className="label mb-3">Menswear</p>
-          <h1 className="font-serif text-5xl leading-none text-room-ink md:text-6xl">
+          <h1 className="text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.035em] text-room-ink md:text-[3.25rem]">
             Show me what you like.
           </h1>
         </div>

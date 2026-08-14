@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
-import { Fraunces, Karla } from "next/font/google";
+import { Archivo, Fraunces } from "next/font/google";
 import "./globals.css";
 import { company } from "@/lib/copy";
 import SideNav from "./components/SideNav";
 
 /**
- * Fraunces for display, Karla for everything else.
+ * Archivo everywhere the product is, Fraunces only on the marketing walk.
  *
- * The previous pairing was Playfair over the system UI stack, and the system
- * stack is the problem: on most machines it resolves to the same face every
- * form on the internet is set in, which is why the pages read as a
- * questionnaire rather than as a shop. Fraunces is a warm old-style serif with
- * real quirks — it sits with the cream and brass instead of arguing with them —
- * and Karla is a grotesque with enough character to look chosen.
+ * The interface used to be set in Fraunces over Karla. Warm cream, an old-style
+ * serif and a brass accent is a good-looking combination and also, right now,
+ * the single most recognisable signature of a generated website — it was the
+ * first thing a visitor read, before any of the writing.
+ *
+ * Archivo is the answer to that: a neutral grotesque with a slightly condensed
+ * cut and a wide weight range, which is the register menswear retail is
+ * actually set in. It carries a size chart and a price without decorating them.
+ *
+ * Fraunces survives on the corridor walk, where a display serif is doing the
+ * job it is good at. A shop sets its signage in sans and its lookbook in serif;
+ * the mistake was setting everything in lookbook.
  *
  * `soft` and `wonk` are Fraunces' own axes: a little of each keeps the display
  * type from looking like a wedding invitation.
@@ -24,7 +30,7 @@ const serif = Fraunces({
   axes: ["SOFT", "WONK", "opsz"],
 });
 
-const sans = Karla({
+const sans = Archivo({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",

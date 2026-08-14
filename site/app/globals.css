@@ -9,32 +9,22 @@
   }
 
   /*
-   * The room, in four layers.
+   * The room, quietly.
    *
-   * A flat gradient read as "unfinished page" rather than as a space. These
-   * layers give it somewhere to be without putting an image in front of the
-   * content: warm light from above, faint vertical panelling that echoes the
-   * wardrobe doors, a paper grain so large flat areas aren't dead, and a
-   * vignette to stop the edges glowing. All CSS — no asset, no request.
+   * This was four layers — grain, vertical panelling, a vignette and a warm
+   * radial wash — added to stop a flat page reading as unfinished. Against the
+   * retail direction that stack is doing the opposite: shops are not textured,
+   * they are lit, and the panelling stripes in particular read as decoration
+   * applied to a page rather than as a room.
+   *
+   * What is left is the grain alone, at half strength. It keeps large flat
+   * areas from going dead without putting anything in front of the content, and
+   * it is still one inline SVG rather than a request.
    */
   body {
-    background-color: #edeae4;
-    background-image:
-      /* grain — one inline SVG turbulence, tiled */
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
-      /* panelling — a wide, very low-contrast stripe */
-      repeating-linear-gradient(
-        90deg,
-        rgba(27, 26, 23, 0.014) 0px,
-        rgba(27, 26, 23, 0.014) 1px,
-        transparent 1px,
-        transparent 168px
-      ),
-      /* vignette */
-      radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(27, 26, 23, 0.05) 100%),
-      /* the warm wash that was already here */
-      radial-gradient(120% 80% at 50% 0%, #f4f2ee 0%, #edeae4 45%, #e3dfd7 100%);
-    color: #1b1a17;
+    background-color: #f6f5f2;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.018'/%3E%3C/svg%3E");
+    color: #131211;
   }
 
   /* A fixed background is painted against the viewport, which on a phone is a
@@ -164,27 +154,54 @@
 
 /* --- product UI ------------------------------------------------------- */
 @layer components {
+  /*
+   * A panel is a surface, not a card.
+   *
+   * rounded-2xl on a bordered box is the shape every component library ships
+   * with. Retail sells out of flat white rectangles with a hairline, and lets
+   * whitespace do the separating that a border was doing badly.
+   */
   .panel {
-    @apply rounded-2xl border border-room-line bg-room-panel;
+    @apply rounded-sm border border-room-line bg-room-panel;
   }
 
+  /*
+   * Sentence case, and no longer shouting.
+   *
+   * This was 11px uppercase with 0.18em tracking, used for page eyebrows,
+   * section headings and individual form fields alike — thirty-eight of them
+   * across seven pages, one device standing in for three levels of hierarchy.
+   * A field label's whole job is to be read quickly and then ignored, which
+   * lowercase does better than capitals.
+   */
   .label {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-room-faint;
+    @apply text-[12.5px] font-medium text-room-muted;
   }
 
-  /* py-3 on phones and py-2.5 from sm up: a finger needs roughly 44px of
-     target, a pointer needs none of it, and the desktop proportions were
-     already right. */
+  /*
+   * Where the uppercase treatment survives: section headings, and only those.
+   * One job, so it means something when it appears.
+   */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-room-faint;
+  }
+
+  /*
+   * Rectangular, because a shop's buttons are.
+   *
+   * py-3 on phones and py-2.5 from sm up: a finger needs roughly 44px of
+   * target, a pointer needs none of it.
+   */
   .btn {
-    @apply rounded-full px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5;
+    @apply rounded-sm px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5;
   }
 
   .btn-primary {
-    @apply btn bg-room-ink text-room-bg hover:bg-room-ink/85;
+    @apply btn bg-room-ink text-white hover:bg-room-ink/85;
   }
 
   .btn-ghost {
-    @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/30 hover:text-room-ink;
+    @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink;
   }
 
   /*
@@ -196,10 +213,12 @@
    * scrolled sideways through a page they now had to pinch to escape. 16px is
    * the threshold, exactly; 14px is fine everywhere a pointer is.
    *
-   * The extra vertical padding comes along for the same reason as .btn.
+   * No longer a pill. A field shaped exactly like a button says nothing about
+   * which one you type into; a square-ish box with a heavier underline reads as
+   * a surface to write on.
    */
   .field {
-    @apply rounded-full border border-room-line bg-room-panel px-4 py-2.5 text-base text-room-ink placeholder:text-room-faint focus:border-room-ink/40 focus:outline-none sm:py-2 sm:text-sm;
+    @apply rounded-sm border border-room-line border-b-room-ink/25 bg-room-panel px-3 py-2.5 text-base text-room-ink placeholder:text-room-faint focus:border-room-ink/50 focus:outline-none sm:py-2 sm:text-sm;
   }
 }
 

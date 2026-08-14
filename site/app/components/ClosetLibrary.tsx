@@ -105,7 +105,7 @@ export default function ClosetLibrary() {
       <div className="min-w-0 flex-1">
         <Link
           href={`/closet/${entry.code}`}
-          className="font-serif text-lg text-room-ink underline-offset-4 hover:underline"
+          className="font-semibold tracking-[-0.01em] text-lg text-room-ink underline-offset-4 hover:underline"
         >
           {entry.name ?? entry.code}
         </Link>
@@ -182,7 +182,7 @@ export default function ClosetLibrary() {
 
       {kept.length > 0 && (
         <section className="space-y-3">
-          <h2 className="label">Kept</h2>
+          <h2 className="eyebrow">Kept</h2>
           <ul className="space-y-3">{kept.map(row)}</ul>
         </section>
       )}
@@ -190,7 +190,7 @@ export default function ClosetLibrary() {
       {history.length > 0 && (
         <section className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="label">Everything else</h2>
+            <h2 className="eyebrow">Everything else</h2>
             <p className="text-xs text-room-faint">
               These expire 90 days after they were built. Keep one to make it permanent.
             </p>
