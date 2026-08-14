@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { encodePhotos } from "@/lib/image";
+import OwnedRail from "./OwnedRail";
+import WardrobeWalkthrough from "./WardrobeWalkthrough";
 
 interface Garment {
   id: string;
@@ -102,6 +104,20 @@ export default function OwnedWardrobe() {
     );
   }
 
+  const uploadControl = (
+    <label className={`btn-primary inline-flex cursor-pointer ${busy ? "opacity-50" : ""}`}>
+      {busy ? "Reading…" : state.items.length ? "Add more photos" : "Add photos"}
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        disabled={busy}
+        onChange={(e) => addPhotos(e.target.files)}
+      />
+    </label>
+  );
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -119,52 +135,22 @@ export default function OwnedWardrobe() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className={`btn-primary cursor-pointer ${busy ? "opacity-50" : ""}`}>
-          {busy ? "Reading…" : "Add photos"}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            disabled={busy}
-            onChange={(e) => addPhotos(e.target.files)}
-          />
-        </label>
-        {state.items.length >= 3 && (
+      {/* The walkthrough hosts the real control in its second step, so there is
+          never a second upload button drifting out of sync with this one. */}
+      <WardrobeWalkthrough cataloguedCount={state.items.length} uploadControl={uploadControl} />
+
+      {state.items.length > 0 && (
+        <div className="pt-2">
+          <OwnedRail items={state.items} onForget={forget} />
+        </div>
+      )}
+
+      {state.items.length >= 3 && (
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           <button type="button" onClick={makeOutfits} disabled={busy} className="btn-ghost">
             Build outfits
           </button>
-        )}
-      </div>
-
-      {state.items.length > 0 && (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {state.items.map((item, index) => (
-            <li
-              key={item.id}
-              className="panel flex items-baseline justify-between gap-3 px-4 py-3"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm text-room-ink">
-                  <span className="mr-2 font-mono text-[10px] text-room-faint">{index}</span>
-                  {item.label}
-                </p>
-                <p className="mt-0.5 text-xs text-room-faint">
-                  {item.category} · {item.colour} · {item.material} · {item.season}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => forget(item.id)}
-                aria-label={`Remove ${item.label}`}
-                className="shrink-0 text-xs text-room-faint hover:text-room-ink"
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
+        </div>
       )}
 
       {showingOutfits && state.outfits && state.outfits.length > 0 && (
