@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:railway": "next start -H 0.0.0.0",
+    "sweep:once": "node scripts/sweep-once.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test scripts/*.test.mjs"
