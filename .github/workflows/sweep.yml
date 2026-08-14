@@ -60,7 +60,8 @@ jobs:
             # Truncated first, so a failed attempt can never print the previous
             # attempt's body and read as though it succeeded.
             : > body.json
-            code="$(curl -sS -o body.json -w '%{http_code}' \
+            : > headers.txt
+            code="$(curl -sS -o body.json -D headers.txt -w '%{http_code}' \
                       --max-time 300 \
                       -H "Authorization: Bearer ${CRON_SECRET}" \
                       "${url}" || true)"
@@ -83,6 +84,23 @@ jobs:
               echo "::error::Rejected (401). CRON_SECRET here does not match the deployment's."
               exit 1
             fi
+
+            # A redirect is a configuration answer, not a transient one, so it
+            # gets the same treatment as a 401: say what to change and stop.
+            #
+            # Deliberately not followed. curl drops the Authorization header
+            # when a redirect crosses to another host, so -L would turn this
+            # into a 401 and hide the real cause; --location-trusted would keep
+            # the header but hand the bearer token to whatever host the
+            # redirect names, which is not a thing to do automatically. The
+            # right fix is always to point SITE_ORIGIN at the final origin.
+            case "${code}" in
+              30[1278])
+                target="$(awk 'tolower($1)=="location:"{print $2}' headers.txt | tr -d '\r' | tail -1)"
+                echo "::error::${url} redirected (${code}) to ${target:-an unnamed location}. Set the SITE_ORIGIN variable to that origin — credentials are not forwarded across a redirect."
+                exit 1
+                ;;
+            esac
 
             echo "Attempt ${attempt} got HTTP ${code:-000}"
             if [ -s body.json ]; then
