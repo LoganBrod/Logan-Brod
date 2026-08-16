@@ -98,11 +98,22 @@ test("a member isn't stopped by a meter that's been running for months", async (
   assert.equal((await plans.allowance(me, "member", "closets")).allowed, true);
 });
 
-test("nothing to meter against is never a refusal", async () => {
-  // An anonymous first-time visitor has no id yet. That must not read as
-  // "you're out of closets".
+test("nothing to meter against is a refusal", async () => {
+  // This test asserted the opposite until the audit found what it was
+  // protecting. The original worry was real — an anonymous first-time visitor
+  // has no id, and that must not read as "you're out of closets" — but waving
+  // through everything unmeasurable is not the way to fix it: `usage(null)`
+  // returns 0, so the allowance always passed, and deleting one cookie restored
+  // a full allowance on every meter at once. On routes that spend $0.28-0.59 a
+  // call, that was the whole quota system defeated by a browser setting.
+  //
+  // The first-time visitor is now served a step earlier: routes call
+  // `identify`, which mints a browser id before anything is metered. So a null
+  // arriving here no longer means "new person", it means "we could not work out
+  // who this is" — and that gets nothing.
   assert.equal(await plans.usage(null, "closets"), 0);
-  assert.equal((await plans.allowance(null, "free", "closets")).allowed, true);
+  assert.equal((await plans.allowance(null, "free", "closets")).allowed, false);
+  // Still never throws: a lost count must not be able to fail a request.
   await plans.spend(null, "closets");
 });
 

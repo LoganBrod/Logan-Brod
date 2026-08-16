@@ -3,7 +3,10 @@ import { analyzeStyle, type PhotoInput } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
 import { MAX_PHOTOS } from "@/lib/photos";
 import { tasteMemo } from "@/lib/taste";
-import { readViewer } from "@/lib/viewer";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
+import { allowance, limitMessage, spend } from "@/lib/plans";
+import { tasteCookie } from "@/lib/taste";
+import { identify } from "@/lib/viewer";
 import { readOwned, renderOwned } from "@/lib/wardrobeOwned";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +42,11 @@ function parsePhotos(raw: unknown): PhotoInput[] {
     .slice(0, MAX_PHOTOS);
 }
 
+/** A response's headers, carrying the browser id back when one was just minted. */
+function mint(id: string | null): Record<string, string> {
+  return id ? { "Set-Cookie": tasteCookie(id) } : {};
+}
+
 export async function POST(req: Request) {
   let body: AnalyzeBody;
   try {
@@ -72,17 +80,60 @@ export async function POST(req: Request) {
     );
   }
 
+  /*
+   * Everything below the model call is free; the model call is not. This route
+   * was reachable with no cookie, no session and no origin check, and it is the
+   * first and most expensive step of a run — so a loop against it spent real
+   * money at machine speed with nothing in the way.
+   *
+   * Two gates, in this order, both before a single token is bought:
+   *
+   *   1. The address. This is the one that actually stops abuse, because it is
+   *      the only identifier the caller cannot mint for themselves.
+   *   2. The person's own quota, which is what tells an honest visitor they
+   *      have used their clozet for the month.
+   */
+  const ip = clientIp(req);
+  const burst = await rateLimit("analyze", ip, LIMITS.analyze);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "That's a lot of clozets in one hour. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
+  }
+
+  const viewer = await identify(req);
+  const room = await allowance(viewer.id, viewer.plan, "closets");
+  if (!room.allowed) {
+    return NextResponse.json(
+      { error: limitMessage("closets", viewer.plan), plan: viewer.plan },
+      { status: 402, headers: mint(viewer.mint) }
+    );
+  }
+
   try {
-    // Never throws and returns null when there's no memory or no Redis, so this
-    // can sit in the hot path without a guard.
-    const viewer = await readViewer(req);
     const [memo, owned] = await Promise.all([
       tasteMemo(viewer.tasteId),
       readOwned(viewer.owner),
     ]);
     const profile = await analyzeStyle(photos, { min, max }, memo, renderOwned(owned));
-    return NextResponse.json({ profile }, { headers: { "Cache-Control": "no-store" } });
+
+    // Spent here rather than on save. The money leaves at the model call, so
+    // that is where the count has to happen — metering at save time meant a run
+    // abandoned before saving was billed to us and to nobody's allowance.
+    await spend(viewer.id, "closets");
+
+    return NextResponse.json(
+      { profile },
+      { headers: { "Cache-Control": "no-store", ...mint(viewer.mint) } }
+    );
   } catch (err) {
-    return NextResponse.json({ error: describeApiError(err) }, { status: 502 });
+    // The id is written back even on a failure. Nothing was spent, but the
+    // person should stay the same person: without this, a first run that errors
+    // leaves them with no cookie and their retry is metered as a stranger.
+    return NextResponse.json(
+      { error: describeApiError(err) },
+      { status: 502, headers: mint(viewer.mint) }
+    );
   }
 }

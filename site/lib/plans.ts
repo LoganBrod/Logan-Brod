@@ -136,6 +136,15 @@ export async function allowance(
   meter: Meter
 ): Promise<Allowance> {
   const limit = limitsFor(plan)[meter];
+
+  // No id means we could not work out who is asking, and an unmeasurable
+  // request used to be an unlimited one: `usage(null)` returned 0, so the
+  // comparison below always passed. Deleting one cookie reset every allowance
+  // on the site. A caller with no identity now gets nothing — routes that serve
+  // anonymous people are expected to mint an id first (see `identify`), which
+  // is a deliberate act rather than an accident of a missing header.
+  if (!ownerId) return { allowed: false, used: limit, limit, plan };
+
   const used = await usage(ownerId, meter);
   return { allowed: used < limit, used, limit, plan };
 }

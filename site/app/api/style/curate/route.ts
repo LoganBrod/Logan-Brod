@@ -4,6 +4,7 @@ import { PICKS_PER_BATCH } from "@/lib/batching";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
 import { tasteMemo } from "@/lib/taste";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import type { ProductListing } from "@/lib/sources/types";
 
@@ -43,6 +44,22 @@ export async function POST(req: Request) {
 
   if (!candidates.length) {
     return NextResponse.json({ error: "candidates must be a non-empty array." }, { status: 400 });
+  }
+
+  /*
+   * Guarded on the address, like analyze, and for the same reason: this route
+   * took no cookie and no session either. It does not spend a clozet — one run
+   * is a single analyze followed by up to six of these, and metering each batch
+   * would charge a person six times for one closet. The quota is taken at
+   * analyze; this ceiling exists so the batches cannot be called on their own
+   * in a loop, which is the cheaper but still unbounded way to abuse a run.
+   */
+  const burst = await rateLimit("curate", clientIp(req), LIMITS.curate);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
   }
 
   try {

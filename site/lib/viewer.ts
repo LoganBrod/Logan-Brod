@@ -12,7 +12,7 @@
 
 import { readSession, type User } from "./accounts";
 import { planFor, type Plan } from "./plans";
-import { readTasteId } from "./taste";
+import { newTasteId, readTasteId } from "./taste";
 import type { Owner } from "./library";
 
 export interface Viewer {
@@ -56,5 +56,34 @@ export async function readViewer(req: Request): Promise<Viewer> {
     // Metered against the same identity that owns the work, so signing out
     // doesn't reset anyone's month.
     meterId: owner ? tasteIdFor(owner) : null,
+  };
+}
+
+
+/**
+ * Who is asking, minting a browser id when there isn't one.
+ *
+ * `readViewer` reports what the request carried, which is the honest answer and
+ * the wrong one for a metered route: a first-time visitor carries no cookie, so
+ * they have no id, and a meter with no id now refuses. This gives every caller
+ * an identity to be counted against — the account's if they have one, the
+ * browser's otherwise, new if necessary — and tells the route when that id
+ * still needs writing back as a cookie.
+ *
+ * It is not an anti-abuse measure and cannot be one: anybody can drop the
+ * cookie and be minted a fresh id. It exists so honest people are metered
+ * correctly. The ceiling that actually protects the balance is in
+ * `lib/ratelimit.ts`, which counts against the network address instead.
+ */
+export async function identify(
+  req: Request
+): Promise<Viewer & { id: string; mint: string | null }> {
+  const viewer = await readViewer(req);
+  const existing = readTasteId(req.headers.get("cookie"));
+  const browserId = existing ?? newTasteId();
+  return {
+    ...viewer,
+    id: viewer.meterId ?? browserId,
+    mint: existing || viewer.user ? null : browserId,
   };
 }

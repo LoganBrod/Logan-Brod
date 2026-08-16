@@ -4,7 +4,8 @@ import { judge, previewLink } from "@/lib/judge";
 import { allowance, limitMessage, spend } from "@/lib/plans";
 import { tasteMemo } from "@/lib/taste";
 import { fetchThumbnail } from "@/lib/thumbnails";
-import { readViewer } from "@/lib/viewer";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
+import { identify } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
 // A page fetch, an image fetch, and one vision call.
@@ -39,8 +40,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Body must be JSON." }, { status: 400 });
   }
 
-  const viewer = await readViewer(req);
-  const room = await allowance(viewer.meterId, viewer.plan, "judgements");
+  const burst = await rateLimit("judge", clientIp(req), LIMITS.judge);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many questions just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
+  }
+
+  // identify rather than readViewer: a first-time visitor has no cookie, and a
+  // meter with no id now refuses rather than waving them through.
+  const viewer = await identify(req);
+  const room = await allowance(viewer.id, viewer.plan, "judgements");
   if (!room.allowed) {
     return NextResponse.json(
       { error: limitMessage("judgements", room.plan), limit: room },
@@ -109,7 +120,7 @@ export async function POST(req: Request) {
     });
 
     // Counted after it worked, so a failure never costs someone one of three.
-    await spend(viewer.meterId, "judgements");
+    await spend(viewer.id, "judgements");
 
     return NextResponse.json(
       { judgement, piece: { title, price, source } },
