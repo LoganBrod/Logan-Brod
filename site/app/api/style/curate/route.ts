@@ -3,6 +3,7 @@ import { curate } from "@/lib/curate";
 import { PICKS_PER_BATCH } from "@/lib/batching";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
+import { parseInlinePhotos } from "@/lib/photos";
 import { tasteMemo } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
@@ -15,13 +16,25 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 /**
+ * The ceiling on one reference photo, in base64 characters.
+ *
+ * The client sends these at 256px on the long edge, which is around 15KB of
+ * base64 — generous room above that, and far below what an honest client would
+ * ever produce. It matters because these repeat: every batch of a run carries
+ * the same set, so an unbounded upload here is billed six times over.
+ * Oversized entries are dropped rather than refused, since the profile alone
+ * still gives a usable curation.
+ */
+const MAX_REFERENCE_BASE64_CHARS = 256 * 1024;
+
+/**
  * POST /api/style/curate — scores one batch of candidates against the profile.
  *
  * `limit` is how many picks this batch should return; the client merges the
  * batches and keeps the best overall.
  */
 export async function POST(req: Request) {
-  let body: { profile?: unknown; candidates?: unknown; limit?: unknown };
+  let body: { profile?: unknown; candidates?: unknown; limit?: unknown; uploads?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -67,8 +80,15 @@ export async function POST(req: Request) {
     const limit =
       Number.isFinite(asked) && asked > 0 ? Math.min(Math.round(asked), 10) : PICKS_PER_BATCH;
 
+    // Small copies of the pieces the person uploaded, so the model choosing
+    // between candidates can see what it is matching rather than only read a
+    // paragraph about it.
+    const uploads = parseInlinePhotos(body.uploads).filter(
+      (photo) => photo.data.length <= MAX_REFERENCE_BASE64_CHARS
+    );
+
     const memo = await tasteMemo((await readViewer(req)).tasteId);
-    const curation = await curate(parsedProfile.data, candidates, memo, limit);
+    const curation = await curate(parsedProfile.data, candidates, memo, limit, uploads);
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },
       { headers: { "Cache-Control": "no-store" } }

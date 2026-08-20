@@ -45,12 +45,25 @@ function renderProfile(profile: StyleProfile): string {
   ].join("\n");
 }
 
+/** How many uploads are worth showing the judge. Beyond a few they stop adding signal. */
+const MAX_REFERENCE = 4;
+
 export async function curate(
   profile: StyleProfile,
   candidates: ProductListing[],
   /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
   tasteMemo?: string | null,
-  limit = PICKS_PER_BATCH
+  limit = PICKS_PER_BATCH,
+  /**
+   * The pieces the person actually uploaded, small.
+   *
+   * Until now this call judged candidates against `renderProfile` alone — a
+   * paragraph of prose describing a palette and a silhouette. The model doing
+   * the choosing had never seen a single thing the person liked, only a
+   * paraphrase of it, so it was matching photographs against a description
+   * rather than against the clothes. A stylist would hold the two side by side.
+   */
+  uploads?: Array<{ data: string; mediaType: string }>
 ): Promise<CurationResult> {
   if (!candidates.length) {
     return { items: [], notes: "No listings came back from the shopping sources." };
@@ -67,6 +80,11 @@ export async function curate(
   }
 
   const viewed = fetched.map((entry) => entry.listing);
+
+  // Capped rather than trusted: this arrives over the wire, and six batches
+  // each repeating a large set of uploads is how a cheap idea becomes the most
+  // expensive part of a run.
+  const reference = (uploads ?? []).slice(0, MAX_REFERENCE);
 
   // Each item is a label followed by its photo, so the id, price, and image stay
   // unambiguously associated.
@@ -101,9 +119,28 @@ export async function curate(
       {
         role: "user",
         content: [
+          // The uploads go first, before the profile and before the
+          // candidates: they are the thing being matched against, and putting
+          // them last would make them read as an afterthought to the prose.
+          ...(reference.length
+            ? [
+                {
+                  type: "text" as const,
+                  text: `These ${reference.length === 1 ? "is the piece" : `are the ${reference.length} pieces`} the wearer uploaded — what they already like. This is the target. Judge every candidate below against these photographs first and the written profile second; where the two disagree, believe the photographs.`,
+                },
+                ...reference.map((photo) => ({
+                  type: "image" as const,
+                  source: {
+                    type: "base64" as const,
+                    media_type: photo.mediaType as "image/jpeg",
+                    data: photo.data,
+                  },
+                })),
+              ]
+            : []),
           {
             type: "text",
-            text: `Here is the wearer's style profile:\n\n${renderProfile(profile)}${
+            text: `${reference.length ? "In writing, the same wearer's" : "Here is the wearer's"} style profile:\n\n${renderProfile(profile)}${
               tasteMemo ? `\n\n${tasteMemo}` : ""
             }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
           },
@@ -120,7 +157,7 @@ export async function curate(
     model: MODEL,
     usage: message.usage,
     images: fetched.map(({ image }) => imageSize(image.data)),
-    extra: { candidatesOffered: candidates.length, candidatesViewed: viewed.length, limit },
+    extra: { candidatesOffered: candidates.length, candidatesViewed: viewed.length, limit, reference: reference.length },
   });
   const curation = requireParsed(message.parsed_output, "curation");
 

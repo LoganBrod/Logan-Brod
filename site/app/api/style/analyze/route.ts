@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { analyzeStyle, type Intent, type PhotoInput } from "@/lib/analyze";
+import { analyzeStyle, type Intent } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
-import { MAX_PHOTOS } from "@/lib/photos";
+import { parseInlinePhotos } from "@/lib/photos";
 import { tasteMemo } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { allowance, limitMessage, spend } from "@/lib/plans";
@@ -14,8 +14,6 @@ export const dynamic = "force-dynamic";
 // 10s would cut it off.
 export const maxDuration = 120;
 
-const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
 // The API ceiling is 32MB; stopping short of it gives a clear error instead of
 // an opaque upstream rejection.
 const MAX_TOTAL_BASE64_CHARS = 16 * 1024 * 1024;
@@ -25,22 +23,6 @@ interface AnalyzeBody {
   min?: unknown;
   max?: unknown;
   intent?: unknown;
-}
-
-function parsePhotos(raw: unknown): PhotoInput[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((entry): entry is PhotoInput => {
-      if (!entry || typeof entry !== "object") return false;
-      const photo = entry as Record<string, unknown>;
-      return (
-        typeof photo.data === "string" &&
-        photo.data.length > 0 &&
-        typeof photo.mediaType === "string" &&
-        ALLOWED_MEDIA_TYPES.includes(photo.mediaType)
-      );
-    })
-    .slice(0, MAX_PHOTOS);
 }
 
 /** A response's headers, carrying the browser id back when one was just minted. */
@@ -56,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Body must be JSON." }, { status: 400 });
   }
 
-  const photos = parsePhotos(body.photos);
+  const photos = parseInlinePhotos(body.photos);
   const min = Number(body.min);
   const max = Number(body.max);
 

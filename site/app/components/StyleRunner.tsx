@@ -5,7 +5,7 @@ import type { Closet, ClosetContents } from "@/lib/closet";
 import type { CuratedItem } from "@/lib/curate";
 import type { StyleProfile } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
-import { encodePhotos } from "@/lib/image";
+import { REFERENCE_EDGE, encodePhotos, type EncodedPhoto } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import { PICKS_PER_BATCH, appendPicks, planBatches } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
@@ -99,6 +99,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     batches: ProductListing[][];
     items: CuratedItem[];
     notes: string[];
+    /** Kept so a retry judges against the same photos the first attempt did. */
+    reference: EncodedPhoto[];
   } | null>(null);
   const [reports, setReports] = useState<SourceReport[]>([]);
   const [codeInput, setCodeInput] = useState("");
@@ -257,7 +259,9 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     profile: StyleProfile,
     batches: ProductListing[][],
     startFrom: CuratedItem[],
-    startNotes: string[]
+    startNotes: string[],
+    /** Small copies of what they uploaded, sent with every batch. */
+    reference: EncodedPhoto[]
   ) {
     let items = startFrom;
     const notes = [...startNotes];
@@ -272,7 +276,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         try {
           const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
             "/api/style/curate",
-            { profile, candidates: batch, limit: PICKS_PER_BATCH }
+            { profile, candidates: batch, limit: PICKS_PER_BATCH, uploads: reference }
           );
           if (curated.notes) notes.push(curated.notes);
 
@@ -315,7 +319,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         saved.profile,
         saved.batches,
         saved.items,
-        saved.notes
+        saved.notes,
+        saved.reference
       );
 
       const contents: ClosetContents = {
@@ -330,7 +335,13 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setResults(contents);
       setPhase("filled");
       resumable.current = outcome.failed.length
-        ? { profile: saved.profile, batches: outcome.failed, items: outcome.items, notes: outcome.notes }
+        ? {
+            profile: saved.profile,
+            batches: outcome.failed,
+            items: outcome.items,
+            notes: outcome.notes,
+            reference: saved.reference,
+          }
         : null;
       if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 
@@ -369,7 +380,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       // Downscaled and encoded in the browser, then sent inline — the photos
       // are never hosted anywhere.
       setStage("preparing");
-      const encoded = await encodePhotos(photos.map((photo) => photo.file));
+      const files = photos.map((photo) => photo.file);
+      // Twice, at two sizes. The vision pass reads these photos closely and
+      // wants the detail; curation only holds them up next to a candidate, and
+      // it repeats that in every batch — so it gets thumbnails, at roughly a
+      // fortieth of the tokens.
+      const [encoded, reference] = await Promise.all([
+        encodePhotos(files),
+        encodePhotos(files, REFERENCE_EDGE),
+      ]);
 
       setStage("analyzing");
       const { profile } = await postJson<{ profile: StyleProfile }>(
@@ -397,15 +416,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       if (!batches.length) {
         throw new Error("None of the listings came back with a usable photo.");
       }
-      resumable.current = { profile, batches, items: [], notes: [] };
+      resumable.current = { profile, batches, items: [], notes: [], reference };
 
-      const outcome = await curateBatches(profile, batches, [], []);
+      const outcome = await curateBatches(profile, batches, [], [], reference);
 
       if (!outcome.items.length) {
         // Only worth retrying if something actually broke. Batches that came
         // back and picked nothing will pick nothing again.
         resumable.current = outcome.failed.length
-          ? { profile, batches: outcome.failed, items: [], notes: outcome.notes }
+          ? { profile, batches: outcome.failed, items: [], notes: outcome.notes, reference }
           : null;
         throw new Error(
           outcome.errors[0] ?? "Nothing in the search was worth showing you. Try a wider range."
@@ -425,7 +444,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       // Only what failed is worth retrying, and nothing at all when the run
       // came through whole.
       resumable.current = outcome.failed.length
-        ? { profile, batches: outcome.failed, items: outcome.items, notes: outcome.notes }
+        ? { profile, batches: outcome.failed, items: outcome.items, notes: outcome.notes, reference }
         : null;
       if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 

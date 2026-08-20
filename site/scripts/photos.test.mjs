@@ -8,7 +8,12 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MAX_PHOTOS, describeRejections, selectPhotos } from "../lib/photos.ts";
+import {
+  MAX_PHOTOS,
+  describeRejections,
+  parseInlinePhotos,
+  selectPhotos,
+} from "../lib/photos.ts";
 
 const img = (name = "a.jpg") => ({ name, type: "image/jpeg" });
 
@@ -63,4 +68,47 @@ test("rejections are explained, and silence means nothing was dropped", () => {
     selectPhotos(0, [{ name: "notes.pdf", type: "application/pdf" }])
   );
   assert.match(badType, /wasn't an image/);
+});
+
+// --- what arrives over the wire ------------------------------------------
+//
+// Two routes take photos now: analyze reads them, and curate holds them up
+// against each candidate. The check they share lives in one place so it can't
+// drift into being stricter on one route than the other.
+
+const inline = (over = {}) => ({ data: "AAAA", mediaType: "image/jpeg", ...over });
+
+test("a well-formed photo survives, and junk around it doesn't", () => {
+  const parsed = parseInlinePhotos([
+    inline(),
+    null,
+    "not an object",
+    { data: "AAAA" },
+    { mediaType: "image/jpeg" },
+    inline({ data: "" }),
+    inline({ mediaType: "image/svg+xml" }),
+    inline({ mediaType: "text/html" }),
+  ]);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].mediaType, "image/jpeg");
+});
+
+test("a malformed entry drops itself, not the whole upload", () => {
+  // Refusing the request would mean one unreadable photo out of six costs a
+  // person their whole run.
+  const parsed = parseInlinePhotos([inline(), { data: 7 }, inline()]);
+  assert.equal(parsed.length, 2);
+});
+
+test("anything that isn't an array is no photos at all", () => {
+  for (const raw of [undefined, null, "photos", 3, {}]) {
+    assert.deepEqual(parseInlinePhotos(raw), []);
+  }
+});
+
+test("the count is capped, and the cap can be tightened per caller", () => {
+  const many = Array.from({ length: 20 }, () => inline());
+  assert.equal(parseInlinePhotos(many).length, MAX_PHOTOS);
+  // Curation repeats its copies in every batch, so it asks for fewer.
+  assert.equal(parseInlinePhotos(many, 4).length, 4);
 });

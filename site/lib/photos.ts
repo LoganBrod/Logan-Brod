@@ -7,6 +7,39 @@
 
 export const MAX_PHOTOS = 6;
 
+/** What the vision API will accept, and therefore what a route will forward. */
+export const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+export interface InlinePhoto {
+  /** Raw base64, no data: prefix. */
+  data: string;
+  mediaType: string;
+}
+
+/**
+ * The uploads as they arrive over the wire.
+ *
+ * Two routes take photos now — analyze reads them, and curate holds them up
+ * against each candidate — so the shape check lives here rather than being
+ * written twice and drifting. Anything malformed is dropped rather than
+ * rejected: one unreadable entry out of six should not fail a run.
+ */
+export function parseInlinePhotos(raw: unknown, max: number = MAX_PHOTOS): InlinePhoto[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is InlinePhoto => {
+      if (!entry || typeof entry !== "object") return false;
+      const photo = entry as Record<string, unknown>;
+      return (
+        typeof photo.data === "string" &&
+        photo.data.length > 0 &&
+        typeof photo.mediaType === "string" &&
+        ALLOWED_MEDIA_TYPES.includes(photo.mediaType)
+      );
+    })
+    .slice(0, max);
+}
+
 export interface PhotoSelection<T> {
   accepted: T[];
   /** Dropped for being over the cap — worth telling the user about. */

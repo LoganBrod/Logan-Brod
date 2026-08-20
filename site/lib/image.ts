@@ -7,6 +7,19 @@
 
 /** Opus 5 reads up to 2576px on the long edge; 1568 is plenty for clothing. */
 const MAX_EDGE = 1568;
+
+/**
+ * The long edge for a copy that exists only to be looked at alongside something
+ * else.
+ *
+ * Claude bills an image at roughly (width x height) / 750 tokens, so a full
+ * 1568px upload is about 2,460 of them. Curation runs six times over one pool,
+ * and repeating three uploads at full size in every batch would cost more than
+ * the sixteen candidates each batch is there to judge. At 256px the same photo
+ * is about 65 tokens and still plainly a green waxed jacket, which is all the
+ * comparison needs.
+ */
+export const REFERENCE_EDGE = 256;
 const JPEG_QUALITY = 0.85;
 
 /** Guard on the whole request — the API ceiling is 32MB, we stay well under. */
@@ -33,10 +46,13 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-export async function toDownscaledJpegBase64(file: File): Promise<EncodedPhoto> {
+export async function toDownscaledJpegBase64(
+  file: File,
+  maxEdge: number = MAX_EDGE
+): Promise<EncodedPhoto> {
   const img = await loadImage(file);
 
-  const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+  const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
   const width = Math.max(1, Math.round(img.width * scale));
   const height = Math.max(1, Math.round(img.height * scale));
 
@@ -60,8 +76,11 @@ export async function toDownscaledJpegBase64(file: File): Promise<EncodedPhoto> 
   return { data, mediaType: "image/jpeg" };
 }
 
-export async function encodePhotos(files: File[]): Promise<EncodedPhoto[]> {
-  const encoded = await Promise.all(files.map(toDownscaledJpegBase64));
+export async function encodePhotos(
+  files: File[],
+  maxEdge: number = MAX_EDGE
+): Promise<EncodedPhoto[]> {
+  const encoded = await Promise.all(files.map((file) => toDownscaledJpegBase64(file, maxEdge)));
 
   const total = encoded.reduce((sum, photo) => sum + photo.data.length, 0);
   if (total > MAX_TOTAL_BASE64_BYTES) {
