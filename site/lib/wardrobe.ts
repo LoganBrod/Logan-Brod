@@ -174,9 +174,9 @@ export function hangPositions(count: number, garmentW: number): number[] {
  *
  * The rail is 0.408 of the frame wide. Eight across it leaves each bag about
  * a hundred pixels at the page's width, which is the smallest a product photo
- * survives; twenty-four across would be thirty-odd and unreadable. So a closet
- * of twenty-four is three rails of eight that you move between, rather than one
- * rail with everything crushed onto it.
+ * survives; a dozen across would be sixty-odd and unreadable. So a full closet
+ * is two rails of eight that you move between, rather than one rail with
+ * everything crushed onto it.
  */
 export const PER_PAGE = 8;
 

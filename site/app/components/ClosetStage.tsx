@@ -336,9 +336,9 @@ export default function ClosetStage({
   const active = items.find((item) => item.id === activeId) ?? null;
   const showGarments = phase === "filled";
 
-  // The rail that is hanging, not the whole closet. Laying out all twenty-four
-  // put every visible bag in row one at a twelve-per-row width — the geometry
-  // has to describe the eight actually on screen.
+  // The rail that is hanging, not the whole closet. Laying out every piece at
+  // once put the visible bags in row one at the full closet's width — the
+  // geometry has to describe the eight actually on screen.
   const { width, height, slots, rowYs } = layout(shown.length);
 
   // Stagger positions, numbered within each arrival rather than across the whole

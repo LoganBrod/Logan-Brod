@@ -37,8 +37,8 @@ export const MAX_VIEWED = 16;
  * Each batch is still sixteen candidates, which is the number that matters for
  * selectivity: a batch that only has a handful to choose between starts
  * returning the best of a bad set rather than nothing. Widening the count of
- * batches rather than the size of each one is what lets the rail hold
- * twenty-four pieces without lowering the bar any single pick had to clear.
+ * batches rather than the size of each one is what lets a run cover the pool
+ * without lowering the bar any single pick had to clear.
  *
  * The cost is real and roughly linear: six curation calls where there were
  * three. Curation is the most expensive step in a run.
@@ -48,17 +48,28 @@ export const MAX_BATCHES = 6;
 /**
  * Picks asked of each batch.
  *
- * Four of sixteen, across six batches, is a ceiling of twenty-four pieces — a
- * rail worth browsing rather than a single screenful. The ceiling is a real
- * ceiling: everything a batch returns is hung, so nothing a person has already
- * seen is ever taken back off the rail when a later batch lands.
+ * Two of sixteen. This was four, which across six batches made a rail of
+ * twenty-four — and twenty-four is where the recommendations stopped being
+ * recommendations. A quota is not a request, it is an instruction: a model
+ * asked for four out of sixteen will find four, and if only one of the sixteen
+ * genuinely suits the person then three of every four pieces on the rail are
+ * there because a number said so. Somebody uploading three coats they love and
+ * getting back twenty-four things, none of them his, is exactly what that
+ * arithmetic produces.
  *
- * Four rather than eight because the alternative way to reach twenty-four is
- * three batches picking eight of sixteen, and a model asked for half of what it
- * is shown will find a reason to like half of what it is shown. One in four is
- * close enough to the old one in five that the bar has barely moved.
+ * One in eight is a bar. Paired with the score floor in `curate.ts` — which
+ * lets a thin batch return nothing at all — the rail holds however many pieces
+ * actually cleared it, up to twelve.
  */
-export const PICKS_PER_BATCH = 4;
+export const PICKS_PER_BATCH = 2;
+
+/**
+ * The most pieces a finished closet holds.
+ *
+ * Twelve rather than twenty-four, and a ceiling rather than a target. Nothing
+ * pads up to it: if four pieces cleared the bar, the closet has four.
+ */
+export const FINAL_PICKS = 12;
 
 /** Split the pool into the slices each curation call will see. */
 export function planBatches(
@@ -102,4 +113,33 @@ export function appendPicks<T extends { id: string }>(current: T[], arriving: T[
     return true;
   });
   return added.length ? [...current, ...added] : current;
+}
+
+/**
+ * The merge the curation prompt has been promising.
+ *
+ * Each batch is told it is looking at one slice of a larger search, that
+ * several slices are being judged at once, and that "the results are merged
+ * afterwards and the best overall are kept". None of that was true. The batches
+ * were concatenated in whatever order they came back, and every pick any batch
+ * made survived — so a batch that scraped together two 55s out of a weak slice
+ * put them on the rail ahead of a 90 from a strong one, and with eight pieces
+ * to a page the ordering decided what most people ever saw.
+ *
+ * This is the other half. It runs once, when the run finishes: sort by score,
+ * keep the ceiling. Ties fall back to price, cheaper first, so the order is
+ * stable across runs rather than depending on which batch happened to return
+ * first.
+ *
+ * Not run while the closet is filling. Pieces arrive as their batch lands and
+ * nothing is taken back down mid-run; the rail settles best-first once, at the
+ * end, when there is finally something to rank against.
+ */
+export function rankAndCut<T extends { score: number; price: number }>(
+  items: T[],
+  limit: number = FINAL_PICKS
+): T[] {
+  return [...items]
+    .sort((a, b) => b.score - a.score || a.price - b.price)
+    .slice(0, limit);
 }

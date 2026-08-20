@@ -7,7 +7,7 @@ import type { StyleProfile } from "@/lib/schemas";
 import type { ProductListing, SourceReport } from "@/lib/sources/types";
 import { REFERENCE_EDGE, encodePhotos, type EncodedPhoto } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
-import { PICKS_PER_BATCH, appendPicks, planBatches } from "@/lib/batching";
+import { PICKS_PER_BATCH, appendPicks, planBatches, rankAndCut } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
@@ -326,7 +326,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       const contents: ClosetContents = {
         range: { min, max },
         profile: saved.profile,
-        items: outcome.items,
+        items: rankAndCut(outcome.items),
         notes: outcome.notes.join(" "),
       };
 
@@ -433,10 +433,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
       // Show the results before attempting to save. The run is complete and
       // paid for at this point; a storage problem must never discard it.
+      // The rail has been filling in arrival order while the batches came
+      // back. Now that every batch has been seen there is finally something to
+      // rank against, so it settles best-first — which matters because the
+      // closet pages eight at a time, and arrival order decided what most
+      // people ever looked at.
       const contents: ClosetContents = {
         range: { min, max },
         profile,
-        items: outcome.items,
+        items: rankAndCut(outcome.items),
         notes: outcome.notes.join(" "),
       };
       revealWhenBuilt(contents);

@@ -19,6 +19,22 @@ export interface CurationResult {
   notes: string;
 }
 
+/**
+ * The score below which a pick doesn't go on the rail.
+ *
+ * The system prompt has always said "return only items you would defend" and
+ * "fewer is fine if this slice came back thin", and it was always ignored,
+ * because the same message also asked for a specific number of picks. Asking is
+ * not enough; a batch is only genuinely free to return nothing if something
+ * downstream enforces it.
+ *
+ * Sixty on a hundred-point scale is deliberately not a high bar — it is the
+ * line between "this suits him" and "this is the best of a bad slice", which is
+ * the only distinction that matters here. Every batch is then free to come back
+ * empty, and a run that finds three good pieces shows three.
+ */
+export const SCORE_FLOOR = 60;
+
 const SYSTEM = `You are choosing which men's clothing, out of raw shopping-search results, is genuinely worth showing one specific person.
 
 You can see each item's photo. Use it — the picture is the evidence, the title is just a claim. Sellers mislabel constantly, so when the two disagree, believe the photo.
@@ -28,6 +44,8 @@ Reject on sight, and don't spend reasoning on them: womenswear and kids' clothin
 Then judge fit against the wearer's style — colour, material, cut, formality — not against menswear in general. A beautiful piece that clashes with their palette is a bad recommendation.
 
 Return only items you would defend. You are looking at one slice of a larger search and several slices are being judged at once, so pick the best few here rather than trying to assemble a whole wardrobe out of this batch — the results are merged afterwards and the best overall are kept. Fewer is fine if this slice came back thin, and padding to reach a number just means a weaker piece displaces a stronger one from another slice.
+
+Score honestly, and treat ${SCORE_FLOOR} as the line: below it the piece is dropped and never shown. Returning nothing at all from a slice with nothing good in it is the correct answer, not a failure — scoring a mediocre piece ${SCORE_FLOOR + 10} to keep it does not help this person, it just puts a garment on their rail that they will scroll past.
 
 Tag every pick with its category, maker, material, and colour. These are counted across runs to learn what this person actually responds to, so they have to be consistent: the same material named the same way every time, and 'unknown' rather than a guess when the title and photo don't say.
 
@@ -43,6 +61,59 @@ function renderProfile(profile: StyleProfile): string {
     `Formality: ${profile.formality}`,
     `Gaps to fill: ${profile.gaps.join(", ")}`,
   ].join("\n");
+}
+
+/**
+ * Turn the model's picks into things that can actually hang on a rail.
+ *
+ * Three jobs, and each one is a rule the prompt asks for and cannot enforce:
+ *
+ *   - **Real.** A pick whose id isn't in the candidate set is invented, and has
+ *     no URL, price, or photo to render.
+ *   - **Good enough.** Below `SCORE_FLOOR` the piece is dropped. The prompt has
+ *     always said "fewer is fine if this slice came back thin" and it was always
+ *     ignored, because the same message also asked for a specific number of
+ *     picks. A batch is only genuinely free to return nothing if something here
+ *     lets it.
+ *   - **Within quota.** A batch that returns six when it was asked for two would
+ *     quietly out-vote the other batches in the merge, which is the one thing
+ *     batching must not allow.
+ *
+ * Separate from `curate` so it can be tested without buying any tokens.
+ */
+export function selectPicks(
+  picks: Pick[],
+  viewed: ProductListing[],
+  limit: number
+): { items: CuratedItem[]; belowFloor: number } {
+  const byId = new Map(viewed.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  const items: CuratedItem[] = [];
+  let belowFloor = 0;
+
+  for (const pick of picks) {
+    const listing = byId.get(pick.id);
+    if (!listing || seen.has(pick.id)) continue;
+    if (pick.score < SCORE_FLOOR) {
+      belowFloor += 1;
+      continue;
+    }
+    seen.add(pick.id);
+    items.push({
+      ...listing,
+      score: pick.score,
+      whyItFits: pick.whyItFits,
+      attrs: {
+        category: pick.category,
+        brand: pick.brand,
+        material: pick.material,
+        colour: pick.colour,
+      },
+    });
+  }
+
+  items.sort((a, b) => b.score - a.score);
+  return { items: items.slice(0, limit), belowFloor };
 }
 
 /** How many uploads are worth showing the judge. Beyond a few they stop adding signal. */
@@ -152,41 +223,35 @@ export async function curate(
 
   assertNotRefused(message, "curation");
 
-  meter({
-    op: "curate",
-    model: MODEL,
-    usage: message.usage,
-    images: fetched.map(({ image }) => imageSize(image.data)),
-    extra: { candidatesOffered: candidates.length, candidatesViewed: viewed.length, limit, reference: reference.length },
-  });
-  const curation = requireParsed(message.parsed_output, "curation");
+  const kept: CuratedItem[] = [];
+  let belowFloor = 0;
 
-  // Rejoin against the real listings and drop anything hallucinated — a pick
-  // whose id isn't in the candidate set has no URL, price, or image to render.
-  const byId = new Map(viewed.map((c) => [c.id, c]));
-  const seen = new Set<string>();
-  const items: CuratedItem[] = [];
+  // The meter runs in a `finally` rather than in line. The tokens are spent the
+  // moment the message comes back, so a batch whose output won't parse still
+  // has to appear in the cost log — and the counts below are worth having in
+  // the same record, because a closet that comes back with three pieces should
+  // be legible as the floor doing its job rather than as something breaking.
+  try {
+    const curation = requireParsed(message.parsed_output, "curation");
+    const selected = selectPicks(curation.picks as Pick[], viewed, limit);
+    belowFloor = selected.belowFloor;
+    kept.push(...selected.items);
 
-  for (const pick of curation.picks as Pick[]) {
-    const listing = byId.get(pick.id);
-    if (!listing || seen.has(pick.id)) continue;
-    seen.add(pick.id);
-    items.push({
-      ...listing,
-      score: pick.score,
-      whyItFits: pick.whyItFits,
-      attrs: {
-        category: pick.category,
-        brand: pick.brand,
-        material: pick.material,
-        colour: pick.colour,
+    return { items: kept, notes: curation.notes };
+  } finally {
+    meter({
+      op: "curate",
+      model: MODEL,
+      usage: message.usage,
+      images: fetched.map(({ image }) => imageSize(image.data)),
+      extra: {
+        candidatesOffered: candidates.length,
+        candidatesViewed: viewed.length,
+        limit,
+        reference: reference.length,
+        kept: kept.length,
+        belowFloor,
       },
     });
   }
-
-  // The count is enforced here as well as asked for: a batch that returns six
-  // when it was asked for four would quietly out-vote the other batches in the
-  // merge, which is the one thing batching must not let happen.
-  items.sort((a, b) => b.score - a.score);
-  return { items: items.slice(0, limit), notes: curation.notes };
 }
