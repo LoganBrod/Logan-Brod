@@ -119,6 +119,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   // there's still a way to say yes to someone who dismissed it.
   const [prompting, setPrompting] = useState(false);
   const [plan, setPlan] = useState<"free" | "member">("free");
+  /**
+   * What uploading these pieces is meant to mean.
+   *
+   * "similar" is the default because it is what people actually intend: someone
+   * who uploads three jackets they like wants jackets. The app used to only do
+   * the other one, silently, which is why a run could come back with nothing in
+   * the person's own style and still be working exactly as written.
+   */
+  const [intent, setIntent] = useState<"similar" | "gaps">("similar");
 
   useEffect(() => {
     let alive = true;
@@ -365,7 +374,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       setStage("analyzing");
       const { profile } = await postJson<{ profile: StyleProfile }>(
         "/api/style/analyze",
-        { photos: encoded, min, max }
+        { photos: encoded, min, max, intent }
       );
 
       setStage("shopping");
@@ -588,6 +597,47 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             ))}
           </div>
         )}
+
+        {/* What the upload is asking for. Two words each, because the
+            difference is the whole product and a person should not have to
+            read a paragraph to find the one they meant. */}
+        <fieldset className="mt-7">
+          <legend className="label mb-2">What should it find?</legend>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["similar", "More like these", "Same kind of pieces as the ones you upload."],
+                ["gaps", "What's missing", "The pieces that would go with them, that you don't have."],
+              ] as const
+            ).map(([value, label, hint]) => (
+              <label
+                key={value}
+                title={hint}
+                className={`cursor-pointer rounded-sm border px-4 py-2.5 text-[13px] transition-colors ${
+                  intent === value
+                    ? "border-room-ink bg-room-ink text-white"
+                    : "border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="intent"
+                  value={value}
+                  checked={intent === value}
+                  disabled={busy}
+                  onChange={() => setIntent(value)}
+                  className="sr-only"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-room-faint">
+            {intent === "similar"
+              ? "Same kind of pieces as the ones you upload."
+              : "The pieces that would go with them, that you don't already have."}
+          </p>
+        </fieldset>
 
         {/* A two-column grid on phones, the original row from sm up.
             Wrapping fixed-width fields at 390px dealt the last size field and

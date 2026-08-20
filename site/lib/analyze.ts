@@ -10,11 +10,28 @@ Your queries are typed straight into eBay and Google Shopping, so they live or d
 
 Vary the queries across garment types. Eight near-identical jacket searches return the same jacket eight times; the point is coverage.
 
-Recommend what is missing, not what is already there. If every upload is outerwear, the wardrobe does not need a fifth jacket — it needs the trousers and boots that would go under them. Read what the pieces have in common, then cover the gaps around them.
-
 Everything you suggest is men's clothing. Don't waste query words saying so — the search is already scoped to menswear, and "mens" in the query just crowds out a more useful term.
 
 Write the summary and the per-query reasons to the wearer, in plain second person. No preamble.`;
+
+/**
+ * The two things someone can mean by uploading clothes they like.
+ *
+ * This used to be one instruction — fill the gaps — and it was wrong as a
+ * default. Somebody who uploads three jackets they love is asking for jackets.
+ * The app read the uploads, worked out they were outerwear, and deliberately
+ * searched for trousers and boots instead, so the honest response to "none of
+ * these were my style" was that the product had been told not to return their
+ * style. Filling gaps is a real and more advanced request; it is not what
+ * anybody means the first time.
+ */
+export type Intent = "similar" | "gaps";
+
+const INTENT: Record<Intent, string> = {
+  similar: `Find more of what they showed you. Same garment types, same register, same colours and materials — the pieces they uploaded are the target, not a starting point to move away from. Vary maker, cut and detail so the results are not eight of the same coat, but stay inside the kind of thing they picked. If every upload is outerwear, return outerwear.`,
+
+  gaps: `Recommend what is missing, not what is already there. If every upload is outerwear, the wardrobe does not need a fifth jacket — it needs the trousers and boots that would go under them. Read what the pieces have in common, then cover the gaps around them.`,
+};
 
 export interface PhotoInput {
   /** Raw base64, no data: prefix. */
@@ -28,7 +45,9 @@ export async function analyzeStyle(
   /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
   tasteMemo?: string | null,
   /** What they actually own, from `lib/wardrobeOwned.ts`. */
-  ownedMemo?: string | null
+  ownedMemo?: string | null,
+  /** More of the same, or the pieces that would go with it. Defaults to more. */
+  intent: Intent = "similar"
 ): Promise<StyleProfile> {
   if (!photos.length) {
     throw new Error("At least one photo is required.");
@@ -38,7 +57,7 @@ export async function analyzeStyle(
     model: MODEL,
     // Covers thinking and the response together — Opus 5 thinks by default.
     max_tokens: 8000,
-    system: SYSTEM,
+    system: `${SYSTEM}\n\n${INTENT[intent]}`,
     output_config: {
       effort: "high",
       format: zodOutputFormat(StyleProfileSchema),

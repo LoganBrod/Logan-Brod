@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { analyzeStyle, type PhotoInput } from "@/lib/analyze";
+import { analyzeStyle, type Intent, type PhotoInput } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
 import { MAX_PHOTOS } from "@/lib/photos";
 import { tasteMemo } from "@/lib/taste";
@@ -24,6 +24,7 @@ interface AnalyzeBody {
   photos?: unknown;
   min?: unknown;
   max?: unknown;
+  intent?: unknown;
 }
 
 function parsePhotos(raw: unknown): PhotoInput[] {
@@ -116,7 +117,10 @@ export async function POST(req: Request) {
       tasteMemo(viewer.tasteId),
       readOwned(viewer.owner),
     ]);
-    const profile = await analyzeStyle(photos, { min, max }, memo, renderOwned(owned));
+    // Anything but the explicit opt-in means more of what they showed us,
+    // which is what somebody uploading clothes they like almost always means.
+    const intent: Intent = body.intent === "gaps" ? "gaps" : "similar";
+    const profile = await analyzeStyle(photos, { min, max }, memo, renderOwned(owned), intent);
 
     // Spent here rather than on save. The money leaves at the model call, so
     // that is where the count has to happen — metering at save time meant a run
