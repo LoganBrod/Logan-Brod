@@ -13,7 +13,7 @@
 // which depends on the person: the sources are shared, the size is theirs.
 
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { meter } from "./meter";
 import { getJson, redisConfigured, setJson } from "./redis";
 import { FitAdviceSchema, type FitAdvice } from "./schemas";
@@ -121,7 +121,7 @@ export async function adviseFit({ brand, category, sizes }: FitRequest): Promise
     .join("\n\n");
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.fit,
     max_tokens: 6000,
     system: SYSTEM,
     output_config: {
@@ -148,7 +148,7 @@ ${corpus}`,
 
   meter({
     op: "fit.advise",
-    model: MODEL,
+    model: MODELS.fit,
     usage: message.usage,
     extra: { brand, category, sourcesRead: sources.length, sourcesCached: Boolean(cached) },
   });

@@ -1,5 +1,5 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { imageSize, meter } from "./meter";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
 import type { ItemAttributes } from "./taste";
@@ -175,7 +175,7 @@ export async function curate(
   ]);
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.curate,
     max_tokens: 8000,
     system: SYSTEM,
     output_config: {
@@ -241,7 +241,7 @@ export async function curate(
   } finally {
     meter({
       op: "curate",
-      model: MODEL,
+      model: MODELS.curate,
       usage: message.usage,
       images: fetched.map(({ image }) => imageSize(image.data)),
       extra: {

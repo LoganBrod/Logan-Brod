@@ -13,8 +13,15 @@
 //   COST_LOG=1 npm run dev        # then drive the app; lines go to the server console
 //   COST_LOG=1 ... | grep '"cost"' | node scripts/cost-report.mjs
 
-/** claude-opus-5, USD per million tokens. Checked against the pricing page 2026-08-12. */
-const PRICES: Record<string, { in: number; out: number; cacheWrite: number; cacheRead: number }> = {
+/**
+ * USD per million tokens, by model id. Checked against the pricing page
+ * 2026-08-12.
+ *
+ * Several jobs run on different models now (see `MODELS` in lib/anthropic.ts),
+ * so a run's log lines are not all priced the same way and the totals only mean
+ * anything if every id in use appears here.
+ */
+export const PRICES: Record<string, { in: number; out: number; cacheWrite: number; cacheRead: number }> = {
   "claude-opus-5": { in: 5, out: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-opus-4-8": { in: 5, out: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-sonnet-5": { in: 2, out: 10, cacheWrite: 2.5, cacheRead: 0.2 },
@@ -111,6 +118,8 @@ export interface MeterInput {
 export function meter({ op, model, usage, images, extra }: MeterInput): void {
   if (!costLogging()) return;
   try {
+    // Unknown ids fall back to the dearest model on the list, so a missing
+    // price over-states the bill rather than quietly hiding one.
     const price = PRICES[model] ?? PRICES["claude-opus-5"];
     const inTok = usage?.input_tokens ?? 0;
     const outTok = usage?.output_tokens ?? 0;

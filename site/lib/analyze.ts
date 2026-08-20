@@ -1,5 +1,5 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { imageSize, meter } from "./meter";
 import { StyleProfileSchema, type StyleProfile } from "./schemas";
 import type { PriceRange } from "./sources/types";
@@ -54,7 +54,7 @@ export async function analyzeStyle(
   }
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.analyze,
     // Covers thinking and the response together — Opus 5 thinks by default.
     max_tokens: 8000,
     system: `${SYSTEM}\n\n${INTENT[intent]}`,
@@ -96,7 +96,7 @@ Read the style across them, then give me eight to ten things to buy that would e
 
   meter({
     op: "closet.analyze",
-    model: MODEL,
+    model: MODELS.analyze,
     usage: message.usage,
     images: photos.map((photo) => imageSize(photo.data)),
   });

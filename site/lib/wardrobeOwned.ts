@@ -12,7 +12,7 @@
 // read and correct.
 
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { imageSize, meter } from "./meter";
 import { OutfitsSchema, WardrobeReadSchema, type Outfits, type OwnedItem } from "./schemas";
 import { getJson, redisConfigured, setJson } from "./redis";
@@ -70,7 +70,7 @@ export async function readWardrobePhotos(images: InlineImage[]): Promise<OwnedIt
   if (!images.length) return [];
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.wardrobeRead,
     max_tokens: 8000,
     system: READ_SYSTEM,
     output_config: { effort: "medium", format: zodOutputFormat(WardrobeReadSchema) },
@@ -104,7 +104,7 @@ export async function readWardrobePhotos(images: InlineImage[]): Promise<OwnedIt
 
   meter({
     op: "wardrobe.read",
-    model: MODEL,
+    model: MODELS.wardrobeRead,
     usage: message.usage,
     images: images.map((image) => imageSize(image.data)),
   });
@@ -150,7 +150,7 @@ export async function buildOutfits(
     .join("\n");
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.outfits,
     max_tokens: 8000,
     system: OUTFIT_SYSTEM,
     output_config: { effort: "medium", format: zodOutputFormat(OutfitsSchema) },
@@ -173,7 +173,7 @@ export async function buildOutfits(
 
   meter({
     op: "wardrobe.outfits",
-    model: MODEL,
+    model: MODELS.outfits,
     usage: message.usage,
     extra: { garments: owned.length },
   });

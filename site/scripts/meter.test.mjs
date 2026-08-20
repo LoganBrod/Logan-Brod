@@ -164,3 +164,14 @@ test("missing usage reads as zero cost, not NaN", () => {
   );
   assert.equal(JSON.parse(line).cost, 0);
 });
+
+test("every model the app actually calls has a price on file", async () => {
+  // The meter falls back to Opus pricing for an unknown id, which is safe — it
+  // over-states rather than hides — but it also means a mis-priced model is
+  // invisible in the totals. Splitting the jobs across models made that a live
+  // risk rather than a theoretical one.
+  const { MODELS } = await import("../lib/anthropic.ts");
+  for (const [job, model] of Object.entries(MODELS)) {
+    assert.ok(meter.PRICES[model], `${job} runs on ${model}, which has no price in lib/meter.ts`);
+  }
+});

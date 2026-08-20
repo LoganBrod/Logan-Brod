@@ -11,7 +11,7 @@
 // anything that isn't an outright yes.
 
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODEL, anthropic, assertNotRefused, requireParsed } from "./anthropic";
+import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { JudgementSchema, type Judgement } from "./schemas";
 import { imageSize, meter } from "./meter";
 import { fetchThumbnail, type InlineImage } from "./thumbnails";
@@ -54,7 +54,7 @@ export async function judge(input: JudgeInput): Promise<Judgement> {
     .join("\n");
 
   const message = await anthropic().messages.parse({
-    model: MODEL,
+    model: MODELS.judge,
     max_tokens: 4000,
     system: SYSTEM,
     output_config: {
@@ -91,7 +91,7 @@ export async function judge(input: JudgeInput): Promise<Judgement> {
 
   meter({
     op: "judge",
-    model: MODEL,
+    model: MODELS.judge,
     usage: message.usage,
     images: [imageSize(input.image.data)],
   });
