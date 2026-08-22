@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Closet, ClosetContents } from "@/lib/closet";
 import type { CuratedItem } from "@/lib/curate";
 import type { StyleProfile } from "@/lib/schemas";
@@ -137,6 +138,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
    * a client to be trusted with them.
    */
   const [preferences, setPreferences] = useState<Preferences>({});
+  /** How many pieces this browser has already voted on. Null until known. */
+  const [tasteCount, setTasteCount] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -148,6 +151,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             configured?: boolean;
             sizes?: Sizes;
             preferences?: Preferences;
+            count?: number;
             plan?: "free" | "member";
           } | null
         ) => {
@@ -155,6 +159,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           setSizesAvailable(Boolean(json.configured));
           setSizes(json.sizes ?? {});
           setPreferences(json.preferences ?? {});
+          setTasteCount(json.count ?? 0);
           setPlan(json.plan ?? "free");
         }
       )
@@ -694,6 +699,25 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               : "The pieces that would go with them, that you don't already have."}
           </p>
         </fieldset>
+
+        {/* Offered only to people the app has never watched choose anything.
+            The taste memory is the strongest signal here and it doesn't exist
+            until somebody has reacted to a closet — so the first run is the one
+            with none of it, and it's also the run that decides whether they
+            come back. Hidden once there are votes, because by then it would be
+            asking for something it already has. */}
+        {tasteCount === 0 && !busy && (
+          <Link
+            href="/calibrate"
+            className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-room-line bg-room-sunk px-5 py-4 transition-colors hover:border-room-ink/40"
+          >
+            <span className="text-[13px] leading-relaxed text-room-muted">
+              <span className="font-medium text-room-ink">New here?</span> Swipe fifteen pieces
+              first &mdash; about a minute, and the first clozet stops guessing.
+            </span>
+            <span className="text-[12px] font-semibold text-accent">Teach it your eye &rarr;</span>
+          </Link>
+        )}
 
         {/* The five things the photographs can't say. Placed after "what should
             it find?" and before the price, because it reads as one continuous
