@@ -25,8 +25,22 @@ const VERDICT: Record<Judgement["verdict"], { label: string; className: string }
  * question people actually have, and it gets asked far more often than anyone
  * sits down to build a whole closet.
  */
-export default function JudgePanel({ range }: { range: { min: number; max: number } }) {
-  const [open, setOpen] = useState(false);
+export default function JudgePanel({
+  range,
+  defaultOpen = false,
+}: {
+  range: { min: number; max: number };
+  /**
+   * Open from the start.
+   *
+   * On the closet page this is a footnote under the build form and starts
+   * collapsed, because it isn't what somebody came for. On the tools page it is
+   * one of the three things the page is *about*, and a section that has to be
+   * opened before it says anything reads as broken.
+   */
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +103,7 @@ export default function JudgePanel({ range }: { range: { min: number; max: numbe
         <p className="eyebrow">Is this any good?</p>
         <button
           type="button"
+          hidden={defaultOpen}
           onClick={() => setOpen(false)}
           className="text-xs text-room-faint hover:text-room-ink"
         >

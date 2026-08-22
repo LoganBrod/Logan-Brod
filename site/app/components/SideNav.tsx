@@ -22,8 +22,10 @@ const LINKS = [
   { href: "/", label: "About" },
   { href: "/closet", label: "Clozet" },
   { href: "/wardrobe", label: "Wardrobe" },
-  { href: "/sizing", label: "Sizing" },
-  { href: "/scan", label: "Scan" },
+  // Sizing, "is this any good?" and standing scans were two pages and a
+  // footnote. They're three moments of one job — being out looking — so they
+  // share a page now. /sizing and /scan redirect into it.
+  { href: "/tools", label: "Tools" },
   { href: "/discover", label: "Discover" },
   { href: "/closets", label: "Saved" },
 ] as const;
