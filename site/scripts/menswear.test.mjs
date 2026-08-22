@@ -63,9 +63,17 @@ test("a men's label does not excuse a bulk lot", () => {
 });
 
 test("thumbnailUrl asks eBay for the small rendition", () => {
+  // The size is load-bearing on the bill, not a detail: sixteen of these go
+  // into every batch and six batches into every run, so it is two thirds of
+  // everything curation reads.
   assert.equal(
     thumbnailUrl("https://i.ebayimg.com/images/g/AbC/s-l1600.jpg"),
-    "https://i.ebayimg.com/images/g/AbC/s-l400.jpg"
+    "https://i.ebayimg.com/images/g/AbC/s-l225.jpg"
+  );
+  // Any rendition is rewritten, not just the large ones.
+  assert.equal(
+    thumbnailUrl("https://i.ebayimg.com/images/g/AbC/s-l500.webp"),
+    "https://i.ebayimg.com/images/g/AbC/s-l225.webp"
   );
   // Non-eBay URLs pass through untouched rather than being mangled.
   const other = "https://cdn.example.com/photo.jpg";

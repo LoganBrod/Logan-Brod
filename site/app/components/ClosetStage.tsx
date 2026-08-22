@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CuratedItem } from "@/lib/curate";
 import { PER_PAGE, RAIL, layout, pageCount, pageSlice } from "@/lib/wardrobe";
+import type { RunStage } from "@/lib/progress";
 import GarmentBag from "./GarmentBag";
+import RunProgress from "./RunProgress";
 
 export type StagePhase = "building" | "open" | "filled";
 
@@ -47,13 +49,16 @@ interface TasteState {
 export default function ClosetStage({
   items,
   phase,
-  caption,
+  running,
   onBuilt,
 }: {
   items: CuratedItem[];
   phase: StagePhase;
-  /** Progress line shown while the pipeline is still running. */
-  caption?: string;
+  /**
+   * The run in flight, if there is one. Absent means nothing is happening and
+   * no progress is drawn.
+   */
+  running?: { stage: RunStage; sub?: { done: number; total: number } | null };
   /** Fires when the build animation reaches its final frame. */
   onBuilt?: () => void;
 }) {
@@ -358,6 +363,32 @@ export default function ClosetStage({
 
   return (
     <div className="animate-fade-in" aria-live="polite" aria-busy={phase !== "filled"}>
+      {/*
+        Above the wardrobe, and in one place the whole way through.
+
+        Both halves of that are load-bearing, and both were got wrong first.
+        The wardrobe fills the viewport, so anything under it is below the fold:
+        the original progress line lived there and was invisible for the entire
+        wait, which is the same as not having built it.
+
+        And it stays put after the closet reveals. The rail appears as soon as
+        the first batch lands while five are still running — moving the bar
+        elsewhere at that moment both jumped the layout and, because it was a
+        second call site, remounted the component and reset its high-water mark,
+        so the bar visibly ran backwards from 60% to 58% exactly as the closet
+        arrived. It goes compact instead: same place, same element, just the bar
+        and the count, so "four more still coming" is still on screen.
+      */}
+      {running && (
+        <div className="mb-6">
+          <RunProgress
+            stage={running.stage}
+            sub={running.sub}
+            compact={phase === "filled"}
+          />
+        </div>
+      )}
+
       <div
         className="bleed relative touch-pan-y overflow-hidden"
         onPointerDown={onPointerDown}
@@ -614,12 +645,6 @@ export default function ClosetStage({
         </div>
       </div>
 
-      {caption && phase !== "filled" && (
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-          <p className="text-sm tracking-wide text-room-muted">{caption}</p>
-        </div>
-      )}
     </div>
   );
 }

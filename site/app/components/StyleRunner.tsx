@@ -9,12 +9,15 @@ import { REFERENCE_EDGE, encodePhotos, type EncodedPhoto } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import { PICKS_PER_BATCH, appendPicks, planBatches, rankAndCut } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
+import type { RunStage } from "@/lib/progress";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
 import ShareCard from "./ShareCard";
 
-type Stage = "idle" | "preparing" | "analyzing" | "shopping" | "curating" | "saving";
+// Derived from the progress module rather than restated, so a new stage can't
+// be added to the pipeline without the progress bar learning about it.
+type Stage = RunStage | "idle";
 
 /**
  * The on-screen sequence, deliberately separate from the pipeline's `Stage`.
@@ -47,14 +50,6 @@ const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Sho
 function watchName(profile: StyleProfile): string {
   return profile.aesthetics.slice(0, 2).join(" & ") || "Your clozet";
 }
-
-const STAGE_COPY: Record<Exclude<Stage, "idle">, string> = {
-  preparing: "Preparing your photos…",
-  analyzing: "Reading the style…",
-  shopping: "Searching for pieces…",
-  curating: "Picking the ones that fit…",
-  saving: "Saving your clozet…",
-};
 
 interface Selected {
   file: File;
@@ -518,13 +513,9 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     }
   }
 
+  // `stage` is narrowed to a RunStage everywhere `busy` is true, which is the
+  // only place it's read.
   const busy = stage !== "idle";
-  // Curation runs several batches at once, so it's the one stage that can say
-  // how far along it is.
-  const caption =
-    stage === "curating" && progress && progress.total > 1
-      ? `Picking the ones that fit… ${progress.done} of ${progress.total}`
-      : STAGE_COPY[stage as Exclude<Stage, "idle">];
   const onStage = phase === "building" || phase === "open" || phase === "filled";
   const leaving = phase === "exiting";
   const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
@@ -805,7 +796,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         <ClosetStage
           items={results?.items ?? []}
           phase={phase as StagePhase}
-          caption={busy ? caption : undefined}
+          running={busy ? { stage, sub: progress } : undefined}
           onBuilt={onBuilt}
         />
       )}

@@ -19,6 +19,8 @@
 
 import { MODELS } from "../lib/anthropic.ts";
 import { MAX_BATCHES, MAX_VIEWED, PICKS_PER_BATCH } from "../lib/batching.ts";
+import { CURATE_EFFORT } from "../lib/curate.ts";
+import { thumbnailUrl } from "../lib/sources/menswear.ts";
 
 // --- prices ---------------------------------------------------------------
 // Per million tokens, by model id.
@@ -50,7 +52,24 @@ const imageTokens = (w, h) => Math.round((w * h) / 750);
 
 const UPLOAD = imageTokens(1568, 1176); // a 4:3 phone photo at the 1568 cap
 const REFERENCE = imageTokens(256, 192); // the same photo, as curation sees it
-const THUMB = imageTokens(400, 400); // an eBay s-l400 thumbnail, square worst case
+
+// Asked of the rewriter rather than written down, because this number is two
+// thirds of everything curation reads and a stale copy of it here would
+// mis-state the whole bill. Square is the worst case for area.
+const THUMB_EDGE = Number(
+  thumbnailUrl("https://i.ebayimg.com/images/g/x/s-l1600.jpg").match(/s-l(\d+)/)[1]
+);
+const THUMB = imageTokens(THUMB_EDGE, THUMB_EDGE);
+
+/**
+ * Roughly how much of `max_tokens` each effort level spends on thinking,
+ * relative to `high`.
+ *
+ * Estimates, like the scenarios themselves — the point is that changing
+ * `CURATE_EFFORT` in the code changes the number this script prints, rather
+ * than the two silently disagreeing.
+ */
+const EFFORT_WEIGHT = { low: 0.3, medium: 0.6, high: 1.0, xhigh: 1.3, max: 1.6 };
 
 // --- measured prompt sizes ------------------------------------------------
 // Character counts of the SYSTEM literals, divided by ~3.7 chars/token.
@@ -82,7 +101,7 @@ function closetRun(photos, thinkFraction) {
   const labels = MAX_VIEWED * 27; // "id | $price | condition | title"
   const reference = Math.min(photos, MAX_REFERENCE) * REFERENCE;
   const curateIn = SYSTEM.curate + 250 + 400 + labels + MAX_VIEWED * THUMB + reference;
-  const curateOut = Math.round(8000 * thinkFraction * 0.6) + 400; // medium effort thinks less
+  const curateOut = Math.round(8000 * thinkFraction * EFFORT_WEIGHT[CURATE_EFFORT]) + 400;
 
   return {
     analyze: {
@@ -104,7 +123,7 @@ function closetRun(photos, thinkFraction) {
 function sweep(fresh, thinkFraction) {
   const labels = fresh * 27;
   const inTok = SYSTEM.curate + 250 + 400 + labels + fresh * THUMB;
-  const outTok = Math.round(8000 * thinkFraction * 0.6) + 400;
+  const outTok = Math.round(8000 * thinkFraction * EFFORT_WEIGHT[CURATE_EFFORT]) + 400;
   return cost(MODELS.curate, inTok, outTok);
 }
 
@@ -131,7 +150,9 @@ for (const [job, model] of Object.entries(MODELS)) {
 
 console.log(`\none uploaded photo (1568×1176) ....... ${UPLOAD.toLocaleString()} tokens`);
 console.log(`the same photo for curation (256px) .. ${REFERENCE.toLocaleString()} tokens`);
-console.log(`one eBay thumbnail (400×400) ......... ${THUMB.toLocaleString()} tokens\n`);
+console.log(
+  `one eBay thumbnail (${THUMB_EDGE}×${THUMB_EDGE}) ......... ${THUMB.toLocaleString()} tokens\n`
+);
 
 console.log(
   `pipeline: 1 analyze, then ${MAX_BATCHES} curate calls of ${MAX_VIEWED}, ${PICKS_PER_BATCH} picks each\n`
@@ -155,7 +176,7 @@ console.log("─".repeat(74));
 const r = closetRun(3, SCENARIOS.likely);
 for (const [name, p] of [
   [`analyze  (1 call, high effort, ${MODELS.analyze})`, r.analyze],
-  [`curate   (${MAX_BATCHES} calls, medium effort, ${MODELS.curate})`, r.curate],
+  [`curate   (${MAX_BATCHES} calls, ${CURATE_EFFORT} effort, ${MODELS.curate})`, r.curate],
 ]) {
   console.log(
     name.padEnd(52) +

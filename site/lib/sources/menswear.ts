@@ -104,8 +104,21 @@ export function isMenswearListing(title: string): boolean {
  * eBay serves several renditions per image; the API often hands back a large
  * one. Curation only needs enough pixels to tell what the garment is, and image
  * tokens scale with area — so ask for the small rendition.
+ *
+ * 225 rather than 400. Sixteen of these go into every curation batch and six
+ * batches go into every run, which made them two thirds of everything curation
+ * reads — the single largest line in the bill. Area is quadratic, so the step
+ * down costs about a third as many tokens.
+ *
+ * The argument that it is enough: the wearer's own uploads are sent to this
+ * same call at 256px on the long edge, on the grounds that a photograph that
+ * small is still plainly a green waxed jacket. A candidate does not need to be
+ * read more closely than the thing it is being matched against.
+ *
+ * Only the model sees this rendition. The closet renders from the listing's
+ * original `imageUrl`, so nothing on screen gets smaller.
  */
 export function thumbnailUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
-  return url.replace(/\/s-l\d+\.(jpg|jpeg|png|webp)/i, "/s-l400.$1");
+  return url.replace(/\/s-l\d+\.(jpg|jpeg|png|webp)/i, "/s-l225.$1");
 }

@@ -35,6 +35,27 @@ export interface CurationResult {
  */
 export const SCORE_FLOOR = 60;
 
+/**
+ * How hard the curation model thinks.
+ *
+ * Low. Thinking is billed as output, output is roughly two thirds of what a run
+ * costs, and this call happens six times — so it is the largest single lever on
+ * the price of a closet. And the question barely needs the depth: "does this
+ * photo show the thing the title claims, and does it suit this palette" is a
+ * recognition judgement rather than a reasoning one. It did not measurably
+ * improve at high effort when that was tried, and the same argument runs in the
+ * other direction.
+ *
+ * The floor in `selectPicks` is what makes it safe. A model thinking less is a
+ * model more likely to wave something mediocre through, and before the floor
+ * existed that went straight onto somebody's rail.
+ *
+ * Exported because `scripts/cost-model.mjs` prices the run from it. That script
+ * used to keep its own copy of numbers like this one and they went stale in the
+ * expensive direction.
+ */
+export const CURATE_EFFORT = "low" as const;
+
 const SYSTEM = `You are choosing which men's clothing, out of raw shopping-search results, is genuinely worth showing one specific person.
 
 You can see each item's photo. Use it — the picture is the evidence, the title is just a claim. Sellers mislabel constantly, so when the two disagree, believe the photo.
@@ -179,11 +200,7 @@ export async function curate(
     max_tokens: 8000,
     system: SYSTEM,
     output_config: {
-      // Medium rather than high. This call is now one of several running at
-      // once over a slice of the pool, and the judgement it makes — does this
-      // photo show the thing the title claims, does it suit this palette — did
-      // not measurably improve at high effort, while the latency did.
-      effort: "medium",
+      effort: CURATE_EFFORT,
       format: zodOutputFormat(CurationSchema),
     },
     messages: [
