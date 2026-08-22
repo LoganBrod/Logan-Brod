@@ -3,6 +3,11 @@ import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic"
 import { imageSize, meter } from "./meter";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
 import type { Intent } from "./analyze";
+import {
+  breaksColourRule,
+  renderPreferences,
+  type Preferences,
+} from "./preferences";
 import type { ItemAttributes } from "./taste";
 import { MAX_VIEWED, PICKS_PER_BATCH } from "./batching";
 import { withThumbnails } from "./thumbnails";
@@ -67,6 +72,8 @@ Then judge fit against the wearer's style — colour, material, cut, formality �
 
 Return only items you would defend. You are looking at one slice of a larger search and several slices are being judged at once, so pick the best few here rather than trying to assemble a whole wardrobe out of this batch — the results are merged afterwards and the best overall are kept. Fewer is fine if this slice came back thin, and padding to reach a number just means a weaker piece displaces a stronger one from another slice.
 
+Where the wearer has stated a rule about themselves — a colour they don't wear, a fit they want — treat it as a rule and not a preference. A beautiful piece that breaks one is a rejection, not a lower score.
+
 Score honestly, and treat ${SCORE_FLOOR} as the line: below it the piece is dropped and never shown. Returning nothing at all from a slice with nothing good in it is the correct answer, not a failure — scoring a mediocre piece ${SCORE_FLOOR + 10} to keep it does not help this person, it just puts a garment on their rail that they will scroll past.
 
 Tag every pick with its category, maker, material, and colour. These are counted across runs to learn what this person actually responds to, so they have to be consistent: the same material named the same way every time, and 'unknown' rather than a guess when the title and photo don't say.
@@ -121,16 +128,25 @@ function renderProfile(profile: StyleProfile, intent: Intent): string {
 export function selectPicks(
   picks: Pick[],
   viewed: ProductListing[],
-  limit: number
-): { items: CuratedItem[]; belowFloor: number } {
+  limit: number,
+  preferences?: Preferences | null
+): { items: CuratedItem[]; belowFloor: number; brokeRules: number } {
   const byId = new Map(viewed.map((c) => [c.id, c]));
   const seen = new Set<string>();
   const items: CuratedItem[] = [];
   let belowFloor = 0;
+  let brokeRules = 0;
 
   for (const pick of picks) {
     const listing = byId.get(pick.id);
     if (!listing || seen.has(pick.id)) continue;
+    // Checked before the score, because a colour somebody has ruled out is not
+    // a matter of degree — a 95 in a colour they said they never wear is still
+    // not going on their rail.
+    if (breaksColourRule(pick.colour, preferences)) {
+      brokeRules += 1;
+      continue;
+    }
     if (pick.score < SCORE_FLOOR) {
       belowFloor += 1;
       continue;
@@ -150,7 +166,7 @@ export function selectPicks(
   }
 
   items.sort((a, b) => b.score - a.score);
-  return { items: items.slice(0, limit), belowFloor };
+  return { items: items.slice(0, limit), belowFloor, brokeRules };
 }
 
 /** How many uploads are worth showing the judge. Beyond a few they stop adding signal. */
@@ -173,7 +189,9 @@ export async function curate(
    */
   uploads?: Array<{ data: string; mediaType: string }>,
   /** Must match the intent the searches were written for. See `renderProfile`. */
-  intent: Intent = "similar"
+  intent: Intent = "similar",
+  /** What they told us about themselves, from `lib/preferences.ts`. */
+  preferences?: Preferences | null
 ): Promise<CurationResult> {
   if (!candidates.length) {
     return { items: [], notes: "No listings came back from the shopping sources." };
@@ -190,6 +208,8 @@ export async function curate(
   }
 
   const viewed = fetched.map((entry) => entry.listing);
+
+  const said = renderPreferences(preferences);
 
   // Capped rather than trusted: this arrives over the wire, and six batches
   // each repeating a large set of uploads is how a cheap idea becomes the most
@@ -247,8 +267,8 @@ export async function curate(
           {
             type: "text",
             text: `${reference.length ? "In writing, the same wearer's" : "Here is the wearer's"} style profile:\n\n${renderProfile(profile, intent)}${
-              tasteMemo ? `\n\n${tasteMemo}` : ""
-            }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
+              said ? `\n\n${said}` : ""
+            }${tasteMemo ? `\n\n${tasteMemo}` : ""}\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
           },
           ...content,
         ],
@@ -260,6 +280,7 @@ export async function curate(
 
   const kept: CuratedItem[] = [];
   let belowFloor = 0;
+  let brokeRules = 0;
 
   // The meter runs in a `finally` rather than in line. The tokens are spent the
   // moment the message comes back, so a batch whose output won't parse still
@@ -268,8 +289,9 @@ export async function curate(
   // be legible as the floor doing its job rather than as something breaking.
   try {
     const curation = requireParsed(message.parsed_output, "curation");
-    const selected = selectPicks(curation.picks as Pick[], viewed, limit);
+    const selected = selectPicks(curation.picks as Pick[], viewed, limit, preferences);
     belowFloor = selected.belowFloor;
+    brokeRules = selected.brokeRules;
     kept.push(...selected.items);
 
     return { items: kept, notes: curation.notes };
@@ -286,6 +308,7 @@ export async function curate(
         reference: reference.length,
         kept: kept.length,
         belowFloor,
+        brokeRules,
       },
     });
   }

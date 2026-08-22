@@ -5,7 +5,7 @@ import { PICKS_PER_BATCH } from "@/lib/batching";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
 import { parseInlinePhotos } from "@/lib/photos";
-import { tasteMemo } from "@/lib/taste";
+import { readPreferences, tasteMemo } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import type { ProductListing } from "@/lib/sources/types";
@@ -98,8 +98,21 @@ export async function POST(req: Request) {
     // what you like and then be judged on what you're missing.
     const intent: Intent = body.intent === "gaps" ? "gaps" : "similar";
 
-    const memo = await tasteMemo((await readViewer(req)).tasteId);
-    const curation = await curate(parsedProfile.data, candidates, memo, limit, uploads, intent);
+    const { tasteId } = await readViewer(req);
+    const [memo, prefs] = await Promise.all([
+      tasteMemo(tasteId),
+      tasteId ? readPreferences(tasteId).catch(() => ({})) : Promise.resolve({}),
+    ]);
+
+    const curation = await curate(
+      parsedProfile.data,
+      candidates,
+      memo,
+      limit,
+      uploads,
+      intent,
+      prefs
+    );
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },
       { headers: { "Cache-Control": "no-store" } }

@@ -6,6 +6,8 @@ import {
   TASTE_TTL_SECONDS,
   newTasteId,
   readSizes,
+  readPreferences,
+  writePreferences,
   readTasteId,
   readVotes,
   recordEvents,
@@ -54,10 +56,12 @@ export async function GET(req: Request) {
 
   let votes: Awaited<ReturnType<typeof readVotes>> = [];
   let sizes = {};
+  let preferences = {};
   if (configured) {
-    [votes, sizes] = await Promise.all([
+    [votes, sizes, preferences] = await Promise.all([
       readVotes(id).catch(() => []),
       readSizes(id).catch(() => ({})),
+      readPreferences(id).catch(() => ({})),
     ]);
   }
 
@@ -71,7 +75,15 @@ export async function GET(req: Request) {
   return NextResponse.json(
     // `plan` rides along because the closet page already makes this call and
     // needs to know whether a standing scan is available before it offers one.
-    { configured, plan, count: votes.length, verdicts, sizes, memo: renderMemo(votes) },
+    {
+      configured,
+      plan,
+      count: votes.length,
+      verdicts,
+      sizes,
+      preferences,
+      memo: renderMemo(votes),
+    },
     {
       headers: {
         "Set-Cookie": cookieHeader(browserId),
@@ -103,6 +115,7 @@ export async function POST(req: Request) {
     attrs?: unknown;
     events?: unknown;
     sizes?: unknown;
+    preferences?: unknown;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -124,6 +137,12 @@ export async function POST(req: Request) {
     // was actually stored rather than what was typed.
     if (body.sizes !== undefined) {
       return respond({ ok: true, sizes: await writeSizes(id, body.sizes) });
+    }
+
+    // The style questions, same shape as sizes: written through as they're
+    // answered, echoed back cleaned so the form shows what was actually stored.
+    if (body.preferences !== undefined) {
+      return respond({ ok: true, preferences: await writePreferences(id, body.preferences) });
     }
 
     // A batch of impressions and clicks. One request per user action, because

@@ -51,7 +51,9 @@ export async function analyzeStyle(
   /** What they actually own, from `lib/wardrobeOwned.ts`. */
   ownedMemo?: string | null,
   /** More of the same, or the pieces that would go with it. Defaults to more. */
-  intent: Intent = "similar"
+  intent: Intent = "similar",
+  /** What they told us about themselves, from `lib/preferences.ts`. */
+  preferences?: string | null
 ): Promise<StyleProfile> {
   if (!photos.length) {
     throw new Error("At least one photo is required.");
@@ -88,8 +90,13 @@ export async function analyzeStyle(
             text: `These are ${photos.length} piece${photos.length === 1 ? "" : "s"} I like the look of.
 
 Read the style across them, then give me eight to ten things to buy that would extend it, spread across different garment types. My budget per item is $${range.min}-$${range.max}, so keep every suggested price band inside that.${
-              ownedMemo ? `\n\n${ownedMemo}` : ""
-            }${tasteMemo ? `\n\n${tasteMemo}` : ""}`,
+              // Their own answers come before the inferred history: what
+              // somebody just told you they want outranks what a counter
+              // noticed they clicked on last month.
+              preferences ? `\n\n${preferences}` : ""
+            }${ownedMemo ? `\n\n${ownedMemo}` : ""}${
+              tasteMemo ? `\n\n${tasteMemo}` : ""
+            }`,
           },
         ],
       },

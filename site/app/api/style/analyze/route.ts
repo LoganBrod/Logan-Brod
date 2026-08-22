@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { analyzeStyle, type Intent } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
 import { parseInlinePhotos } from "@/lib/photos";
-import { tasteMemo } from "@/lib/taste";
+import { renderPreferences } from "@/lib/preferences";
+import { readPreferences, tasteMemo } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { allowance, limitMessage, spend } from "@/lib/plans";
 import { tasteCookie } from "@/lib/taste";
@@ -95,14 +96,25 @@ export async function POST(req: Request) {
   }
 
   try {
-    const [memo, owned] = await Promise.all([
+    // Read from the store, not from the request body — same reasoning as
+    // sizes. The answers already live under this browser's id, so there is no
+    // reason to let a client tell us what somebody's preferences are.
+    const [memo, owned, prefs] = await Promise.all([
       tasteMemo(viewer.tasteId),
       readOwned(viewer.owner),
+      viewer.tasteId ? readPreferences(viewer.tasteId).catch(() => ({})) : Promise.resolve({}),
     ]);
     // Anything but the explicit opt-in means more of what they showed us,
     // which is what somebody uploading clothes they like almost always means.
     const intent: Intent = body.intent === "gaps" ? "gaps" : "similar";
-    const profile = await analyzeStyle(photos, { min, max }, memo, renderOwned(owned), intent);
+    const profile = await analyzeStyle(
+      photos,
+      { min, max },
+      memo,
+      renderOwned(owned),
+      intent,
+      renderPreferences(prefs)
+    );
 
     // Spent here rather than on save. The money leaves at the model call, so
     // that is where the count has to happen — metering at save time meant a run

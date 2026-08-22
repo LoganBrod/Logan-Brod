@@ -19,6 +19,7 @@
 import { randomUUID } from "node:crypto";
 import { getJson, redisConfigured, setJson } from "./redis";
 import { cleanSizes, hasSizes, renderSizes, type Sizes } from "./sizing";
+import { cleanPreferences, type Preferences } from "./preferences";
 
 /** A year. Refreshed on every write, so an active browser never loses its taste. */
 export const TASTE_TTL_SECONDS = 365 * 24 * 60 * 60;
@@ -421,6 +422,30 @@ export async function writeSizes(id: string, input: unknown): Promise<Sizes> {
   const sizes = cleanSizes(input);
   await setJson(`${key(id)}:sizes`, sizes, TASTE_TTL_SECONDS);
   return sizes;
+}
+
+/**
+ * The answers to the style questions, stored the same way sizes are.
+ *
+ * Kept server-side under the browser id so somebody is asked once rather than
+ * on every visit — the same reasoning as sizes, minus the part about a wrong
+ * value silently ruining every result. These are steering, not filtering (the
+ * one exception is a ruled-out colour, which `lib/curate.ts` enforces).
+ */
+export async function readPreferences(id: string): Promise<Preferences> {
+  if (!isValidTasteId(id) || !redisConfigured()) return {};
+  try {
+    return cleanPreferences(await getJson<Preferences>(`${key(id)}:prefs`));
+  } catch {
+    return {};
+  }
+}
+
+export async function writePreferences(id: string, input: unknown): Promise<Preferences> {
+  if (!isValidTasteId(id)) throw new Error("Invalid taste id.");
+  const prefs = cleanPreferences(input);
+  await setJson(`${key(id)}:prefs`, prefs, TASTE_TTL_SECONDS);
+  return prefs;
 }
 
 // --------------------------------------------------------------- adoption

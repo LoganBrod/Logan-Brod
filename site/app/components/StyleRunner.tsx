@@ -9,10 +9,12 @@ import { REFERENCE_EDGE, encodePhotos, type EncodedPhoto } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import { PICKS_PER_BATCH, appendPicks, planBatches, rankAndCut } from "@/lib/batching";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
+import type { Preferences } from "@/lib/preferences";
 import type { RunStage } from "@/lib/progress";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
+import StyleQuestions from "./StyleQuestions";
 import ShareCard from "./ShareCard";
 
 // Derived from the progress module rather than restated, so a new stage can't
@@ -126,16 +128,36 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
    */
   const [intent, setIntent] = useState<"similar" | "gaps">("similar");
 
+  /**
+   * The five things three photographs can't tell you.
+   *
+   * Stored server-side under the browser id, like sizes, so somebody is asked
+   * once rather than on every visit. The run itself never sends these — both
+   * model routes read them from the store, which is why there's no reason for
+   * a client to be trusted with them.
+   */
+  const [preferences, setPreferences] = useState<Preferences>({});
+
   useEffect(() => {
     let alive = true;
     fetch("/api/taste")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json: { configured?: boolean; sizes?: Sizes; plan?: "free" | "member" } | null) => {
-        if (!alive || !json) return;
-        setSizesAvailable(Boolean(json.configured));
-        setSizes(json.sizes ?? {});
-        setPlan(json.plan ?? "free");
-      })
+      .then(
+        (
+          json: {
+            configured?: boolean;
+            sizes?: Sizes;
+            preferences?: Preferences;
+            plan?: "free" | "member";
+          } | null
+        ) => {
+          if (!alive || !json) return;
+          setSizesAvailable(Boolean(json.configured));
+          setSizes(json.sizes ?? {});
+          setPreferences(json.preferences ?? {});
+          setPlan(json.plan ?? "free");
+        }
+      )
       .catch(() => {});
     return () => {
       alive = false;
@@ -156,6 +178,25 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sizes: next }),
+      }).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  /**
+   * Write the answers through as they're tapped.
+   *
+   * Optimistic and unacknowledged, exactly like `updateSizes` and for the same
+   * reason: a chip that fought back mid-tap is worse than one that occasionally
+   * doesn't persist, and the next run reads whatever the server actually has.
+   */
+  const updatePreferences = useCallback((patch: Partial<Preferences>) => {
+    setPreferences((current) => {
+      const next = { ...current, ...patch };
+      void fetch("/api/taste", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: next }),
       }).catch(() => {});
       return next;
     });
@@ -653,6 +694,14 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               : "The pieces that would go with them, that you don't already have."}
           </p>
         </fieldset>
+
+        {/* The five things the photographs can't say. Placed after "what should
+            it find?" and before the price, because it reads as one continuous
+            conversation: here's what I like, here's what I want, here's what I
+            am, here's what I'll pay. */}
+        <div className="mt-7 grid grid-cols-2 gap-4">
+          <StyleQuestions value={preferences} onChange={updatePreferences} disabled={busy} />
+        </div>
 
         {/* A two-column grid on phones, the original row from sm up.
             Wrapping fixed-width fields at 390px dealt the last size field and
