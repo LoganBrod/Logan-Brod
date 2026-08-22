@@ -271,7 +271,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         try {
           const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
             "/api/style/curate",
-            { profile, candidates: batch, limit: PICKS_PER_BATCH, uploads: reference }
+            { profile, candidates: batch, limit: PICKS_PER_BATCH, uploads: reference, intent }
           );
           if (curated.notes) notes.push(curated.notes);
 

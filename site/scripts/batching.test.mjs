@@ -118,7 +118,14 @@ test("the ceiling is a ceiling, not a target", () => {
   assert.equal(three.length, 3, "three good pieces must stay three, not pad to twelve");
   assert.equal(rankAndCut([]).length, 0);
 
-  const many = Array.from({ length: 40 }, (_, i) => pick(`x${i}`, 60 + i));
+  // Spread across slots on purpose. `rankAndCut` also caps how many pieces of
+  // one kind a closet may hold (see categories.test.mjs), so forty boots would
+  // legitimately come back as four — this test is about the overall ceiling.
+  const slots = ["jacket", "shirt", "trousers", "boots", "belt"];
+  const many = Array.from({ length: 40 }, (_, i) => ({
+    ...pick(`x${i}`, 60 + i),
+    attrs: { category: slots[i % slots.length] },
+  }));
   assert.equal(rankAndCut(many).length, FINAL_PICKS);
 });
 

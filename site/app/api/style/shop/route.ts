@@ -3,6 +3,7 @@ import { shop } from "@/lib/sources";
 import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
 import { readSizes } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { readSeen, siftSeen } from "@/lib/seen";
 
 export const dynamic = "force-dynamic";
 // Ten queries fanned across two sources, plus a possible taxonomy lookup on a
@@ -43,26 +44,34 @@ export async function GET(req: Request) {
     // from the server's own record under the id cookie, not from a request
     // body anyone could get wrong.
     const { tasteId } = await readViewer(req);
-    const sizes = tasteId ? await readSizes(tasteId).catch(() => ({})) : {};
+    const [sizes, seen] = await Promise.all([
+      tasteId ? readSizes(tasteId).catch(() => ({})) : Promise.resolve({}),
+      readSeen(tasteId),
+    ]);
 
     // A wider net when sizes are known, because a good fraction of what comes
     // back is about to be dropped for stating a size that can't fit.
     const perQueryLimit = hasSizes(sizes) ? 50 : 30;
     const result = await shop(queries.slice(0, MAX_QUERIES), { min, max }, { perQueryLimit });
 
-    if (!hasSizes(sizes)) {
-      return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
-    }
+    const sized = hasSizes(sizes)
+      ? result.listings.filter((item) => !conflictsWithSizes(item.title, sizes))
+      : result.listings;
 
-    const listings = result.listings.filter((item) => !conflictsWithSizes(item.title, sizes));
+    // Struck out here rather than at curation, so a piece this person has
+    // already had on their rail doesn't take up one of the ninety-six slots
+    // the model is paid to look at.
+    const sifted = siftSeen(sized, seen);
 
     return NextResponse.json(
       {
         ...result,
-        listings,
+        listings: sifted.pool,
         // Reported so a collapsed result set reads as "your sizes are narrow"
         // rather than "the search is broken".
-        droppedForSize: result.listings.length - listings.length,
+        droppedForSize: result.listings.length - sized.length,
+        droppedAsSeen: sifted.removed,
+        shownAgain: sifted.reused,
       },
       { headers: { "Cache-Control": "no-store" } }
     );

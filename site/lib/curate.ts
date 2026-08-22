@@ -2,6 +2,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { imageSize, meter } from "./meter";
 import { CurationSchema, type Pick, type StyleProfile } from "./schemas";
+import type { Intent } from "./analyze";
 import type { ItemAttributes } from "./taste";
 import { MAX_VIEWED, PICKS_PER_BATCH } from "./batching";
 import { withThumbnails } from "./thumbnails";
@@ -72,16 +73,31 @@ Tag every pick with its category, maker, material, and colour. These are counted
 
 Write each whyItFits to the wearer in one sentence, pointing at something concrete you can see in the photo and tying it to their profile. No generic praise.`;
 
-function renderProfile(profile: StyleProfile): string {
-  return [
+/**
+ * The profile as the judge reads it.
+ *
+ * `gaps` is included only on a gap-filling run, and leaving it out of the other
+ * one is a bug fix rather than tidying. The default intent was changed to "more
+ * like these" because searching for what somebody *hadn't* uploaded was the
+ * reason none of the results were their style — but the profile handed to this
+ * call still carried a "Gaps to fill: boots, trousers" line regardless. So the
+ * searches stopped chasing gaps and the judge went on rewarding them, which is
+ * a good part of why a closet built from three jackets still came back full of
+ * shoes.
+ */
+function renderProfile(profile: StyleProfile, intent: Intent): string {
+  const lines = [
     `Summary: ${profile.summary}`,
     `Aesthetics: ${profile.aesthetics.join(", ")}`,
     `Palette: ${profile.palette.map((p) => p.name).join(", ")}`,
     `Silhouette: ${profile.silhouette}`,
     `Fabrics: ${profile.fabrics.join(", ")}`,
     `Formality: ${profile.formality}`,
-    `Gaps to fill: ${profile.gaps.join(", ")}`,
-  ].join("\n");
+  ];
+  if (intent === "gaps" && profile.gaps.length) {
+    lines.push(`Gaps to fill: ${profile.gaps.join(", ")}`);
+  }
+  return lines.join("\n");
 }
 
 /**
@@ -155,7 +171,9 @@ export async function curate(
    * paraphrase of it, so it was matching photographs against a description
    * rather than against the clothes. A stylist would hold the two side by side.
    */
-  uploads?: Array<{ data: string; mediaType: string }>
+  uploads?: Array<{ data: string; mediaType: string }>,
+  /** Must match the intent the searches were written for. See `renderProfile`. */
+  intent: Intent = "similar"
 ): Promise<CurationResult> {
   if (!candidates.length) {
     return { items: [], notes: "No listings came back from the shopping sources." };
@@ -228,7 +246,7 @@ export async function curate(
             : []),
           {
             type: "text",
-            text: `${reference.length ? "In writing, the same wearer's" : "Here is the wearer's"} style profile:\n\n${renderProfile(profile)}${
+            text: `${reference.length ? "In writing, the same wearer's" : "Here is the wearer's"} style profile:\n\n${renderProfile(profile, intent)}${
               tasteMemo ? `\n\n${tasteMemo}` : ""
             }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
           },

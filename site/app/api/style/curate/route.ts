@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { curate } from "@/lib/curate";
+import type { Intent } from "@/lib/analyze";
 import { PICKS_PER_BATCH } from "@/lib/batching";
 import { describeApiError } from "@/lib/anthropic";
 import { StyleProfileSchema } from "@/lib/schemas";
@@ -34,7 +35,13 @@ const MAX_REFERENCE_BASE64_CHARS = 256 * 1024;
  * batches and keeps the best overall.
  */
 export async function POST(req: Request) {
-  let body: { profile?: unknown; candidates?: unknown; limit?: unknown; uploads?: unknown };
+  let body: {
+    profile?: unknown;
+    candidates?: unknown;
+    limit?: unknown;
+    uploads?: unknown;
+    intent?: unknown;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -87,8 +94,12 @@ export async function POST(req: Request) {
       (photo) => photo.data.length <= MAX_REFERENCE_BASE64_CHARS
     );
 
+    // Read the same way analyze reads it, so a run cannot search for more of
+    // what you like and then be judged on what you're missing.
+    const intent: Intent = body.intent === "gaps" ? "gaps" : "similar";
+
     const memo = await tasteMemo((await readViewer(req)).tasteId);
-    const curation = await curate(parsedProfile.data, candidates, memo, limit, uploads);
+    const curation = await curate(parsedProfile.data, candidates, memo, limit, uploads, intent);
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },
       { headers: { "Cache-Control": "no-store" } }

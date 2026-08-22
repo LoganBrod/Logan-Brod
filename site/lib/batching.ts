@@ -13,6 +13,7 @@
 // slicing and doesn't re-deal.
 
 import type { ProductListing } from "./sources/types";
+import { MAX_PICKS_PER_SLOT, capBySlot, normaliseSlot } from "./categories";
 
 /**
  * How many candidates one curation call looks at.
@@ -135,11 +136,19 @@ export function appendPicks<T extends { id: string }>(current: T[], arriving: T[
  * nothing is taken back down mid-run; the rail settles best-first once, at the
  * end, when there is finally something to rank against.
  */
-export function rankAndCut<T extends { score: number; price: number }>(
+export function rankAndCut<T extends { score: number; price: number; attrs?: { category?: string } }>(
   items: T[],
   limit: number = FINAL_PICKS
 ): T[] {
-  return [...items]
-    .sort((a, b) => b.score - a.score || a.price - b.price)
-    .slice(0, limit);
+  const ranked = [...items].sort((a, b) => b.score - a.score || a.price - b.price);
+
+  // Ranked first, then thinned by slot. Doing it in this order means the cap
+  // removes the *weakest* fifth pair of boots rather than whichever happened to
+  // come back first — and because `capBySlot` preserves order, what survives is
+  // still strictly best-first.
+  return capBySlot(
+    ranked,
+    (item) => normaliseSlot(item.attrs?.category),
+    MAX_PICKS_PER_SLOT
+  ).slice(0, limit);
 }

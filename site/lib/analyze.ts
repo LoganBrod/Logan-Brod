@@ -3,12 +3,16 @@ import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic"
 import { imageSize, meter } from "./meter";
 import { StyleProfileSchema, type StyleProfile } from "./schemas";
 import type { PriceRange } from "./sources/types";
+import { MAX_QUERIES_PER_SLOT, capBySlot, normaliseSlot } from "./categories";
+
+/** How many searches one run fans out to. Bounds the shopping stage. */
+export const MAX_QUERIES = 10;
 
 const SYSTEM = `You are a menswear stylist reading a small set of pieces someone already likes, in order to extend their wardrobe in that direction.
 
-Your queries are typed straight into eBay and Google Shopping, so they live or die on how a seller would have titled the thing. Write them the way a listing reads: garment noun, plus the material, colour, or cut that actually matters. "Waxed cotton field jacket olive" finds it. "Brown suede chelsea boot" finds it. "Men's shoes" returns ten thousand things and wastes a slot. A well-known maker is worth naming when the style clearly points at one — "Barbour waxed jacket", "Red Wing moc toe" — because on a secondhand market that is how the good listings are titled. Never invent a brand the pieces don't suggest.
+Your queries are typed straight into eBay and Google Shopping, so they live or die on how a seller would have titled the thing. Write them the way a listing reads: garment noun, plus the material, colour, or cut that actually matters. "Waxed cotton field jacket olive" finds it. "Heavyweight flannel overshirt charcoal" finds it. "Pleated wool trouser grey" finds it. "Men's shoes" returns ten thousand things and wastes a slot. A well-known maker is worth naming when the style clearly points at one — "Barbour waxed jacket", "Levi's 501 selvedge" — because on a secondhand market that is how the good listings are titled. Never invent a brand the pieces don't suggest.
 
-Vary the queries across garment types. Eight near-identical jacket searches return the same jacket eight times; the point is coverage.
+Spread the queries across garment types, and count them as you go. This is the instruction that gets ignored most often, so it is worth being blunt: a wardrobe is mostly things you wear on your torso and legs. Footwear is one slot in an outfit and should be one or two searches out of ten, never four. The same goes for any single type — eight near-identical jacket searches return the same jacket eight times. Tag each query with the slot it fills so the spread can be checked.
 
 Everything you suggest is men's clothing. Don't waste query words saying so — the search is already scoped to menswear, and "mens" in the query just crowds out a more useful term.
 
@@ -102,7 +106,18 @@ Read the style across them, then give me eight to ten things to buy that would e
   });
   const profile = requireParsed(message.parsed_output, "style analysis");
 
-  // The schema can't express a count (structured outputs reject array length
-  // constraints), so the ceiling is enforced here to bound downstream fan-out.
-  return { ...profile, searchQueries: profile.searchQueries.slice(0, 10) };
+  // Two limits, both enforced here because the schema can express neither:
+  // structured outputs reject array-length constraints, and no schema can say
+  // "at most three of these may be footwear".
+  //
+  // The spread runs before the ceiling, so trimming an over-represented slot
+  // makes room for the varied queries further down the list rather than
+  // throwing them away with everything past the tenth.
+  const spread = capBySlot(
+    profile.searchQueries,
+    (query) => normaliseSlot(query.category),
+    MAX_QUERIES_PER_SLOT
+  );
+
+  return { ...profile, searchQueries: spread.slice(0, MAX_QUERIES) };
 }

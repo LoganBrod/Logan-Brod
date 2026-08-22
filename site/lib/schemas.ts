@@ -14,16 +14,20 @@ export const SearchQuerySchema = z.object({
   query: z
     .string()
     .describe(
-      "A specific menswear search query, as typed into a shopping site. Name the garment, material, and colour — 'brown suede chelsea boot', not 'men's shoes'."
+      "A specific menswear search query, as typed into a shopping site. Name the garment, material, and colour — 'olive waxed cotton field jacket', not 'men's outerwear'."
     ),
+  // Closed, like CategorySchema and for a sharper reason: this tag is what the
+  // per-slot cap counts, and a free string means "shoes", "footwear" and
+  // "Chelsea boots" are three different slots that each get their own
+  // allowance — which is no cap at all.
   category: z
-    .string()
-    .describe("Broad slot this fills: outerwear, tops, bottoms, footwear, or accessories."),
+    .enum(["outerwear", "tops", "bottoms", "suiting", "footwear", "accessories"])
+    .describe("Which slot of an outfit this search fills."),
   minPrice: z.number().describe("Low end of the sensible band for this item, in USD."),
   maxPrice: z.number().describe("High end of the sensible band for this item, in USD."),
   reason: z
     .string()
-    .describe("One sentence on why this extends the uploaded pieces rather than duplicating them."),
+    .describe("One sentence on why this search suits the wearer, addressed to them."),
 });
 
 export const StyleProfileSchema = z.object({

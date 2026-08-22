@@ -15,6 +15,7 @@ import { StyleProfileSchema } from "@/lib/schemas";
 import { allowance, limitMessage, spend } from "@/lib/plans";
 import { newTasteId, tasteCookie } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { recordSeen } from "@/lib/seen";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,16 @@ export async function POST(req: Request) {
       itemCount: closet.items.length,
       range: closet.range,
     });
+
+    // Remember what was actually hung, so the next run doesn't hand back the
+    // same jacket. Recorded here rather than when the candidates were fetched:
+    // striking out the whole pool would blacklist hundreds of listings nobody
+    // ever saw, and after two runs the searches would be returning results
+    // that had all been quietly crossed off.
+    await recordSeen(
+      viewer.tasteId ?? minted,
+      closet.items.map((item) => item.id)
+    );
 
     // Two cookies when an owner was just minted: the closet code as always,
     // and the browser id the closet is now filed under.
