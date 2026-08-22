@@ -10,7 +10,9 @@
     "sweep:once": "node scripts/sweep-once.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test scripts/*.test.mjs"
+    "test": "tsx --test scripts/*.test.mjs",
+    "smoke:models": "tsx scripts/smoke-models.mjs",
+    "cost": "tsx scripts/cost-model.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
