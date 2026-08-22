@@ -3,7 +3,7 @@ import { analyzeStyle, type Intent } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
 import { parseInlinePhotos } from "@/lib/photos";
 import { renderPreferences } from "@/lib/preferences";
-import { readPreferences, tasteMemo } from "@/lib/taste";
+import { readPreferences } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { allowance, limitMessage, spend } from "@/lib/plans";
 import { tasteCookie } from "@/lib/taste";
@@ -99,8 +99,9 @@ export async function POST(req: Request) {
     // Read from the store, not from the request body — same reasoning as
     // sizes. The answers already live under this browser's id, so there is no
     // reason to let a client tell us what somebody's preferences are.
-    const [memo, owned, prefs] = await Promise.all([
-      tasteMemo(viewer.tasteId),
+    // No taste memory here, deliberately — see the note above `analyzeStyle`.
+    // This step reads the photographs, and only the photographs.
+    const [owned, prefs] = await Promise.all([
       readOwned(viewer.owner),
       viewer.tasteId ? readPreferences(viewer.tasteId).catch(() => ({})) : Promise.resolve({}),
     ]);
@@ -110,7 +111,6 @@ export async function POST(req: Request) {
     const profile = await analyzeStyle(
       photos,
       { min, max },
-      memo,
       renderOwned(owned),
       intent,
       renderPreferences(prefs)

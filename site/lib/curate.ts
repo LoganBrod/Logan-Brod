@@ -175,7 +175,14 @@ const MAX_REFERENCE = 4;
 export async function curate(
   profile: StyleProfile,
   candidates: ProductListing[],
-  /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
+  /**
+   * What this browser engaged with in *previous* closets, from `lib/taste.ts`.
+   *
+   * A tie-breaker between candidates that already suit the profile, and nothing
+   * more. It is not given to the analysis step at all any more: a paragraph of
+   * general facts about somebody, handed to the step that reads their new
+   * photographs, produced a blend of the two and the old look kept winning.
+   */
   tasteMemo?: string | null,
   limit = PICKS_PER_BATCH,
   /**
@@ -268,7 +275,13 @@ export async function curate(
             type: "text",
             text: `${reference.length ? "In writing, the same wearer's" : "Here is the wearer's"} style profile:\n\n${renderProfile(profile, intent)}${
               said ? `\n\n${said}` : ""
-            }${tasteMemo ? `\n\n${tasteMemo}` : ""}\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
+            }${
+              // Last, after the photographs and the profile, because that is
+              // the order of authority: what they uploaded this time, then the
+              // profile read from it, then — only to separate equals — what
+              // they liked before.
+              tasteMemo ? `\n\n${tasteMemo}` : ""
+            }\n\nHere are ${viewed.length} candidates, each as a label line followed by its photo. Use the ids exactly as given, and return your best ${limit} or fewer.`,
           },
           ...content,
         ],

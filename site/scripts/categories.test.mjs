@@ -12,10 +12,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  FOOTWEAR_PICK_CAP,
+  FOOTWEAR_QUERY_CAP,
   MAX_PICKS_PER_SLOT,
   MAX_QUERIES_PER_SLOT,
   capBySlot,
   normaliseSlot,
+  pickCapFor,
+  queryCapFor,
 } from "../lib/categories.ts";
 import { FINAL_PICKS, rankAndCut } from "../lib/batching.ts";
 
@@ -134,28 +138,43 @@ test("a cap of zero keeps nothing, and an empty list stays empty", () => {
 
 const pick = (score, category, price = 100) => ({ score, price, attrs: { category } });
 
-test("a closet can't be more than four pieces of one slot", () => {
+test("a closet can't be swamped by one slot", () => {
   // Even when footwear swept the scoring, which is the case where the searches
   // were fine and one slot's listings simply photographed better.
-  const items = Array.from({ length: 12 }, (_, i) => pick(95 - i, "boots"));
-  const closet = rankAndCut(items);
-  assert.equal(closet.length, MAX_PICKS_PER_SLOT);
+  const boots = Array.from({ length: 12 }, (_, i) => pick(95 - i, "boots"));
+  assert.equal(rankAndCut(boots).length, FOOTWEAR_PICK_CAP);
+
+  const shirts = Array.from({ length: 12 }, (_, i) => pick(95 - i, "shirt"));
+  assert.equal(rankAndCut(shirts).length, MAX_PICKS_PER_SLOT);
+});
+
+test("footwear is held tighter than everything else", () => {
+  // An even cap across slots encodes a wardrobe nobody has. You wear one pair
+  // of shoes at a time and own a handful; you own many more shirts than boots.
+  // The first pass gave every slot the same allowance and the closets that came
+  // back were still shoe-heavy.
+  assert.ok(FOOTWEAR_PICK_CAP < MAX_PICKS_PER_SLOT);
+  assert.ok(FOOTWEAR_QUERY_CAP < MAX_QUERIES_PER_SLOT);
+  assert.equal(pickCapFor("footwear"), FOOTWEAR_PICK_CAP);
+  assert.equal(pickCapFor("tops"), MAX_PICKS_PER_SLOT);
+  assert.equal(queryCapFor("footwear"), FOOTWEAR_QUERY_CAP);
+  assert.equal(queryCapFor("bottoms"), MAX_QUERIES_PER_SLOT);
 });
 
 test("the cap removes the weakest of a slot, not the last to arrive", () => {
   const items = [
-    pick(99, "boots"),
-    pick(98, "boots"),
-    pick(97, "boots"),
-    pick(96, "boots"),
-    pick(60, "boots"),
-    pick(70, "shirt"),
+    pick(99, "shirt"),
+    pick(98, "shirt"),
+    pick(97, "shirt"),
+    pick(96, "shirt"),
+    pick(60, "shirt"),
+    pick(70, "trousers"),
   ];
   const closet = rankAndCut(items);
   assert.deepEqual(
     closet.map((c) => c.score),
     [99, 98, 97, 96, 70],
-    "the 60 boot should have gone, and the 70 shirt stayed"
+    "the 60 shirt should have gone, and the 70 trouser stayed"
   );
 });
 
@@ -166,7 +185,7 @@ test("what survives the cap is still strictly best-first", () => {
     pick(72, "trousers"),
     pick(88, "jacket"),
     pick(61, "boots"),
-  ];
+  ]; // two boots, which is exactly the footwear allowance
   const scores = rankAndCut(items).map((c) => c.score);
   assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
 });

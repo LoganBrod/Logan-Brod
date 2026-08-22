@@ -13,7 +13,7 @@
 // slicing and doesn't re-deal.
 
 import type { ProductListing } from "./sources/types";
-import { MAX_PICKS_PER_SLOT, capBySlot, normaliseSlot } from "./categories";
+import { capBySlot, normaliseSlot, pickCapFor, type Slot } from "./categories";
 
 /**
  * How many candidates one curation call looks at.
@@ -142,14 +142,15 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
   /**
    * How many of one slot may survive.
    *
-   * Defaults to the clozet's rule. The accessories page passes its own, because
+   * Defaults to the clozet's rule, which is tighter for footwear than for
+   * anything else — see `pickCapFor`. The accessories page passes its own, because
    * every accessory — belt, cap, bag, watch — normalises to the single
    * `accessories` slot, so the default would quietly cap that whole page at
    * four items and look like a search that found almost nothing. Spread across
    * accessory kinds is handled where it can be: by the planner asking for two
    * or three searches of each kind.
    */
-  perSlot: number = MAX_PICKS_PER_SLOT
+  perSlot: number | ((slot: Slot) => number) = pickCapFor
 ): T[] {
   const ranked = [...items].sort((a, b) => b.score - a.score || a.price - b.price);
 

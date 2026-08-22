@@ -354,12 +354,23 @@ export function renderStats(stats: Stats): string | null {
 
   if (!sections.length) return null;
 
+  /*
+   * Framed as a tie-breaker, and framed hard.
+   *
+   * This block used to end "lean toward what earns their attention", which a
+   * model quite reasonably read as a standing instruction about the person —
+   * and it outvoted the photographs somebody had just uploaded. The reported
+   * symptom was uploading a completely different look and getting last month's
+   * back. It no longer goes to the analysis step at all, and here, where it is
+   * still useful, it has to be explicit that the profile in front of it wins.
+   */
   return [
-    `Across the closets you've built them, this is what they engaged with — the counts are pieces clicked through or approved, out of pieces shown. Their own average is ${(
+    `The following is history, not instruction. It describes what this person engaged with in *previous* closets, which may have been built from a completely different set of clothes than the one you are judging against now.`,
+    `The counts are pieces clicked through or approved, out of pieces shown. Their own average is ${(
       baseline * 100
     ).toFixed(0)}%, and only patterns clearly above or below it are listed.`,
     ...sections,
-    "Lean toward what earns their attention and away from what doesn't, but treat this as a tendency rather than a rule: a genuinely exceptional piece in a category they usually ignore is still worth showing them.",
+    "Use this only to choose between candidates that already suit the profile above — where two pieces are equally good matches, prefer the one closer to this history. Never use it to prefer a piece that fits this history over one that fits the profile. If the two disagree, the profile is right and this is out of date.",
   ].join("\n");
 }
 

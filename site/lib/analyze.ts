@@ -3,7 +3,7 @@ import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic"
 import { imageSize, meter } from "./meter";
 import { StyleProfileSchema, type StyleProfile } from "./schemas";
 import type { PriceRange } from "./sources/types";
-import { MAX_QUERIES_PER_SLOT, capBySlot, normaliseSlot } from "./categories";
+import { capBySlot, normaliseSlot, queryCapFor } from "./categories";
 
 /** How many searches one run fans out to. Bounds the shopping stage. */
 export const MAX_QUERIES = 10;
@@ -15,6 +15,8 @@ Your queries are typed straight into eBay and Google Shopping, so they live or d
 Spread the queries across garment types, and count them as you go. This is the instruction that gets ignored most often, so it is worth being blunt: a wardrobe is mostly things you wear on your torso and legs. Footwear is one slot in an outfit and should be one or two searches out of ten, never four. The same goes for any single type — eight near-identical jacket searches return the same jacket eight times. Tag each query with the slot it fills so the spread can be checked.
 
 Everything you suggest is men's clothing. Don't waste query words saying so — the search is already scoped to menswear, and "mens" in the query just crowds out a more useful term.
+
+The photographs are the only account of their style you have, and the only one you need. Read what is actually in front of you — not what somebody with these clothes is generally like, and not a safer version of it. If this set looks nothing like the sort of thing you would expect, that is the answer, not a mistake to correct.
 
 Write the summary and the per-query reasons to the wearer, in plain second person. No preamble.`;
 
@@ -43,11 +45,28 @@ export interface PhotoInput {
   mediaType: string;
 }
 
+/**
+ * Read a style off a set of photographs.
+ *
+ * Note what this function does *not* take: the taste memory. It used to, and
+ * that was the bug behind "I put in a completely different vibe and it kept the
+ * one from last time".
+ *
+ * The memory is a paragraph asserting general facts about a person — "they
+ * engage with olive, waxed cotton, outerwear" — and handing it to the one step
+ * whose entire job is reading *these* photographs meant the model was asked two
+ * questions at once and answered a blend of them. Since this step writes the
+ * search queries, that blend then decided everything downstream: somebody who
+ * uploaded tailoring got searches for the workwear they liked in March.
+ *
+ * The memory still has a real use, but it is in curation, where it can break a
+ * tie between candidates that already match the profile these photographs
+ * produced. It cannot be allowed to decide what gets searched for in the first
+ * place. See the note on `tasteMemo` in lib/curate.ts.
+ */
 export async function analyzeStyle(
   photos: PhotoInput[],
   range: PriceRange,
-  /** What this browser has already accepted and rejected, from `lib/taste.ts`. */
-  tasteMemo?: string | null,
   /** What they actually own, from `lib/wardrobeOwned.ts`. */
   ownedMemo?: string | null,
   /** More of the same, or the pieces that would go with it. Defaults to more. */
@@ -94,9 +113,7 @@ Read the style across them, then give me eight to ten things to buy that would e
               // somebody just told you they want outranks what a counter
               // noticed they clicked on last month.
               preferences ? `\n\n${preferences}` : ""
-            }${ownedMemo ? `\n\n${ownedMemo}` : ""}${
-              tasteMemo ? `\n\n${tasteMemo}` : ""
-            }`,
+            }${ownedMemo ? `\n\n${ownedMemo}` : ""}`,
           },
         ],
       },
@@ -123,7 +140,7 @@ Read the style across them, then give me eight to ten things to buy that would e
   const spread = capBySlot(
     profile.searchQueries,
     (query) => normaliseSlot(query.category),
-    MAX_QUERIES_PER_SLOT
+    queryCapFor
   );
 
   return { ...profile, searchQueries: spread.slice(0, MAX_QUERIES) };

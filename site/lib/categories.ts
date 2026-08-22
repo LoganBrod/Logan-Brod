@@ -103,20 +103,52 @@ export function normaliseSlot(raw: string | undefined | null): Slot {
  * `other` is capped like anything else. Letting the unrecognised bucket run
  * free would make a mis-tagged category the way around the cap.
  */
-export function capBySlot<T>(items: T[], slotOf: (item: T) => Slot, cap: number): T[] {
-  if (cap <= 0) return [];
+export function capBySlot<T>(
+  items: T[],
+  slotOf: (item: T) => Slot,
+  cap: number | ((slot: Slot) => number)
+): T[] {
+  const capFor = typeof cap === "function" ? cap : () => cap;
   const used = new Map<Slot, number>();
   const kept: T[] = [];
 
   for (const item of items) {
     const slot = slotOf(item);
+    const allowed = capFor(slot);
+    if (allowed <= 0) continue;
     const count = used.get(slot) ?? 0;
-    if (count >= cap) continue;
+    if (count >= allowed) continue;
     used.set(slot, count + 1);
     kept.push(item);
   }
 
   return kept;
+}
+
+/**
+ * Footwear gets a tighter allowance than everything else.
+ *
+ * A first pass gave every slot the same cap, and the closets that came back
+ * were still shoe-heavy — because "the same as everything else" is already too
+ * many. A wardrobe is not five equal parts. You wear one pair of shoes at a
+ * time and you own a handful; you own many more shirts than boots, and you
+ * think about trousers more often than either. An even cap encodes a wardrobe
+ * nobody actually has.
+ *
+ * Two searches and two picks, against three and four for everything else. That
+ * is still footwear being a sixth of a full closet, which is generous.
+ */
+export const FOOTWEAR_QUERY_CAP = 2;
+export const FOOTWEAR_PICK_CAP = 2;
+
+/** The per-slot allowance for the ten searches a run fans out to. */
+export function queryCapFor(slot: Slot): number {
+  return slot === "footwear" ? FOOTWEAR_QUERY_CAP : MAX_QUERIES_PER_SLOT;
+}
+
+/** The per-slot allowance for the finished closet. */
+export function pickCapFor(slot: Slot): number {
+  return slot === "footwear" ? FOOTWEAR_PICK_CAP : MAX_PICKS_PER_SLOT;
 }
 
 /**
