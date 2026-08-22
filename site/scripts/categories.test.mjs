@@ -195,3 +195,19 @@ test("the two caps are consistent with the closet size", () => {
   assert.ok(MAX_PICKS_PER_SLOT < FINAL_PICKS);
   assert.ok(FINAL_PICKS / MAX_PICKS_PER_SLOT >= 3);
 });
+
+test("the slot cap can be lifted, for a page where everything is one slot", () => {
+  // Every accessory — belt, cap, bag, watch — normalises to `accessories`, so
+  // the clozet's four-per-slot rule would cap the whole accessories page at
+  // four and read as a search that found almost nothing.
+  const items = [
+    pick(95, "belt"),
+    pick(90, "bag"),
+    pick(85, "cap"),
+    pick(80, "watch"),
+    pick(75, "accessory"),
+    pick(70, "scarf"),
+  ];
+  assert.equal(rankAndCut(items).length, MAX_PICKS_PER_SLOT, "the default should still cap");
+  assert.equal(rankAndCut(items, FINAL_PICKS, FINAL_PICKS).length, 6);
+});

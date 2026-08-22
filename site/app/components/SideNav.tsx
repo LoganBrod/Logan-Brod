@@ -26,6 +26,8 @@ const LINKS = [
   // footnote. They're three moments of one job — being out looking — so they
   // share a page now. /sizing and /scan redirect into it.
   { href: "/tools", label: "Tools" },
+  { href: "/accessories", label: "Accessories" },
+  { href: "/colognes", label: "Colognes" },
   { href: "/discover", label: "Discover" },
   { href: "/closets", label: "Saved" },
 ] as const;

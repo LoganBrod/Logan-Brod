@@ -138,7 +138,18 @@ export function appendPicks<T extends { id: string }>(current: T[], arriving: T[
  */
 export function rankAndCut<T extends { score: number; price: number; attrs?: { category?: string } }>(
   items: T[],
-  limit: number = FINAL_PICKS
+  limit: number = FINAL_PICKS,
+  /**
+   * How many of one slot may survive.
+   *
+   * Defaults to the clozet's rule. The accessories page passes its own, because
+   * every accessory — belt, cap, bag, watch — normalises to the single
+   * `accessories` slot, so the default would quietly cap that whole page at
+   * four items and look like a search that found almost nothing. Spread across
+   * accessory kinds is handled where it can be: by the planner asking for two
+   * or three searches of each kind.
+   */
+  perSlot: number = MAX_PICKS_PER_SLOT
 ): T[] {
   const ranked = [...items].sort((a, b) => b.score - a.score || a.price - b.price);
 
@@ -146,9 +157,5 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
   // removes the *weakest* fifth pair of boots rather than whichever happened to
   // come back first — and because `capBySlot` preserves order, what survives is
   // still strictly best-first.
-  return capBySlot(
-    ranked,
-    (item) => normaliseSlot(item.attrs?.category),
-    MAX_PICKS_PER_SLOT
-  ).slice(0, limit);
+  return capBySlot(ranked, (item) => normaliseSlot(item.attrs?.category), perSlot).slice(0, limit);
 }
