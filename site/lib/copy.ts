@@ -90,7 +90,10 @@ export const beats = [
   {
     kicker: "It judges on the picture",
     heading: "The way you would in a shop.",
-    body: "Ninety-six candidates are looked at as photographs, not as titles, and only what clears the bar comes back - a dozen at most, fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes “vintage Barbour style” gets no credit for the word; a jacket that actually looks right does.",
+    // The two figures are set above this on the page, computed from the
+    // constants that govern a run - so the prose deliberately doesn't repeat
+    // them. It carries the reasoning; the numbers carry the count.
+    body: "Every candidate is looked at as a photograph, not as a title, and only what clears the bar comes back - fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes “vintage Barbour style” gets no credit for the word; a jacket that actually looks right does.",
   },
   {
     kicker: "It knows what fits",

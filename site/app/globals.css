@@ -67,6 +67,14 @@
        rather than eyeballed. The old values sat at 3.45 and failed 89 times. */
     --grain: 0.035;
     --grain-ink: 255, 255, 255;
+
+    /* Photographs, dimmed to the room they hang in.
+       The cloth stills were shot under bright warm light, like the footage. On
+       an off-black ground a full-brightness photograph is the brightest thing
+       on the page by a wide margin and pulls the eye off whatever it was meant
+       to illustrate. Dimming is the same move as turning a gallery's lights
+       down: nothing about the picture changes, it just stops shouting. */
+    --photo-dim: 0.74;
   }
 
   /*
@@ -97,6 +105,10 @@
 
       --grain: 0.02;
       --grain-ink: 0, 0, 0;
+
+      /* Nothing to dim: on a light ground the photographs already sit at the
+         same brightness as the page. */
+      --photo-dim: 1;
     }
   }
 
@@ -269,6 +281,19 @@
    */
   .display {
     @apply font-display font-semibold leading-[1.05] tracking-[-0.035em];
+  }
+
+  /*
+   * A photograph, hung in the room.
+   *
+   * Dimming lives here rather than on each `<Image>` so a picture added later
+   * can't miss it, and so the amount is one number in one place. Saturation
+   * comes down a touch with it: the cloth stills are warm, and at full
+   * saturation against a neutral off-black they read as a colour decision the
+   * page never made.
+   */
+  .photo {
+    filter: brightness(var(--photo-dim)) saturate(0.9);
   }
 
   /*

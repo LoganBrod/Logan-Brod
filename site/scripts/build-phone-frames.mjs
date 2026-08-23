@@ -1,4 +1,4 @@
-// Builds the phone-sized copy of the corridor walk.
+// Builds the smaller copies of everything the marketing page loads.
 //
 // The desktop walk is 197 frames at 1400x780 — 7.2MB. That is fine over a
 // broadband connection and indefensible over a phone's data plan, which is why
@@ -16,16 +16,48 @@
 //   npx playwright@1 install chromium               # not a project dependency
 //   node scripts/build-phone-frames.mjs http://127.0.0.1:3000
 //
+// There are three passes — frames, garments, textures — and by default all
+// three run. A second argument narrows it:
+//
+//   node scripts/build-phone-frames.mjs http://127.0.0.1:3000 textures
+//
+// which matters because the output is committed: re-encoding 66 corridor
+// frames that nobody changed produces 66 byte-different files and a diff that
+// hides the one thing you actually did.
+//
 // Playwright is deliberately not in package.json: this runs by hand, roughly
-// never, and its output — public/frames-sm and public/garments-sm — is
-// committed. Re-run it only when the source frames or cut-outs change.
+// never, and its output — public/frames-sm, public/garments-sm and
+// public/textures-sm — is committed. Re-run a pass only when its source
+// images change.
 
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { chromium } from "playwright";
+// Borrowed rather than depended on, the same way `contrast-audit.mjs` does it:
+// ESM `import()` ignores NODE_PATH, so pointing at an install that lives
+// somewhere else needs an actual path.
+const pw = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
+const chromium = pw.chromium ?? pw.default?.chromium;
+if (!chromium) {
+  console.error(
+    "This script re-encodes images in a real browser, and Playwright isn't installed here.\n\n" +
+      "  npx playwright@1 install chromium\n\n" +
+      "or point at an existing install:\n\n" +
+      "  PLAYWRIGHT_MODULE=/path/to/node_modules/playwright/index.js \\\n" +
+      "    node scripts/build-phone-frames.mjs http://127.0.0.1:3000\n"
+  );
+  process.exit(2);
+}
 
 const ORIGIN = process.argv[2] ?? "http://127.0.0.1:3000";
+
+const PASSES = ["frames", "garments", "textures"];
+const only = process.argv[3];
+if (only && !PASSES.includes(only)) {
+  console.error(`unknown pass "${only}" — expected one of ${PASSES.join(", ")}`);
+  process.exit(2);
+}
+const runs = (pass) => !only || only === pass;
 
 /** The canonical walk, and the timeline every frame index is expressed in. */
 const SOURCE_COUNT = 197;
@@ -60,11 +92,12 @@ const browser = await chromium.launch({
 const page = await browser.newPage();
 await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });
 
-await rm(OUT, { recursive: true, force: true });
-await mkdir(OUT, { recursive: true });
-
 let total = 0;
 const BATCH = 10;
+
+if (runs("frames")) {
+await rm(OUT, { recursive: true, force: true });
+await mkdir(OUT, { recursive: true });
 
 for (let start = 0; start < COUNT; start += BATCH) {
   const batch = [];
@@ -115,6 +148,7 @@ console.log(
     total / COUNT / 1024
   )}KB each`
 );
+}
 
 // --------------------------------------------------------------- the garments
 
@@ -134,6 +168,8 @@ const PIECE_QUALITY = 0.82;
 const PIECES = ["garment-shirt", "garment-jacket", "garment-pants", "garment-knit"];
 
 const PIECES_OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "garments-sm");
+
+if (runs("garments")) {
 await rm(PIECES_OUT, { recursive: true, force: true });
 await mkdir(PIECES_OUT, { recursive: true });
 
@@ -168,5 +204,64 @@ console.log(
     pieceTotal / 1024
   )}KB total`
 );
+}
+
+// --------------------------------------------------------------- the cloth
+
+/**
+ * The two macro stills on the marketing page, at a width a phone can afford.
+ *
+ * The originals are 2560px and 250–310KB. On a phone the square crop is drawn
+ * about 350 CSS px across and the band about 390 — so the large file exists
+ * only to be thrown away by the scaler. These are offered alongside the
+ * originals in a `srcset`, so a wide screen still gets the full-resolution
+ * cloth and a phone never downloads it.
+ *
+ * 1400 rather than 760: unlike a corridor frame these are cropped, and the
+ * square takes barely half the source's width. Cropping is what decides this
+ * number, not the size it renders at.
+ */
+const CLOTH_WIDTH = 1400;
+const CLOTH_QUALITY = 0.82;
+const CLOTH = ["texture-1", "texture-2"];
+
+const CLOTH_OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "textures-sm");
+
+if (runs("textures")) {
+await rm(CLOTH_OUT, { recursive: true, force: true });
+await mkdir(CLOTH_OUT, { recursive: true });
+
+let clothTotal = 0;
+for (const name of CLOTH) {
+  const data = await page.evaluate(
+    async ({ src, width, quality }) => {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error(`could not load ${src}`));
+        i.src = src;
+      });
+      const height = Math.round(img.height * (width / img.width));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvas.toDataURL("image/webp", quality).split(",")[1];
+    },
+    { src: `/${name}.webp`, width: CLOTH_WIDTH, quality: CLOTH_QUALITY }
+  );
+  const bytes = Buffer.from(data, "base64");
+  clothTotal += bytes.length;
+  await writeFile(join(CLOTH_OUT, `${name}.webp`), bytes);
+}
+
+console.log(
+  `wrote ${CLOTH.length} textures to public/textures-sm at ${CLOTH_WIDTH}px — ${Math.round(
+    clothTotal / 1024
+  )}KB total`
+);
+}
 
 await browser.close();

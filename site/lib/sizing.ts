@@ -26,6 +26,23 @@ export interface Sizes {
   shoe?: number;
 }
 
+/**
+ * The five, named.
+ *
+ * Kept beside `Sizes` rather than written out wherever they're listed, because
+ * the marketing page states how many there are. A sixth measurement added to
+ * the interface and not to this list would make that page quietly wrong, and a
+ * wrong number on a page nobody re-reads is the kind of thing that survives for
+ * a year.
+ */
+export const SIZE_FIELDS: { key: keyof Sizes; label: string; unit: string }[] = [
+  { key: "tops", label: "Tops", unit: "XS-3XL" },
+  { key: "jacket", label: "Jacket", unit: "chest, in" },
+  { key: "waist", label: "Waist", unit: "in" },
+  { key: "inseam", label: "Inseam", unit: "in" },
+  { key: "shoe", label: "Shoe", unit: "US" },
+];
+
 export const LETTER_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
 
 /** Written the way listings write them, mapped onto the canonical list. */
