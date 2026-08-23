@@ -1,5 +1,6 @@
-import AccountBar from "@/app/components/AccountBar";
 import Discover from "@/app/components/Discover";
+
+import PageHeader from "@/app/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -13,18 +14,10 @@ export const dynamic = "force-dynamic";
 export default function DiscoverPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
-        <div className="max-w-xl">
-          <h1 className="text-[2.1rem] font-semibold leading-[1.05] tracking-[-0.03em] text-room-ink md:text-[2.75rem]">
-            What everyone else built.
-          </h1>
-          <p className="mt-5 text-sm leading-relaxed text-room-muted">
-            Clozets people chose to share. Nothing is here unless its owner put it here, and they
-            can take it down whenever they like.
-          </p>
-        </div>
-        <AccountBar />
-      </header>
+      <PageHeader
+        title={<>What everyone else built.</>}
+        lede="Clozets people chose to share. Nothing is here unless its owner put it here."
+      />
 
       <Discover />
     </main>

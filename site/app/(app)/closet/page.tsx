@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
-import AccountBar from "@/app/components/AccountBar";
 import Reveal from "@/app/components/Reveal";
 import { Sources } from "@/app/components/Story";
 import { beats } from "@/lib/copy";
 import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
+
+import PageHeader, { PageNote } from "@/app/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -28,19 +29,12 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
-        <div>
-          <h1 className="text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.035em] text-room-ink md:text-[3.25rem]">
-            Show me what you like.
-          </h1>
-          <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-room-muted">
-            A few photographs of clothes you like, and it finds real secondhand
-            pieces that belong with them - in your size, in your budget,
-            and still for sale.
-          </p>
-        </div>
-        <AccountBar />
-      </header>
+      <PageHeader
+        title={<>Show me what you like.</>}
+        lede="A few photographs of clothes you like, and it finds real secondhand pieces that belong with them."
+      />
+
+      <PageNote>In your size, in your budget, and still for sale.</PageNote>
 
       <StyleRunner initialCloset={closet} />
 

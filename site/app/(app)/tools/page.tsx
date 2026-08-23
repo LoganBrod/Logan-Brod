@@ -1,9 +1,9 @@
-import Link from "next/link";
-import AccountBar from "@/app/components/AccountBar";
 import JudgePanel from "@/app/components/JudgePanel";
 import ScanSettings from "@/app/components/ScanSettings";
 import SizingDesk from "@/app/components/SizingDesk";
 import Watches from "@/app/components/Watches";
+
+import PageHeader from "@/app/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -22,24 +22,11 @@ export const dynamic = "force-dynamic";
 export default function ToolsPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
-        <div className="max-w-xl">
-          <h1 className="text-[2.1rem] font-semibold leading-[1.05] tracking-[-0.03em] text-room-ink md:text-[2.75rem]">
-            For when you&rsquo;re out looking.
-          </h1>
-          <p className="mt-5 text-sm leading-relaxed text-room-muted">
-            A clozet is one search on one day. These are the three things you want every other
-            day: whether a thing would fit you, whether it&rsquo;s worth the money, and something
-            that keeps looking while you get on with your life.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-3">
-          <AccountBar />
-          <Link href="/closet" className="btn-ghost">
-            Build a clozet
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={<>For when you&rsquo;re out looking.</>}
+        lede="A clozet is one search on one day. These are the three things you want every other day."
+        action={{ href: "/closet", label: "Build a clozet" }}
+      />
 
       {/* Anchored so the closet page and old bookmarks can point at a section
           rather than dropping someone at the top of a long page. */}
