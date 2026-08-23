@@ -71,7 +71,9 @@ test("a sizing note appears in both halves of the email", () => {
   const { html, text } = digestBody("W", [withFit]);
 
   assert.match(text, /Sizing — Barbour: you were told L, runs small\./);
-  assert.match(html, /Sizing &mdash; Barbour: you were told L, runs small\./);
+  // A hyphen, not an em-dash: the dash is banned in anything a person reads,
+  // and an email is the most read surface here.
+  assert.match(html, /Sizing - Barbour: you were told L, runs small\./);
 });
 
 test("a sizing note is escaped like everything else", () => {

@@ -158,7 +158,7 @@ export function digestBody(
 <html><body style="margin:0;padding:32px;background:#DEDFE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
   <div style="max-width:34rem;margin:0 auto;background:#E9EAEE;border:1px solid #C9CAD1;border-radius:16px;padding:32px">
     <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#7E7F87">${escapeHtml(watchName)}</p>
-    <p style="margin:0 0 26px;font-family:Georgia,serif;font-size:22px;line-height:1.3;color:#111113">${
+    <p style="margin:0 0 26px;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.02em;line-height:1.3;color:#111113">${
       one ? "Something turned up." : "A few things turned up."
     }</p>
     <table style="width:100%;border-collapse:collapse">${rows}</table>
