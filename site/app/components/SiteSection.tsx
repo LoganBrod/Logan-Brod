@@ -30,7 +30,7 @@ export default function SiteSection() {
         <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{company}</span>
 
         <h2
-          className={`font-serif text-room-ink [font-size:clamp(2rem,4vw,3.5rem)] leading-tight ${
+          className={`display text-room-ink [font-size:clamp(2rem,4vw,3.5rem)] leading-tight ${
             isTodo(siteSection.heading) ? "opacity-40" : ""
           }`}
         >

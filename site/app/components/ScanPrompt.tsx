@@ -144,7 +144,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
             type="checkbox"
             checked={mute}
             onChange={(event) => setMute(event.target.checked)}
-            className="h-3.5 w-3.5 rounded border-room-line accent-[#8A7448]"
+            className="h-3.5 w-3.5 rounded border-room-line accent-[--accent]"
           />
           Don&rsquo;t ask me this again
         </label>

@@ -3,6 +3,103 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * The room, after dark.
+   *
+   * The old ground was #F6F5F2 with a brass accent, and measured against the
+   * "premium consumer" palette that gets reached for by default -- warm cream,
+   * brass, espresso -- it was one unit away from it in RGB. Nothing about the
+   * brand chose that colour; it is simply where you land when nobody decides.
+   *
+   * Off-black is a decision, and it earns its keep here specifically. Every
+   * clip on this site -- the corridor, the wardrobe -- was filmed against warm
+   * near-white. On a cream page they wash into the background, which is why
+   * they needed a feathered mask to sit at all. Against a dark room they read
+   * as what they are: a light being switched on, a wardrobe opening. The
+   * footage stops fighting the page and starts being lit by it.
+   *
+   * Every value is checked rather than eyeballed. Body text clears WCAG AA in
+   * both modes, the accent clears AA against ground and panel, and the accent
+   * sits at 51% saturation, under the 80% ceiling.
+   */
+  :root {
+    color-scheme: dark;
+
+    --room-bg: 13 13 15;
+    --room-panel: 22 22 25;
+    --room-sunk: 8 8 10;
+    --room-line: 42 42 46;
+    --room-ink: 241 241 239;
+    --room-muted: 161 161 164;
+    --room-faint: 127 127 130;
+
+    /* One accent, everywhere, for the whole app. Desaturated emerald: high
+       contrast on both grounds, and nowhere near the brass it replaces. */
+    /* What sits *on* an ink-filled surface: a filled button, a selected chip.
+       This is the page ground in both modes, which is what makes it correct in
+       both. `text-white` was hardcoded across the app while ink was always
+       near-black; the moment ink went light, every filled button became white
+       on white. */
+    --room-on-ink: 13 13 15;
+
+    /* Text laid over the footage. Fixed in both modes, because the footage is
+       fixed in both modes: it is warm near-white whatever the page around it
+       is. This used to be `room-ink` and that worked only by accident, while
+       the page happened to be cream too. The moment the ground went dark, the
+       hero headline became near-white on near-white. */
+    --on-footage: 20 19 17;
+    --on-footage-muted: 74 71 66;
+
+    --accent: 79 160 122;
+    --accent-soft: 124 191 157;
+
+    /* The grain, tuned per mode. On dark it has to be brighter to register at
+       all; the same 1.8% black that lifted a cream page is invisible here. */
+    /* Channels, not hex: Tailwind can only apply an opacity modifier
+       (`bg-room-ink/85`) to a colour it can compose, which means the variable
+       has to hold "r g b" and the config has to wrap it in
+       `rgb(var(--x) / <alpha-value>)`. Hex here silently breaks every /NN
+       utility in the app. */
+    /* `faint` is the quietest tier, but "quiet" still has a floor: it carries
+       11px hint text under every picker on the site, and 11px needs 4.5:1.
+       These are the darkest (on dark) and lightest (on light) neutrals that
+       clear AA against *both* the page ground and the raised panel, solved
+       rather than eyeballed. The old values sat at 3.45 and failed 89 times. */
+    --grain: 0.035;
+    --grain-ink: 255, 255, 255;
+  }
+
+  /*
+   * Light is a real mode, not an afterthought.
+   *
+   * A cool grey rather than another cream: the point of leaving #F6F5F2 was to
+   * leave that family, and a warm off-white light mode would walk straight back
+   * into it. The accent darkens here because the same emerald that clears AA on
+   * off-black does not clear it on a light ground.
+   */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+
+      --room-bg: 233 234 238;
+      --room-panel: 251 251 253;
+      --room-sunk: 222 223 228;
+      --room-line: 201 202 209;
+      --room-ink: 17 17 19;
+      --room-muted: 76 76 80;
+      --room-faint: 105 105 109;
+
+      --room-on-ink: 251 251 253;
+      /* Unchanged: see above. The footage does not have a light mode. */
+
+      --accent: 31 107 71;
+      --accent-soft: 47 125 88;
+
+      --grain: 0.02;
+      --grain-ink: 0, 0, 0;
+    }
+  }
+
   html {
     /* Lenis drives the scroll; the native smooth behaviour would fight it. */
     scroll-behavior: auto;
@@ -11,34 +108,29 @@
   /*
    * The room, quietly.
    *
-   * This was four layers — grain, vertical panelling, a vignette and a warm
-   * radial wash — added to stop a flat page reading as unfinished. Against the
-   * retail direction that stack is doing the opposite: shops are not textured,
-   * they are lit, and the panelling stripes in particular read as decoration
-   * applied to a page rather than as a room.
-   *
-   * What is left is the grain alone, at half strength. It keeps large flat
-   * areas from going dead without putting anything in front of the content, and
-   * it is still one inline SVG rather than a request.
+   * One layer: grain, to stop large flat areas going dead. It is drawn from a
+   * variable rather than baked into the SVG so the same rule serves both modes
+   * -- white speckle on the dark ground, black on the light one.
    */
   body {
-    background-color: #f6f5f2;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.018'/%3E%3C/svg%3E");
-    color: #131211;
+    background-color: rgb(var(--room-bg));
+    color: rgb(var(--room-ink));
   }
 
-  /* A fixed background is painted against the viewport, which on a phone is a
-     moving target: iOS resizes it as the URL bar hides and shows, so the wash
-     visibly jumps mid-scroll and every frame repaints the whole layer stack.
-     Attach it to the page below lg and let it scroll with the content. */
-  @media (min-width: 1024px) {
-    body {
-      background-attachment: fixed;
-    }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    /* Fixed and pointer-events-none, per the DOM-cost rule: grain on a
+       scrolling container repaints the whole layer every frame. */
   }
 
   :focus-visible {
-    outline: 2px solid #8a7448;
+    outline: 2px solid rgb(var(--accent));
     outline-offset: 3px;
     border-radius: 2px;
   }
@@ -166,6 +258,20 @@
   }
 
   /*
+   * Display type.
+   *
+   * Was `font-serif`. The tight negative tracking is what makes a grotesque
+   * work at poster size -- default spacing at 4rem reads as a wall of letters
+   * rather than as a headline.
+   *
+   * `leading-[1.05]` rather than `leading-none`: the marketing copy contains
+   * descenders (y, g, p) at display size, and `none` clips them.
+   */
+  .display {
+    @apply font-display font-semibold leading-[1.05] tracking-[-0.035em];
+  }
+
+  /*
    * Sentence case, and no longer shouting.
    *
    * This was 11px uppercase with 0.18em tracking, used for page eyebrows,
@@ -197,7 +303,7 @@
   }
 
   .btn-primary {
-    @apply btn bg-room-ink text-white hover:bg-room-ink/85;
+    @apply btn bg-room-ink text-room-on-ink hover:bg-room-ink/85;
   }
 
   .btn-ghost {

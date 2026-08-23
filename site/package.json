@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test scripts/*.test.mjs",
     "smoke:models": "tsx scripts/smoke-models.mjs",
-    "cost": "tsx scripts/cost-model.mjs"
+    "cost": "tsx scripts/cost-model.mjs",
+    "audit:contrast": "node scripts/contrast-audit.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

@@ -676,7 +676,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                 title={hint}
                 className={`cursor-pointer rounded-sm border px-4 py-2.5 text-[13px] transition-colors ${
                   intent === value
-                    ? "border-room-ink bg-room-ink text-white"
+                    ? "border-room-ink bg-room-ink text-room-on-ink"
                     : "border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink"
                 }`}
               >

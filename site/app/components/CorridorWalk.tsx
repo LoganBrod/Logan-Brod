@@ -347,7 +347,7 @@ export default function CorridorWalk() {
             className={`absolute inset-0 items-center justify-center ${staticMode ? "hidden" : "flex"}`}
           >
             <h1
-              className={`px-10 text-center font-serif text-room-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
+              className={`px-10 text-center display text-footage-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
                 isTodo(heroLine) ? "opacity-40" : ""
               }`}
             >
@@ -388,15 +388,15 @@ export default function CorridorWalk() {
                   className="absolute left-1/2 top-[34%] flex w-[86%] -translate-x-1/2 flex-col items-center gap-3 text-center lg:top-[32%] lg:w-[min(46%,560px)] lg:gap-4"
                   style={{ opacity: 0 }}
                 >
-                  <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
+                  <span className="text-[11px] uppercase tracking-[0.22em] text-footage-muted">{stop.label}</span>
                   <h2
-                    className={`font-serif text-room-ink [font-size:clamp(1.5rem,6.5vw,2.5rem)] leading-tight lg:[font-size:clamp(1.6rem,2.6vw,2.5rem)] ${
+                    className={`display text-footage-ink [font-size:clamp(1.5rem,6.5vw,2.5rem)] leading-tight lg:[font-size:clamp(1.6rem,2.6vw,2.5rem)] ${
                       isTodo(stop.heading) ? "opacity-40" : ""
                     }`}
                   >
                     {stop.heading}
                   </h2>
-                  <p className={`max-w-[46ch] text-[13.5px] leading-relaxed text-room-muted lg:text-[15px] ${isTodo(stop.body) ? "opacity-40" : ""}`}>
+                  <p className={`max-w-[46ch] text-[13.5px] leading-relaxed text-footage-muted lg:text-[15px] ${isTodo(stop.body) ? "opacity-40" : ""}`}>
                     {stop.body}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ export default function CorridorWalk() {
 
       {/* Reduced motion, no JavaScript: the hero line and stops as a plain flow. */}
       <div data-flow className={staticMode ? "relative" : "hidden"}>
-        <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center font-serif text-4xl leading-tight text-room-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
+        <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center display text-4xl leading-tight text-footage-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
           {heroLine}
         </h1>
         {stops.map((stop, i) => (
@@ -452,11 +452,11 @@ export default function CorridorWalk() {
                 </picture>
               ))}
             </div>
-            <span className="text-[11px] uppercase tracking-[0.22em] text-room-faint">{stop.label}</span>
-            <h2 className={`font-serif text-3xl leading-tight text-room-ink ${isTodo(stop.heading) ? "opacity-40" : ""}`}>
+            <span className="text-[11px] uppercase tracking-[0.22em] text-footage-muted">{stop.label}</span>
+            <h2 className={`display text-3xl leading-tight text-footage-ink ${isTodo(stop.heading) ? "opacity-40" : ""}`}>
               {stop.heading}
             </h2>
-            <p className={`text-[15px] leading-relaxed text-room-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>{stop.body}</p>
+            <p className={`text-[15px] leading-relaxed text-footage-muted ${isTodo(stop.body) ? "opacity-40" : ""}`}>{stop.body}</p>
           </section>
         ))}
       </div>

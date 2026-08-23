@@ -1,38 +1,52 @@
 import type { Metadata } from "next";
-import { Archivo, Fraunces } from "next/font/google";
+import { Archivo, JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { company } from "@/lib/copy";
 import SideNav from "./components/SideNav";
 
 /**
- * Archivo everywhere the product is, Fraunces only on the marketing walk.
+ * Display, text, and figures.
  *
- * The interface used to be set in Fraunces over Karla. Warm cream, an old-style
- * serif and a brass accent is a good-looking combination and also, right now,
- * the single most recognisable signature of a generated website — it was the
- * first thing a visitor read, before any of the writing.
+ * The interface was Fraunces over Karla, then Archivo with Fraunces kept for
+ * the marketing walk. Fraunces has to go: an old-style display serif over a
+ * warm cream ground is the single most recognisable signature of a generated
+ * website, and keeping it "only on the walk" still meant it was the first thing
+ * anybody read.
  *
- * Archivo is the answer to that: a neutral grotesque with a slightly condensed
- * cut and a wide weight range, which is the register menswear retail is
- * actually set in. It carries a size chart and a price without decorating them.
+ * The replacement is not another serif. Reaching for a serif because a brief
+ * feels creative is the same reflex that produced the first one. Outfit is a
+ * geometric sans that holds up at poster size, which is the register retail
+ * signage is actually set in -- a shop sets its windows in sans and its
+ * lookbook in serif, and the mistake was setting everything in lookbook.
  *
- * Fraunces survives on the corridor walk, where a display serif is doing the
- * job it is good at. A shop sets its signage in sans and its lookbook in serif;
- * the mistake was setting everything in lookbook.
+ * Archivo stays for text and the interface. It is a neutral grotesque with a
+ * slightly condensed cut that carries a size chart and a price without
+ * decorating them, and it is better at 13px than a display face is. Display and
+ * text as two faces is an ordinary pairing; what is not ordinary, and is banned
+ * here, is dropping a serif word into a sans headline for emphasis. That comes
+ * from weight or italic of the same family.
  *
- * `soft` and `wonk` are Fraunces' own axes: a little of each keeps the display
- * type from looking like a wedding invitation.
+ * JetBrains Mono carries prices, sizes, timers and counts. Tabular figures stop
+ * a running timer from reflowing the layout every second.
+ *
+ * (Geist would have been the first choice; it is not in this version of
+ * next/font/google, checked rather than assumed.)
  */
-const serif = Fraunces({
+const display = Outfit({
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-display",
   display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
 });
 
 const sans = Archivo({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -49,7 +63,7 @@ export const metadata: Metadata = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <SideNav />
         {children}

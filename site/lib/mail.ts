@@ -33,15 +33,15 @@ function body(url: string): { html: string; text: string } {
   ].join("\n");
 
   const html = `<!doctype html>
-<html><body style="margin:0;padding:32px;background:#EDEAE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#1B1A17">
-  <div style="max-width:32rem;margin:0 auto;background:#F7F5F1;border:1px solid #D6D1C7;border-radius:16px;padding:32px">
-    <p style="margin:0 0 24px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#9A948B">Clozet</p>
+<html><body style="margin:0;padding:32px;background:#DEDFE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#111113">
+  <div style="max-width:32rem;margin:0 auto;background:#E9EAEE;border:1px solid #C9CAD1;border-radius:16px;padding:32px">
+    <p style="margin:0 0 24px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#7E7F87">Clozet</p>
     <p style="margin:0 0 24px;font-size:16px;line-height:1.6">Here&rsquo;s your link to sign in.</p>
     <p style="margin:0 0 28px">
-      <a href="${url}" style="display:inline-block;background:#1B1A17;color:#EDEAE4;text-decoration:none;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600">Sign in</a>
+      <a href="${url}" style="display:inline-block;background:#111113;color:#DEDFE4;text-decoration:none;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600">Sign in</a>
     </p>
-    <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#6F6A62">It works once and expires in 15 minutes.</p>
-    <p style="margin:0;font-size:13px;line-height:1.6;color:#6F6A62">If you didn&rsquo;t ask for this, ignore it &mdash; nothing has changed.</p>
+    <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#55565C">It works once and expires in 15 minutes.</p>
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#55565C">If you didn&rsquo;t ask for this, ignore it &mdash; nothing has changed.</p>
   </div>
 </body></html>`;
 
@@ -139,30 +139,30 @@ export function digestBody(
     .map(
       (item) => `
     <tr><td style="padding:0 0 22px">
-      <p style="margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.4;color:#1B1A17">${escapeHtml(item.title)}</p>
-      <p style="margin:0 0 6px;font-size:13px;color:#6F6A62">$${item.price.toFixed(2)}${
+      <p style="margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.4;color:#111113">${escapeHtml(item.title)}</p>
+      <p style="margin:0 0 6px;font-size:13px;color:#55565C">$${item.price.toFixed(2)}${
         item.condition ? ` &middot; ${escapeHtml(item.condition)}` : ""
       }</p>
-      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#1B1A17">${escapeHtml(item.whyItFits)}</p>${
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#111113">${escapeHtml(item.whyItFits)}</p>${
         item.fitNote
           ? `
-      <p style="margin:0 0 10px;padding:8px 12px;background:#EDEAE4;border-radius:8px;font-size:13px;line-height:1.5;color:#6F6A62">Sizing &mdash; ${escapeHtml(item.fitNote)}</p>`
+      <p style="margin:0 0 10px;padding:8px 12px;background:#DEDFE4;border-radius:8px;font-size:13px;line-height:1.5;color:#55565C">Sizing &mdash; ${escapeHtml(item.fitNote)}</p>`
           : ""
       }
-      <a href="${item.url}" style="font-size:13px;font-weight:600;color:#8A7448">View the listing &rarr;</a>
+      <a href="${item.url}" style="font-size:13px;font-weight:600;color:#1F6B47">View the listing &rarr;</a>
     </td></tr>`
     )
     .join("");
 
   const html = `<!doctype html>
-<html><body style="margin:0;padding:32px;background:#EDEAE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
-  <div style="max-width:34rem;margin:0 auto;background:#F7F5F1;border:1px solid #D6D1C7;border-radius:16px;padding:32px">
-    <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#9A948B">${escapeHtml(watchName)}</p>
-    <p style="margin:0 0 26px;font-family:Georgia,serif;font-size:22px;line-height:1.3;color:#1B1A17">${
+<html><body style="margin:0;padding:32px;background:#DEDFE4;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
+  <div style="max-width:34rem;margin:0 auto;background:#E9EAEE;border:1px solid #C9CAD1;border-radius:16px;padding:32px">
+    <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#7E7F87">${escapeHtml(watchName)}</p>
+    <p style="margin:0 0 26px;font-family:Georgia,serif;font-size:22px;line-height:1.3;color:#111113">${
       one ? "Something turned up." : "A few things turned up."
     }</p>
     <table style="width:100%;border-collapse:collapse">${rows}</table>
-    <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #D6D1C7;font-size:12px;line-height:1.6;color:#9A948B">
+    <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #C9CAD1;font-size:12px;line-height:1.6;color:#7E7F87">
       These are live listings and secondhand stock moves fast. Stop this scan any time from your Scan page.
     </p>
   </div>

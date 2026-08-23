@@ -94,7 +94,7 @@ export default function StyleQuestions({
                 onClick={() => toggleColour(colour)}
                 className={`rounded-sm border px-2.5 py-1.5 text-[12px] capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   on
-                    ? "border-room-ink bg-room-ink text-white line-through"
+                    ? "border-room-ink bg-room-ink text-room-on-ink line-through"
                     : "border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink"
                 }`}
               >
@@ -170,14 +170,14 @@ function Choices<T extends string>({
             onClick={() => onSelect(on ? undefined : option.value)}
             className={`rounded-sm border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               on
-                ? "border-room-ink bg-room-ink text-white"
+                ? "border-room-ink bg-room-ink text-room-on-ink"
                 : "border-room-line bg-room-panel hover:border-room-ink/40"
             }`}
           >
             <span className="block text-[13px] font-medium leading-tight">{option.label}</span>
             <span
               className={`mt-0.5 block text-[11px] leading-snug ${
-                on ? "text-white/70" : "text-room-faint"
+                on ? "text-room-on-ink/70" : "text-room-faint"
               }`}
             >
               {option.hint}
