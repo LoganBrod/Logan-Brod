@@ -90,7 +90,7 @@ export default function AccountBar() {
     setNotice(
       result.delivery === "logged"
         ? "Email isn't configured here, so the link went to the server console."
-        : `Check ${email} — the link works once and expires in 15 minutes.`
+        : `Check ${email} - the link works once and expires in 15 minutes.`
     );
   }
 
@@ -207,7 +207,7 @@ export default function AccountBar() {
         >
           {creating ? "I already have an account" : "Create an account"}
         </button>
-        {/* Only offered when a link can actually be sent — and it doubles as the
+        {/* Only offered when a link can actually be sent - and it doubles as the
             way back in for someone who's forgotten their password. */}
         {auth.links && (
           <button

@@ -78,7 +78,7 @@ export default function StyleQuestions({
         label="Anything you'd never wear?"
         note={
           atLimit
-            ? `${MAX_AVOID} is the limit — much more and there's nothing left to find.`
+            ? `${MAX_AVOID} is the limit - much more and there's nothing left to find.`
             : "Tap a colour to rule it out. These are rules, not hints."
         }
       >

@@ -301,7 +301,7 @@ export default function CorridorWalk() {
         >
           {/* The still under everything: what a phone sees before the frames
               land, and all anyone sees in reduced motion. A phone never fetches
-              the 1400px one — it would cost more than three frames of the walk
+              the 1400px one - it would cost more than three frames of the walk
               it's standing in for. */}
           <picture>
             <source media="(min-width: 1024px)" srcSet={framePath(0)} />
@@ -408,7 +408,7 @@ export default function CorridorWalk() {
 
       {/*
         Without JavaScript there is no walk, and the markup above defaults to
-        the walk because that is what almost everyone gets — so the fallback has
+        the walk because that is what almost everyone gets - so the fallback has
         to be reasserted here rather than chosen at render time. This puts the
         page back to a still and a document: the same thing reduced motion sees.
 
@@ -437,7 +437,7 @@ export default function CorridorWalk() {
               {/* Sized the same way as the overlay's copies, and for a sharper
                   reason than bandwidth alone: display:none does not stop
                   Chrome fetching an image, so while this flow is hidden behind
-                  the running walk it was still pulling all four originals —
+                  the running walk it was still pulling all four originals - 
                   a phone downloaded 813KB of cut-outs it would never show on
                   top of the 120KB of cut-outs it did. */}
               {stop.pieces.map((src, j) => (

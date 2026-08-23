@@ -36,14 +36,14 @@ export const stops: Stop[] = [
   {
     label: "How it works",
     heading: "Show it a few pieces you like.",
-    body: "Upload photos of clothes you own or want. It reads the style across them — palette, silhouette, fabric — then searches real listings and keeps only what fits the way you actually dress.",
+    body: "Upload photos of clothes you own or want. It reads the style across them - palette, silhouette, fabric - then searches real listings and keeps only what fits the way you actually dress.",
     pieces: ["/garment-shirt.webp", "/garment-jacket.webp"],
     pieceNames: ["An olive shirt on the rail", "A chore jacket on the rail"],
   },
   {
     label: "What you get back",
     heading: "Only what actually fits.",
-    body: "Real pieces in your price range and your size, each with a line on why it suits you. Say yes or no to anything — the next run listens.",
+    body: "Real pieces in your price range and your size, each with a line on why it suits you. Say yes or no to anything - the next run listens.",
     pieces: ["/garment-pants.webp", "/garment-knit.webp"],
     pieceNames: ["Grey wool trousers on the rail", "An oatmeal sweater on the rail"],
   },
@@ -54,7 +54,7 @@ export const siteSection = {
   // Written from what the product demonstrably does, and nothing else: no
   // claims about the company, its size, or its history that aren't true today.
   heading: "We build one thing, properly.",
-  body: "LevoZ Labs makes Clozet — a menswear tool that reads the clothes you already like and finds real secondhand pieces that belong with them. Not a feed, not a marketplace, and not a search box with a bigger budget behind it. It looks at photographs the way a person would, tells you plainly when something isn't worth buying, and keeps looking after you've closed the tab.",
+  body: "LevoZ Labs makes Clozet - a menswear tool that reads the clothes you already like and finds real secondhand pieces that belong with them. Not a feed, not a marketplace, and not a search box with a bigger budget behind it. It looks at photographs the way a person would, tells you plainly when something isn't worth buying, and keeps looking after you've closed the tab.",
   /** The product, now served from this same app. */
   appUrl: "/closet",
   appLabel: "Open Clozet",
@@ -69,7 +69,7 @@ export const siteSection = {
  * and asserting a claim in the footer of a site that hasn't launched is the
  * kind of boilerplate that makes a small company read as a template.
  */
-export const legal = `${company} — ${new Date().getFullYear()}`;
+export const legal = `${company} - ${new Date().getFullYear()}`;
 
 // ---------------------------------------------------------------- the story
 
@@ -85,12 +85,12 @@ export const beats = [
   {
     kicker: "It reads the photographs",
     heading: "Not the words under them.",
-    body: "Upload a few pieces you like and it looks at them — palette, silhouette, cloth, how formal it all is — then writes its own searches. You never type a keyword, because the thing you like is rarely a thing you can name.",
+    body: "Upload a few pieces you like and it looks at them - palette, silhouette, cloth, how formal it all is - then writes its own searches. You never type a keyword, because the thing you like is rarely a thing you can name.",
   },
   {
     kicker: "It judges on the picture",
     heading: "The way you would in a shop.",
-    body: "Ninety-six candidates are looked at as photographs, not as titles, and only what clears the bar comes back — a dozen at most, fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes “vintage Barbour style” gets no credit for the word; a jacket that actually looks right does.",
+    body: "Ninety-six candidates are looked at as photographs, not as titles, and only what clears the bar comes back - a dozen at most, fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes “vintage Barbour style” gets no credit for the word; a jacket that actually looks right does.",
   },
   {
     kicker: "It knows what fits",
@@ -100,7 +100,7 @@ export const beats = [
   {
     kicker: "It keeps looking",
     heading: "Secondhand moves faster than you do.",
-    body: "The right jacket in your size at your price is listed on a Tuesday and gone by Wednesday. A standing scan runs your searches twice a day and emails you only what clears the same bar — most days it finds nothing and says nothing.",
+    body: "The right jacket in your size at your price is listed on a Tuesday and gone by Wednesday. A standing scan runs your searches twice a day and emails you only what clears the same bar - most days it finds nothing and says nothing.",
   },
 ] as const;
 
@@ -113,7 +113,7 @@ export const beats = [
  */
 export const sources = {
   heading: "Everything here is somebody else's listing.",
-  body: "Clozet holds no stock and sells nothing. It searches two marketplaces, judges what comes back, and sends you to the seller — the same listing you would have found yourself, if you had the afternoon.",
+  body: "Clozet holds no stock and sells nothing. It searches two marketplaces, judges what comes back, and sends you to the seller - the same listing you would have found yourself, if you had the afternoon.",
   markets: [
     { name: "eBay", note: "Live secondhand listings, searched through their own API." },
     { name: "Google Shopping", note: "Mainstream retail, for the pieces that are still made." },
@@ -123,7 +123,7 @@ export const sources = {
    * what turns up rather than what is stocked — there is no arrangement with
    * any of them, and implying one would be a lie a reader can't check.
    */
-  labelsCaption: "Labels that tend to turn up. No arrangement with any of them — they're simply what secondhand menswear is made of.",
+  labelsCaption: "Labels that tend to turn up. No arrangement with any of them - they're simply what secondhand menswear is made of.",
   labels: [
     "Barbour", "Carhartt", "Levi's", "Patagonia", "Ralph Lauren", "Uniqlo",
     "J.Crew", "Filson", "Clarks", "Dr. Martens", "Arc'teryx", "Stone Island",

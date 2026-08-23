@@ -97,7 +97,7 @@ export default function OwnedWardrobe() {
         <h2 className="eyebrow">What you own</h2>
         <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
           Photograph your wardrobe once and every recommendation afterwards knows what you already
-          have &mdash; including which single piece would unlock the most outfits from it. Part of
+          have - including which single piece would unlock the most outfits from it. Part of
           membership.
         </p>
       </section>
@@ -124,7 +124,7 @@ export default function OwnedWardrobe() {
         <h2 className="eyebrow">What you own</h2>
         <p className="text-xs text-room-faint">
           {state.items.length === 0
-            ? "Photograph what's in your wardrobe — several pieces per photo is fine."
+            ? "Photograph what's in your wardrobe - several pieces per photo is fine."
             : `${state.items.length} ${state.items.length === 1 ? "piece" : "pieces"} catalogued`}
         </p>
       </div>

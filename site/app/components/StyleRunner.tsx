@@ -618,7 +618,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             Drop in photos of clothes you think look good
           </span>
           <span className="mt-1.5 text-xs text-room-faint">
-            {photos.length}/{MAX_PHOTOS} &middot; jackets, trousers, shoes &mdash; whatever
+            {photos.length}/{MAX_PHOTOS} &middot; jackets, trousers, shoes - whatever
             caught your eye
           </span>
         </label>
@@ -702,7 +702,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
         {/* Offered only to people the app has never watched choose anything.
             The taste memory is the strongest signal here and it doesn't exist
-            until somebody has reacted to a closet — so the first run is the one
+            until somebody has reacted to a closet - so the first run is the one
             with none of it, and it's also the run that decides whether they
             come back. Hidden once there are votes, because by then it would be
             asking for something it already has. */}
@@ -713,7 +713,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           >
             <span className="text-[13px] leading-relaxed text-room-muted">
               <span className="font-medium text-room-ink">New here?</span> Swipe fifteen pieces
-              first &mdash; about a minute, and the first clozet stops guessing.
+              first - about a minute, and the first clozet stops guessing.
             </span>
             <span className="text-[12px] font-semibold text-accent">Teach it your eye &rarr;</span>
           </Link>
@@ -730,7 +730,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         {/* A two-column grid on phones, the original row from sm up.
             Wrapping fixed-width fields at 390px dealt the last size field and
             the build button the same line, so "Shoe" sat beside the thing you
-            press to start — which read as a caption for it. A grid can't do
+            press to start - which read as a caption for it. A grid can't do
             that: the fields fill the columns and the button gets its own row. */}
         <div className="mt-7 grid grid-cols-2 items-end gap-4 sm:flex sm:flex-wrap">
           <div>
@@ -763,7 +763,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           </div>
           {/* Sizes. Optional, remembered per browser, and asked here rather than
               learned because no amount of watching someone browse reveals their
-              inseam — while a listing in the wrong size is worthless however
+              inseam - while a listing in the wrong size is worthless however
               good the piece is. Anything left blank simply isn't used. */}
           {sizesAvailable && (
             <>
@@ -875,7 +875,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       )}
 
       {/* The form's own error banner is hidden once the stage takes over, so a
-          failure at curation needs its own place to surface — next to the way
+          failure at curation needs its own place to surface - next to the way
           out of it. */}
       {onStage && error && (
         <div className="panel flex flex-wrap items-center justify-between gap-4 border-red-300/70 bg-red-50 px-6 py-4">
@@ -923,14 +923,14 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
                 <p className="font-mono text-2xl tracking-[0.3em] text-room-ink">{code}</p>
               </div>
               <p className="max-w-xs text-xs leading-relaxed text-room-muted">
-                Saved. This browser reopens it automatically &mdash; use the code to open it
+                Saved. This browser reopens it automatically - use the code to open it
                 anywhere else.
               </p>
             </div>
           ) : (
             saveNotice && (
               <p className="panel px-6 py-4 text-xs leading-relaxed text-room-muted">
-                {saveNotice} Your pieces are hanging above either way &mdash; they just
+                {saveNotice} Your pieces are hanging above either way - they just
                 won&rsquo;t be here when you come back.
               </p>
             )
@@ -949,7 +949,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
               ) : (
                 <>
                   <p className="max-w-md text-sm leading-relaxed text-room-muted">
-                    Secondhand moves fast &mdash; most of what would suit you isn&rsquo;t listed
+                    Secondhand moves fast - most of what would suit you isn&rsquo;t listed
                     right now. Leave these searches running and they&rsquo;ll keep looking.
                   </p>
                   <button

@@ -124,7 +124,7 @@ export default function RunProgress({
   return (
     /*
       Left-aligned to the same edge as the page's heading and the wardrobe
-      below, rather than centred in its own column — centred, it read as a
+      below, rather than centred in its own column - centred, it read as a
       widget dropped onto the page instead of part of it. Capped in width
       because four step labels spread across a desktop-width row lose any sense
       of being a sequence.

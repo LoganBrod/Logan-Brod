@@ -41,7 +41,7 @@ function body(url: string): { html: string; text: string } {
       <a href="${url}" style="display:inline-block;background:#111113;color:#DEDFE4;text-decoration:none;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600">Sign in</a>
     </p>
     <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#55565C">It works once and expires in 15 minutes.</p>
-    <p style="margin:0;font-size:13px;line-height:1.6;color:#55565C">If you didn&rsquo;t ask for this, ignore it &mdash; nothing has changed.</p>
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#55565C">If you didn&rsquo;t ask for this, ignore it - nothing has changed.</p>
   </div>
 </body></html>`;
 
@@ -146,7 +146,7 @@ export function digestBody(
       <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#111113">${escapeHtml(item.whyItFits)}</p>${
         item.fitNote
           ? `
-      <p style="margin:0 0 10px;padding:8px 12px;background:#DEDFE4;border-radius:8px;font-size:13px;line-height:1.5;color:#55565C">Sizing &mdash; ${escapeHtml(item.fitNote)}</p>`
+      <p style="margin:0 0 10px;padding:8px 12px;background:#DEDFE4;border-radius:8px;font-size:13px;line-height:1.5;color:#55565C">Sizing - ${escapeHtml(item.fitNote)}</p>`
           : ""
       }
       <a href="${item.url}" style="font-size:13px;font-weight:600;color:#1F6B47">View the listing &rarr;</a>

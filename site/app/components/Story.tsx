@@ -28,7 +28,7 @@ export default function Story() {
 
               These were stacked in a 5xl column with the number in a left
               gutter, which put every block slightly left of centre in the top
-              third of the page and left the rest of the screen empty — content
+              third of the page and left the rest of the screen empty - content
               adrift in the middle of nothing. Giving each beat the full
               viewport and centring it means the thing you are reading is the
               only thing on screen, and scrolling advances one idea at a time.
@@ -39,12 +39,14 @@ export default function Story() {
             >
               <Reveal className="w-full">
                 <div className="mx-auto flex max-w-[52ch] flex-col items-center text-center">
-                  <span className="font-mono text-[12px] tabular-nums text-accent">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="eyebrow mt-3">{beat.kicker}</span>
-
-                  <h3 className="mt-6 text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-room-ink sm:text-[3rem]">
+                  {/*
+                    Two things used to sit above this headline: a mono "01" and
+                    a small-caps kicker restating it. Both are gone. Numbering
+                    sections tells a reader something they can already see, and
+                    the kicker said the headline again more quietly. The
+                    headline alone was always enough.
+                  */}
+                  <h3 className="display text-[2rem] text-room-ink sm:text-[3rem]">
                     {beat.heading}
                   </h3>
                   <p className="mt-6 max-w-[46ch] text-[15px] leading-relaxed text-room-muted sm:text-[16px]">
@@ -76,8 +78,7 @@ export function Sources() {
       <div className="mx-auto max-w-5xl px-6 py-24 sm:py-28">
         <Reveal>
           <div className="max-w-[46ch]">
-            <p className="eyebrow mb-4">Where they come from</p>
-            <h2 className="text-[1.65rem] font-semibold leading-[1.12] tracking-[-0.025em] text-room-ink sm:text-[2.1rem]">
+            <h2 className="display text-[1.65rem] text-room-ink sm:text-[2.1rem]">
               {sources.heading}
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-room-muted">{sources.body}</p>

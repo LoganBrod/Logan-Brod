@@ -23,7 +23,7 @@ export default function CalibratePage() {
         </h1>
         <p className="mt-5 text-sm leading-relaxed text-room-muted">
           Fifteen real pieces, yes or no. About a minute. What you turn down matters as much as
-          what you keep &mdash; it&rsquo;s the fastest way to stop the first clozet guessing.
+          what you keep - it&rsquo;s the fastest way to stop the first clozet guessing.
         </p>
       </header>
 

@@ -22,8 +22,8 @@ export default function WardrobePage() {
             What you already own.
           </h1>
           <p className="mt-5 text-sm leading-relaxed text-room-muted">
-            Photograph what&rsquo;s in your wardrobe once &mdash; several pieces per photo is fine
-            &mdash; and everything the app recommends afterwards knows what you have. It builds
+            Photograph what&rsquo;s in your wardrobe once - several pieces per photo is fine
+            - and everything the app recommends afterwards knows what you have. It builds
             outfits from what&rsquo;s there, and names the single piece that would unlock the most
             more.
           </p>

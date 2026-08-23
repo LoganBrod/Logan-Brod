@@ -53,7 +53,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: company,
   description:
-    "Clozet reads the clothes you already like and finds real secondhand pieces that belong with them — in your size, in your budget, and still for sale.",
+    "Clozet reads the clothes you already like and finds real secondhand pieces that belong with them - in your size, in your budget, and still for sale.",
 };
 
 /**

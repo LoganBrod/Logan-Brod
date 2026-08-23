@@ -113,7 +113,7 @@ export async function POST(req: Request) {
 
   const sizes = await readSizes(id);
   if (!hasSizes(sizes)) {
-    return no("Fill in at least one measurement first — there's nothing to compare against.", 409);
+    return no("Fill in at least one measurement first - there's nothing to compare against.", 409);
   }
 
   try {

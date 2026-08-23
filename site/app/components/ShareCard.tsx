@@ -151,7 +151,7 @@ export default function ShareCard({ code, name, items, palette }: Props) {
         await navigator.share({
           files: [file],
           title: name,
-          text: `${name} — built on LevoZ`,
+          text: `${name} - built on LevoZ`,
         });
         return;
       }

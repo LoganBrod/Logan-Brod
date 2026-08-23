@@ -111,7 +111,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
 
         <p className="mt-4 text-sm leading-relaxed text-room-muted">
           Those {itemCount} pieces are what happened to be listed this minute. Secondhand stock turns
-          over daily &mdash; most of what would suit you isn&rsquo;t listed right now, and by next
+          over daily - most of what would suit you isn&rsquo;t listed right now, and by next
           week half of it will be gone.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-room-muted">
@@ -151,7 +151,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
 
         <p className="mt-2 text-xs text-room-faint">
           You can start one any time from the <Link href="/tools#scans" className="underline">Tools</Link>{" "}
-          page &mdash; and turn this prompt back on there too.
+          page - and turn this prompt back on there too.
         </p>
 
         <p className="sr-only">Clozet: {name}</p>

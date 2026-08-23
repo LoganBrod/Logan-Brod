@@ -20,7 +20,7 @@ import { useState } from "react";
 const STEPS = [
   {
     title: "Give it your measurements",
-    body: "Five numbers, once. Every search, every judgement and every standing scan uses them — a listing in a size you can't wear is dropped before anyone spends time on it.",
+    body: "Five numbers, once. Every search, every judgement and every standing scan uses them - a listing in a size you can't wear is dropped before anyone spends time on it.",
   },
   {
     title: "Name a brand you're unsure about",
@@ -42,12 +42,12 @@ const STEPS = [
 const MEASURES = [
   {
     field: "Tops",
-    how: "The letter you already buy. If you are between two, take the smaller — secondhand knitwear has usually been washed at least once.",
+    how: "The letter you already buy. If you are between two, take the smaller - secondhand knitwear has usually been washed at least once.",
     art: "torso",
   },
   {
     field: "Jacket chest",
-    how: "Easiest from a jacket that fits: lay it flat, buttoned, and measure straight across from armpit to armpit. Double it. That is your chest in inches — 21 across is a 42.",
+    how: "Easiest from a jacket that fits: lay it flat, buttoned, and measure straight across from armpit to armpit. Double it. That is your chest in inches - 21 across is a 42.",
     also: "The letter after it is length, not width: S under about 5′8″, R to 6′0″, L above.",
     art: "chest",
   },
@@ -65,7 +65,7 @@ const MEASURES = [
   },
   {
     field: "Shoe (US)",
-    how: "Your usual US size. If you are between brands, use the one you buy most — the brand lookup below handles the rest.",
+    how: "Your usual US size. If you are between brands, use the one you buy most - the brand lookup below handles the rest.",
     art: "shoe",
   },
 ] as const;

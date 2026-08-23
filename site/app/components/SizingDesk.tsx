@@ -41,7 +41,7 @@ const RUNS_COPY: Record<FitAdvice["runs"], string> = {
 const CONFIDENCE_COPY: Record<FitAdvice["confidence"], string> = {
   high: "from a published size chart",
   medium: "from consistent fit reports",
-  low: "from thin evidence — treat with caution",
+  low: "from thin evidence - treat with caution",
 };
 
 /**
@@ -163,7 +163,7 @@ export default function SizingDesk() {
                 onChange={(e) => set({ tops: e.target.value || undefined })}
                 className="field w-full"
               >
-                <option value="">—</option>
+                <option value=""> - </option>
                 {LETTER_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {size}
@@ -240,7 +240,7 @@ export default function SizingDesk() {
 
         {!state.configured ? (
           <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
-            Brand sizing isn&rsquo;t configured on this deployment &mdash; it needs a search key. Your
+            Brand sizing isn&rsquo;t configured on this deployment - it needs a search key. Your
             measurements above still work everywhere else.
           </p>
         ) : (
@@ -274,7 +274,7 @@ export default function SizingDesk() {
             </button>
             {!state.hasSizes && (
               <p className="w-full text-xs text-room-faint">
-                Save at least one measurement above first &mdash; there&rsquo;s nothing to compare
+                Save at least one measurement above first - there&rsquo;s nothing to compare
                 against otherwise.
               </p>
             )}
@@ -314,7 +314,7 @@ export default function SizingDesk() {
                   <ul className="mt-3 space-y-1">
                     {record.advice.cautions.map((caution) => (
                       <li key={caution} className="text-xs text-room-muted">
-                        &mdash; {caution}
+                        - {caution}
                       </li>
                     ))}
                   </ul>

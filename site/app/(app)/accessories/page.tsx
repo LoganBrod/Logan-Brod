@@ -22,7 +22,7 @@ export default function AccessoriesPage() {
           </h1>
           <p className="mt-5 text-sm leading-relaxed text-room-muted">
             Accessories are where an outfit most often goes wrong, and it goes wrong by being
-            louder than the clothes. No upload needed &mdash; it works from the style your last
+            louder than the clothes. No upload needed - it works from the style your last
             clozet read, so what it finds sits at the same register as the rest of your wardrobe
             rather than shouting over it.
           </p>

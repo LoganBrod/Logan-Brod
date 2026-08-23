@@ -112,7 +112,7 @@ export default function AccessoryFinder() {
         </div>
         <p className="mt-2 text-[11px] text-room-faint">
           {atLimit
-            ? `${MAX_KINDS} at a time — more than that and each one gets a thinner search.`
+            ? `${MAX_KINDS} at a time - more than that and each one gets a thinner search.`
             : `Up to ${MAX_KINDS} at a time.`}
         </p>
 

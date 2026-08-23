@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Build a clozet first — accessories are chosen against the style it reads from your photos.",
+            "Build a clozet first - accessories are chosen against the style it reads from your photos.",
           needsCloset: true,
         },
         { status: 409 }

@@ -28,7 +28,7 @@ export default function ColognesPage() {
             reads your style from that.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-room-muted">
-            This page recommends &mdash; it doesn&rsquo;t search the marketplaces the rest of the
+            This page recommends - it doesn&rsquo;t search the marketplaces the rest of the
             site does. Fragrance is one of the most counterfeited things sold online and a fake
             looks identical in a photograph, so you get names to look for and shops worth trusting
             instead of cheap bottles of something.

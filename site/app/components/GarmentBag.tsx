@@ -175,7 +175,7 @@ export default function GarmentBag({
           {/* The bag itself. backdrop-blur frosts whatever is behind it, so the
               garment reads as a shape seen through plastic rather than as a
               blurred picture; the tint alone is the fallback where it isn't
-              supported. Kept light on purpose — heavier and every piece reads
+              supported. Kept light on purpose - heavier and every piece reads
               as a blank white sheet, which is the look this replaced. */}
           <span
             className={`absolute inset-0 block backdrop-blur-[3px] transition-opacity duration-300 ${
@@ -198,7 +198,7 @@ export default function GarmentBag({
       </span>
 
       {/* The seam. Drawn as a stroke on the same polygon rather than a border,
-          because a clip-path cuts a border off — and without an outline eight
+          because a clip-path cuts a border off - and without an outline eight
           pale bags side by side merge into one white band.
           `non-scaling-stroke` keeps it hairline under the non-uniform scale. */}
       <svg

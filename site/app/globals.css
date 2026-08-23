@@ -285,11 +285,21 @@
   }
 
   /*
-   * Where the uppercase treatment survives: section headings, and only those.
-   * One job, so it means something when it appears.
+   * A section label, no longer a small-caps stamp.
+   *
+   * This was 11px uppercase at 0.14em tracking, used thirty-five times. Each
+   * one was defensible on its own and together they produced the single most
+   * templated rhythm a page can have: every section opening with the same tiny
+   * shouted word. It is the most recognisable tell there is, and counting them
+   * is how you notice, because reading them one at a time never does.
+   *
+   * Sentence case at a readable size keeps the label doing its actual job -
+   * naming a group of fields, marking where a section starts - without the
+   * page announcing itself before every paragraph. Where a label added nothing
+   * over the heading beneath it, it has simply been deleted instead.
    */
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-room-faint;
+    @apply text-[13px] font-semibold text-room-muted;
   }
 
   /*

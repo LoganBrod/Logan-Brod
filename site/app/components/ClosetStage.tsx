@@ -372,7 +372,7 @@ export default function ClosetStage({
         wait, which is the same as not having built it.
 
         And it stays put after the closet reveals. The rail appears as soon as
-        the first batch lands while five are still running — moving the bar
+        the first batch lands while five are still running - moving the bar
         elsewhere at that moment both jumped the layout and, because it was a
         second call site, remounted the component and reset its high-water mark,
         so the bar visibly ran backwards from 60% to 58% exactly as the closet
@@ -398,7 +398,7 @@ export default function ClosetStage({
             the middle 44% of a 16:9 frame and the rest is empty room, so showing
             all of it spends most of the width on nothing and leaves the pieces
             too small to read. Cropping to 4:3 scales the wardrobe up by a third
-            with no loss of detail — and portrait on phones, further still.
+            with no loss of detail - and portrait on phones, further still.
 
             The clip keeps its own aspect and overflows sideways, and because the
             cavity sits dead centre of the frame the crop lands on it almost
@@ -422,7 +422,7 @@ export default function ClosetStage({
                 <source src="/closet-building.mp4" type="video/mp4" />
               </video>
 
-              {/* The lower rail, which the footage doesn't have — the clip ends on
+              {/* The lower rail, which the footage doesn't have - the clip ends on
                   one wide cavity with a single rail across the top. Drawn only
                   when there are enough pieces to need a second row, and it
                   arrives with them rather than sitting in an empty wardrobe. */}
@@ -522,15 +522,15 @@ export default function ClosetStage({
           and a floating card would cover the pieces hanging next to it.
 
           Where a pointer is, it sits in a slot of its own with a reserved height
-          instead of floating over the wardrobe — with two rows the lower one now
+          instead of floating over the wardrobe - with two rows the lower one now
           hangs where an overlay would land, and a panel that covered half the
           clozet every time you moved the pointer was worse than the problem it
           solved. The height is reserved so the page doesn't jump on every hover;
           when nothing is open the slot holds the hint instead of sitting empty.
-          On a phone none of that applies and it becomes a bottom sheet — see the
+          On a phone none of that applies and it becomes a bottom sheet - see the
           note on the panel itself.
 
-          It holds a link and buttons, so it has to take the pointer — and it
+          It holds a link and buttons, so it has to take the pointer - and it
           stays open while the pointer is over either the bag or the panel, with
           a short delay so crossing the gap doesn't dismiss it. */}
       <div
@@ -557,7 +557,7 @@ export default function ClosetStage({
           hundred pixels below the fold: tapping a piece opened a panel nobody
           could see, and the piece looked broken rather than busy. Pinning it to
           the viewport is the only placement that's guaranteed visible whatever
-          the person has scrolled to — and it's what a phone does with detail
+          the person has scrolled to - and it's what a phone does with detail
           anyway. The reserved height shrinks to just what the hint line needs,
           since nothing is going to land in it any more.
         */}
@@ -589,7 +589,7 @@ export default function ClosetStage({
                 {active?.condition ? ` · ${active.condition}` : ""}
               </span>
             </div>
-            {/* Clamped so the panel stays inside its reserved slot — eBay titles
+            {/* Clamped so the panel stays inside its reserved slot - eBay titles
                 run to 80 characters of keyword stuffing. */}
             <p className="mb-1.5 line-clamp-2 text-sm font-medium leading-snug text-room-ink">
               {active?.title}

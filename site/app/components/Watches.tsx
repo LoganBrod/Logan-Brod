@@ -70,7 +70,7 @@ export default function Watches() {
         <p className="panel px-6 py-5 text-sm leading-relaxed text-room-muted">
           {state.limit > 0 ? (
             <>
-              Nothing on watch. Secondhand stock moves fast &mdash; the right piece is listed on a
+              Nothing on watch. Secondhand stock moves fast - the right piece is listed on a
               Tuesday and gone by Wednesday. Finish a clozet and you can leave its searches running.
             </>
           ) : (

@@ -113,7 +113,7 @@ export default function CalibrationSwipe() {
           {counts.yes} yes, {counts.no} no.
         </h2>
         <p className="mx-auto mt-4 max-w-[46ch] text-sm leading-relaxed text-room-muted">
-          That goes into every search from here on — what you turned down as much as what you kept.
+          That goes into every search from here on - what you turned down as much as what you kept.
           It gets sharper every time you react to a clozet, too.
         </p>
         <Link href="/closet" className="btn-primary mt-7 inline-block">

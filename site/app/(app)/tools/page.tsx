@@ -47,7 +47,7 @@ export default function ToolsPage() {
         <Section
           id="fit"
           title="Will it fit?"
-          blurb="Your measurements filter every search, every judgement and every scan — a listing that states a size you can't wear is dropped before anyone spends a moment on it. And a 42 from one maker is not a 42 from another: name a brand and it reads that maker's own size guide and what buyers report, then says which size to buy — or says plainly when the evidence is thin."
+          blurb="Your measurements filter every search, every judgement and every scan - a listing that states a size you can't wear is dropped before anyone spends a moment on it. And a 42 from one maker is not a 42 from another: name a brand and it reads that maker's own size guide and what buyers report, then says which size to buy - or says plainly when the evidence is thin."
         >
           <SizingDesk />
         </Section>
@@ -55,7 +55,7 @@ export default function ToolsPage() {
         <Section
           id="judge"
           title="Is it any good?"
-          blurb="Paste a link to anything you've found. It reads the listing and the photograph and tells you whether it's worth it at that price, in your size, against your taste — not whether it's a nice jacket in the abstract."
+          blurb="Paste a link to anything you've found. It reads the listing and the photograph and tells you whether it's worth it at that price, in your size, against your taste - not whether it's a nice jacket in the abstract."
         >
           {/* The range is the app's default band rather than anything personal:
               this panel can be used before a clozet has ever been built, so it
@@ -66,7 +66,7 @@ export default function ToolsPage() {
         <Section
           id="scans"
           title="Keep looking."
-          blurb="Secondhand stock turns over daily, so almost everything that would suit you isn't listed at the moment you look — the right jacket in your size at your price goes up on a Tuesday and is gone by Wednesday. A scan runs your searches twice a day, throws away everything it has already shown you, judges what's left exactly as a clozet would, and emails only what clears the same bar. Most days it finds nothing and says nothing."
+          blurb="Secondhand stock turns over daily, so almost everything that would suit you isn't listed at the moment you look - the right jacket in your size at your price goes up on a Tuesday and is gone by Wednesday. A scan runs your searches twice a day, throws away everything it has already shown you, judges what's left exactly as a clozet would, and emails only what clears the same bar. Most days it finds nothing and says nothing."
         >
           <div className="space-y-10">
             <Watches />

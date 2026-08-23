@@ -18,7 +18,7 @@
 const STEPS = [
   {
     title: "Lay a few pieces out",
-    body: "On the bed, on the floor, over a chair — anywhere they are not overlapping. Four or five at a time reads better than a whole rail at once.",
+    body: "On the bed, on the floor, over a chair - anywhere they are not overlapping. Four or five at a time reads better than a whole rail at once.",
   },
   {
     title: "Photograph them",
@@ -26,7 +26,7 @@ const STEPS = [
   },
   {
     title: "Check what it read",
-    body: "Each piece comes back named — a colour, a material, a season. Anything it got wrong you can remove, and anything it missed you can add.",
+    body: "Each piece comes back named - a colour, a material, a season. Anything it got wrong you can remove, and anything it missed you can add.",
   },
 ] as const;
 

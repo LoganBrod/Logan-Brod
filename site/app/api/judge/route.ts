@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Couldn't read that page. Some sites block it — save the photo and send that instead.",
+            "Couldn't read that page. Some sites block it - save the photo and send that instead.",
         },
         { status: 422 }
       );

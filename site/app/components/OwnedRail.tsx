@@ -202,7 +202,7 @@ export default function OwnedRail({
           </div>
         ) : (
           <p className="pt-3 text-center text-xs text-room-faint">
-            {items.length === 1 ? "One piece" : `${items.length} pieces`} &mdash; tap any of them to
+            {items.length === 1 ? "One piece" : `${items.length} pieces`} - tap any of them to
             see what the app read.
           </p>
         )}

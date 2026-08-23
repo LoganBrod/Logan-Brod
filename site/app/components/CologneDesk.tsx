@@ -82,7 +82,7 @@ export default function CologneDesk() {
 
           {!basedOnStyle && (
             <p className="max-w-[58ch] rounded-sm border border-room-line bg-room-sunk px-4 py-3 text-[12px] leading-relaxed text-room-muted">
-              This is on the occasion and budget alone — no clozet to read your style from yet.{" "}
+              This is on the occasion and budget alone - no clozet to read your style from yet.{" "}
               <Link href="/closet" className="underline">
                 Build one
               </Link>{" "}
@@ -139,7 +139,7 @@ export default function CologneDesk() {
             <p className="eyebrow mb-2">Before you buy</p>
             <p className="text-[13px] leading-relaxed text-room-muted">{advice.howToBuy}</p>
             <p className="mt-3 text-[12px] leading-relaxed text-room-faint">
-              These are recommendations, not listings — nothing here is for sale through us and
+              These are recommendations, not listings - nothing here is for sale through us and
               we&rsquo;re not paid for the links. Fragrance is heavily counterfeited on secondhand
               marketplaces, which is why this page doesn&rsquo;t search them the way the rest of the
               site does.

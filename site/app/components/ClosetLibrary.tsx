@@ -202,7 +202,7 @@ export default function ClosetLibrary() {
       {!library.signedIn && (
         <p className="text-xs leading-relaxed text-room-faint">
           These are saved to this browser. Sign in and they&rsquo;ll follow you to any device
-          &mdash; along with your sizes and everything the app has learned about what you like.
+          - along with your sizes and everything the app has learned about what you like.
         </p>
       )}
     </div>
