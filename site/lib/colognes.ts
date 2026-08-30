@@ -89,20 +89,44 @@ export interface CologneAdvice {
 /** Enough to choose between without becoming a catalogue. */
 export const MAX_PICKS = 5;
 
+/** How many pieces of the clozet get described to the model. */
+const MAX_PIECES = 12;
+
 export async function recommendColognes(
   /** The style from their last clozet, when they have one. */
   profile: StyleProfile | null,
   slot: CologneSlot,
   budget: CologneBudget,
-  preferences?: string | null
+  preferences?: string | null,
+  /**
+   * The actual pieces in that clozet, with the line the curation pass wrote
+   * about each one.
+   *
+   * The profile is an abstraction: "military surplus, earth tones, mid
+   * formality" describes a hundred different men. The pieces are what he
+   * actually got, and `whyItFits` is the sentence that says what each one is
+   * doing there - the waxed cotton, the worn-in denim, the fact that a jacket
+   * was picked for its weight rather than its label. That texture is exactly
+   * what a fragrance has to sit beside, and throwing it away to send a
+   * four-line summary was leaving the most specific thing on the floor.
+   */
+  pieces?: { title: string; whyItFits: string }[] | null
 ): Promise<CologneAdvice> {
+  const wardrobe =
+    pieces && pieces.length
+      ? `\n\nThe pieces in that clozet, and why each was chosen for him:\n${pieces
+          .slice(0, MAX_PIECES)
+          .map((piece) => `- ${piece.title.trim()} — ${piece.whyItFits.trim()}`)
+          .join("\n")}`
+      : "";
+
   const style = profile
     ? `How he dresses, read from pieces he already likes:
 Summary: ${profile.summary}
 Aesthetics: ${profile.aesthetics.join(", ")}
 Palette: ${profile.palette.map((p) => p.name).join(", ")}
 Fabrics: ${profile.fabrics.join(", ")}
-Formality: ${profile.formality}`
+Formality: ${profile.formality}${wardrobe}`
     : "He hasn't built a clozet yet, so you don't know how he dresses. Recommend on the occasion and budget alone, and don't pretend to know more than you do.";
 
   const message = await anthropic().messages.parse({
@@ -136,7 +160,13 @@ Give him ${MAX_PICKS} or fewer. Fewer is better than padding.`,
     op: "colognes",
     model: MODELS.analyze,
     usage: message.usage,
-    extra: { slot, budget, picks: advice.picks.length, hadProfile: Boolean(profile) },
+    extra: {
+      slot,
+      budget,
+      picks: advice.picks.length,
+      hadProfile: Boolean(profile),
+      pieces: pieces?.length ?? 0,
+    },
   });
 
   return { ...advice, picks: advice.picks.slice(0, MAX_PICKS) };

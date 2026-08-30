@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   BUDGETS,
   OCCASION_SLOTS,
   buyLinks,
+  isCologneBudget,
   type CologneBudget,
   type CologneSlot,
 } from "@/lib/cologneOptions";
@@ -29,8 +31,25 @@ const UBIQUITY: Record<string, { label: string; tone: string }> = {
  * none.
  */
 export default function CologneDesk() {
+  /*
+   * Arriving from a finished clozet.
+   *
+   * `from` names the clozet, so the recommendation is tied to the one that was
+   * on screen rather than to whichever is newest. `budget` is a guess made from
+   * that clozet's price band - see `budgetFor` - and is a starting position,
+   * not a lock: it is one of four visible buttons and stays changeable.
+   *
+   * The occasion is not guessed. Nothing about a wardrobe says whether tonight
+   * is dinner or a lecture, and pretending otherwise would put a confident
+   * wrong answer in front of somebody.
+   */
+  const params = useSearchParams();
+  const from = params.get("from");
   const [slot, setSlot] = useState<CologneSlot>("everyday");
-  const [budget, setBudget] = useState<CologneBudget>("50-120");
+  const [budget, setBudget] = useState<CologneBudget>(() => {
+    const asked = params.get("budget");
+    return isCologneBudget(asked) ? asked : "50-120";
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [advice, setAdvice] = useState<CologneAdvice | null>(null);
@@ -43,7 +62,7 @@ export default function CologneDesk() {
       const res = await fetch("/api/colognes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot, budget }),
+        body: JSON.stringify({ slot, budget, code: from }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error ?? "That didn't work.");
@@ -57,6 +76,18 @@ export default function CologneDesk() {
   }
 
   return (
+    <>
+      {/* Said out loud: the person clicked "match a cologne" on a clozet and
+          otherwise has no way to know this page heard that. The budget line is
+          there because a preselected choice somebody didn't make needs to
+          announce itself, or it reads as the site deciding for them. */}
+      {from && (
+        <p className="mb-8 border-l-2 border-accent pl-4 text-[13px] leading-relaxed text-room-muted">
+          Matched to the clozet you just built. The budget below is a guess from what you were
+          spending on clothes, and the occasion is yours to pick - a wardrobe says nothing about
+          whether tonight is dinner or a lecture.
+        </p>
+      )}
     <div className="space-y-10">
       <section className="panel px-6 py-6">
         <p className="label mb-2">What's it for?</p>
@@ -148,6 +179,7 @@ export default function CologneDesk() {
         </section>
       )}
     </div>
+    </>
   );
 }
 

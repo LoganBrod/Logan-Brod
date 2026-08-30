@@ -14,6 +14,7 @@ import type { Preferences } from "@/lib/preferences";
 import type { RunStage } from "@/lib/progress";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
+import MatchPrompt from "./MatchPrompt";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
 import StyleQuestions from "./StyleQuestions";
 import ShareCard from "./ShareCard";
@@ -939,6 +940,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           {/* The subscription pitch, made at the only moment it's obviously
               true: you've just seen what one search found, and secondhand stock
               turns over daily. */}
+          {/* Accessories and a fragrance, against the clozet on screen.
+              Above the scan offer on purpose: this one is about the pieces you
+              are looking at right now, and the scan is about the ones that
+              aren't listed yet. Needs a code - without one the clozet was never
+              stored and there is nothing for those pages to read. */}
+          {code && (
+            <MatchPrompt code={code} range={results.range} />
+          )}
+
           {watchState !== "hidden" && results.profile && (
             <div className="panel flex flex-wrap items-center justify-between gap-4 px-6 py-4">
               {watchState === "on" ? (

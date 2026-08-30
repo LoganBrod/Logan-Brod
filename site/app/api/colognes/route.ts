@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { describeApiError } from "@/lib/anthropic";
-import { readCloset } from "@/lib/closet";
+import { resolveCloset } from "@/lib/closetRef";
 import {
   isCologneBudget,
   isCologneSlot,
@@ -8,7 +8,6 @@ import {
   type CologneBudget,
   type CologneSlot,
 } from "@/lib/colognes";
-import { readLibrary } from "@/lib/library";
 import { renderPreferences } from "@/lib/preferences";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readPreferences } from "@/lib/taste";
@@ -29,7 +28,7 @@ export const maxDuration = 60;
  * page.
  */
 export async function POST(req: Request) {
-  let body: { slot?: unknown; budget?: unknown };
+  let body: { slot?: unknown; budget?: unknown; code?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -52,20 +51,28 @@ export async function POST(req: Request) {
 
   try {
     const viewer = await readViewer(req);
-    const [library, prefs] = await Promise.all([
-      readLibrary(viewer.owner),
+    const [ref, prefs] = await Promise.all([
+      // `code` comes from the band under a finished clozet, so the fragrance is
+      // matched to that one rather than to whichever is newest.
+      resolveCloset(viewer.owner, typeof body.code === "string" ? body.code : null),
       viewer.tasteId ? readPreferences(viewer.tasteId).catch(() => ({})) : Promise.resolve({}),
     ]);
 
-    // Best-effort: a missing or expired clozet makes the answer more generic,
-    // never an error.
-    const closet = library[0] ? await readCloset(library[0].code).catch(() => null) : null;
+    // Best-effort, unlike accessories: a missing or expired clozet makes the
+    // answer more generic, never an error. "What should I wear for a night out
+    // under fifty quid" is answerable without one, and refusing it would be a
+    // worse page.
+    const closet = ref.closet;
 
     const advice = await recommendColognes(
       closet?.profile ?? null,
       slot,
       budget,
-      renderPreferences(prefs)
+      renderPreferences(prefs),
+      // The pieces themselves, not just the summary read off them. Only the
+      // two fields that carry scent-relevant texture: a price and an image URL
+      // tell a fragrance nothing.
+      closet?.items.map((item) => ({ title: item.title, whyItFits: item.whyItFits })) ?? null
     );
 
     return NextResponse.json(

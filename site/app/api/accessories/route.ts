@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { MAX_KINDS, isAccessoryKind, planAccessories, type AccessoryKind } from "@/lib/accessories";
 import { describeApiError } from "@/lib/anthropic";
 import { FINAL_PICKS, planBatches, rankAndCut } from "@/lib/batching";
-import { readCloset } from "@/lib/closet";
+import { missMessage, resolveCloset } from "@/lib/closetRef";
 import { curate } from "@/lib/curate";
-import { readLibrary } from "@/lib/library";
 import { renderPreferences } from "@/lib/preferences";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readSeen, recordSeen, siftSeen } from "@/lib/seen";
@@ -36,7 +35,7 @@ const MAX_ACCESSORY_BATCHES = 2;
  * batching for it would be a lot of machinery for a much smaller thing.
  */
 export async function POST(req: Request) {
-  let body: { kinds?: unknown; min?: unknown; max?: unknown };
+  let body: { kinds?: unknown; min?: unknown; max?: unknown; code?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -71,29 +70,22 @@ export async function POST(req: Request) {
   const viewer = await readViewer(req);
 
   try {
-    // The most recent clozet is the style. Without one there is nothing to
-    // match against, and asking for photographs here would make this the
-    // second full run this page exists to avoid.
-    const library = await readLibrary(viewer.owner);
-    const latest = library[0];
-    if (!latest) {
+    // A clozet is the style. Without one there is nothing to match against,
+    // and asking for photographs here would make this the second full run this
+    // page exists to avoid.
+    //
+    // `code` is sent by the band at the bottom of a finished clozet, so the
+    // accessories are matched to the one on screen rather than to whichever
+    // happens to be newest. Absent, it falls back to newest, which is what
+    // somebody opening this page cold means.
+    const ref = await resolveCloset(viewer.owner, typeof body.code === "string" ? body.code : null);
+    if (!ref.closet) {
       return NextResponse.json(
-        {
-          error:
-            "Build a clozet first - accessories are chosen against the style it reads from your photos.",
-          needsCloset: true,
-        },
+        { error: missMessage(ref.reason), needsCloset: true },
         { status: 409 }
       );
     }
-
-    const closet = await readCloset(latest.code);
-    if (!closet) {
-      return NextResponse.json(
-        { error: "That clozet has expired. Build a new one and try again.", needsCloset: true },
-        { status: 409 }
-      );
-    }
+    const closet = ref.closet;
 
     const [memo, prefs, sizes, seen] = await Promise.all([
       tasteMemo(viewer.tasteId),

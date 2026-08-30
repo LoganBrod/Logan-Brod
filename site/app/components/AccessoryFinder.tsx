@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ACCESSORY_KINDS, MAX_KINDS, type AccessoryKind } from "@/lib/accessoryKinds";
+import { useSearchParams } from "next/navigation";
+import { ACCESSORY_KINDS, MAX_KINDS, isAccessoryKind, type AccessoryKind } from "@/lib/accessoryKinds";
 import type { CuratedItem } from "@/lib/curate";
 
 interface Result {
@@ -24,7 +25,29 @@ interface Result {
  * hanging clothes; a belt on a hanger is just a worse photograph.
  */
 export default function AccessoryFinder() {
-  const [kinds, setKinds] = useState<AccessoryKind[]>([]);
+  /*
+   * Arriving from a finished clozet.
+   *
+   * `from` names the clozet to match against, so the answer is tied to the one
+   * that was on screen rather than to whichever happens to be newest - two tabs
+   * open, or a clozet built on a phone while an older one sits open on a
+   * laptop, and "newest" is the wrong wardrobe.
+   *
+   * `kinds` preselects the picker, because the offer on the clozet page was
+   * specific and landing on a blank form makes the person redo the choice it
+   * implied was already made.
+   *
+   * Read once into state rather than used directly: everything here stays
+   * editable, so the link is a starting position and not a lock.
+   */
+  const params = useSearchParams();
+  const from = params.get("from");
+  const [kinds, setKinds] = useState<AccessoryKind[]>(() =>
+    (params.get("kinds") ?? "")
+      .split(",")
+      .filter(isAccessoryKind)
+      .slice(0, MAX_KINDS)
+  );
   const [min, setMin] = useState(20);
   const [max, setMax] = useState(150);
   const [busy, setBusy] = useState(false);
@@ -60,7 +83,7 @@ export default function AccessoryFinder() {
       const res = await fetch("/api/accessories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kinds, min, max }),
+        body: JSON.stringify({ kinds, min, max, code: from }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
@@ -79,6 +102,16 @@ export default function AccessoryFinder() {
   }
 
   return (
+    <>
+      {/* Said out loud, because otherwise the connection is invisible: the
+          person clicked "match accessories" on a clozet and has no way to know
+          whether this page heard that. */}
+      {from && (
+        <p className="mb-8 border-l-2 border-accent pl-4 text-[13px] leading-relaxed text-room-muted">
+          Matched to the clozet you just built. Everything below is judged against its palette and
+          register, and you can change any of it.
+        </p>
+      )}
     <div className="space-y-10">
       <section className="panel px-6 py-6">
         <p className="label mb-2">What are you after?</p>
@@ -225,5 +258,6 @@ export default function AccessoryFinder() {
         </section>
       )}
     </div>
+    </>
   );
 }

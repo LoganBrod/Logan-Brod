@@ -23,8 +23,9 @@ A rising hit rate is the main evidence this is working.
 
 | Date | Change | Prediction | Right? |
 |---|---|---|---|
+| 2026-08-30 | Bridge the clozet to accessories and colognes | "a button that redirects to the accessory and colognes page" | yes |
 
-Running: 0 / 0
+Running: 1 / 1
 
 ## How I tend to fail
 
