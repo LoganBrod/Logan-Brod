@@ -9,12 +9,8 @@ import { company, isTodo, legal, siteSection } from "@/lib/copy";
  */
 const SECTIONS = [
   { href: "/closet", label: "Clozet" },
-  { href: "/wardrobe", label: "Wardrobe" },
-  { href: "/tools", label: "Tools" },
   { href: "/accessories", label: "Accessories" },
   { href: "/colognes", label: "Colognes" },
-  { href: "/discover", label: "Discover" },
-  { href: "/closets", label: "Saved" },
 ] as const;
 
 /**

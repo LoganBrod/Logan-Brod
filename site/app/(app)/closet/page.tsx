@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import ClosetTabs from "@/app/components/ClosetTabs";
 import Reveal from "@/app/components/Reveal";
 import { Sources } from "@/app/components/Story";
 import { beats } from "@/lib/copy";
@@ -29,6 +30,8 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
+      <ClosetTabs />
+
       <PageHeader
         title={<>Show me what you like.</>}
         lede="A few photographs of clothes you like, and it finds real secondhand pieces that belong with them."

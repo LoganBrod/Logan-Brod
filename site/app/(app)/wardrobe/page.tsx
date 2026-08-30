@@ -1,30 +1,16 @@
-import OwnedWardrobe from "@/app/components/OwnedWardrobe";
-
-import PageHeader, { PageNote } from "@/app/components/PageHeader";
-
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 /**
- * What you already own, and what it makes.
+ * The owned wardrobe is off the menu for now.
  *
- * The same pipeline as a closet, pointed inwards: photographs are read for what
- * the garments are, then outfits are assembled from them. Nothing is stored but
- * a line of text per piece — the photos are read once and thrown away, which is
- * why this needs no storage service and why a person can correct an entry the
- * app got wrong.
+ * A redirect rather than a deletion, and deliberately only this file: the
+ * component, its API route and the outfit pipeline behind it are all still
+ * here and still tested. Putting the page back is this one file again.
+ *
+ * It goes to /closet rather than to a page explaining where it went, because
+ * "for now" is not a story a visitor needs told - somebody following an old
+ * link wants somewhere useful, not a notice.
  */
 export default function WardrobePage() {
-  return (
-    <main className="mx-auto max-w-5xl px-6 pb-14 pt-6">
-      <PageHeader
-        title={<>What you already own.</>}
-        lede="Photograph your wardrobe once, and everything recommended afterwards knows what you have."
-        action={{ href: "/closet", label: "Build a clozet" }}
-      />
-
-      <PageNote>Several pieces per photo is fine. It builds outfits from what is there, and names the single piece that would unlock the most more.</PageNote>
-
-      <OwnedWardrobe />
-    </main>
-  );
+  redirect("/closet");
 }

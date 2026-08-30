@@ -39,15 +39,21 @@ const EXE =
   process.env.CHROMIUM ?? "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell";
 const SCHEME = process.env.SCHEME === "light" ? "light" : "dark";
 
+/*
+ * Every page a visitor can actually reach.
+ *
+ * /tools and /closets are now tabs of Clozet, and /wardrobe and /discover are
+ * off the menu; all four still exist as redirects, and a redirect has no text
+ * to measure. Auditing them would report a clean page for content that was
+ * never rendered, which is worse than not auditing them at all.
+ */
 const ROUTES = [
   "/",
   "/closet",
-  "/tools",
+  "/closet/tools",
+  "/closet/saved",
   "/accessories",
   "/colognes",
-  "/wardrobe",
-  "/closets",
-  "/discover",
   "/calibrate",
 ];
 

@@ -18,18 +18,23 @@ import { company, siteSection } from "@/lib/copy";
  * the panel closes on every exit a person might reach for — Escape, the
  * backdrop, the close button, or simply arriving somewhere new.
  */
+/*
+ * Four entries, down from eight.
+ *
+ * Three of the eight — Tools, Saved and Clozet itself — were one thing listed
+ * three times. Flat in a menu they read as three products, so somebody opened
+ * the first and never learned the other two existed; they are tabs inside
+ * Clozet now, visible from wherever you are in it. Wardrobe and Discover are
+ * off the menu for now and their paths redirect.
+ *
+ * What is left is the actual shape of the product: the thing, and the two
+ * smaller things beside it.
+ */
 const LINKS = [
   { href: "/", label: "About" },
   { href: "/closet", label: "Clozet" },
-  { href: "/wardrobe", label: "Wardrobe" },
-  // Sizing, "is this any good?" and standing scans were two pages and a
-  // footnote. They're three moments of one job — being out looking — so they
-  // share a page now. /sizing and /scan redirect into it.
-  { href: "/tools", label: "Tools" },
   { href: "/accessories", label: "Accessories" },
   { href: "/colognes", label: "Colognes" },
-  { href: "/discover", label: "Discover" },
-  { href: "/closets", label: "Saved" },
 ] as const;
 
 export default function SideNav() {

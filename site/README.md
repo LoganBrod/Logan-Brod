@@ -6,13 +6,30 @@ One Next.js app serving both halves of the company:
 |---|---|
 | `/` | The marketing site — one scroll-driven walk down a wardrobe corridor |
 | `/closet` | Clozet — upload pieces you like, get one built from real listings |
+| `/closet/tools` | Sizing, "is this any good?", and standing scans |
+| `/closet/saved` | Every Clozet you've built |
 | `/closet/[code]` | A saved Clozet |
-| `/wardrobe` | Photograph what you own; outfits built from it |
-| `/sizing` | Your measurements, and how a given brand's sizes run |
-| `/scan` | Standing searches that keep running after you close the tab |
-| `/discover` | Clozets other people chose to share, and likes |
-| `/closets` | Every Clozet you've built |
+| `/accessories` | The small things, chosen against the style a Clozet read |
+| `/colognes` | Recommended rather than searched — see the page for why |
+| `/calibrate` | Fifteen swipes that sharpen the profile, with no model call |
 | `/api/**` | The endpoints (Claude, eBay, Google Shopping, auth, taste, fit, social) |
+
+Clozet's three tabs are real routes, so each one is linkable, openable in a new
+window and reachable with the back button. Closet codes are six uppercase
+characters, so `tools` and `saved` can never collide with `/closet/[code]`.
+
+Five paths redirect rather than 404, because every one of them has been linked
+from the menu, the footer, or somebody's bookmarks:
+
+| Was | Now |
+|---|---|
+| `/tools`, `/sizing`, `/scan` | `/closet/tools` (the last two anchored) |
+| `/closets` | `/closet/saved` |
+| `/wardrobe`, `/discover` | `/closet` — both are off the menu for now |
+
+Wardrobe and Discover are off the menu, not deleted: their components, API
+routes and tests are all still here, and putting either one back is one page
+file.
 
 ## Layout
 
@@ -95,9 +112,8 @@ two apps merged.
 
 ## A note on the name
 
-The product is **Clozet**; the routes are `/closet` and `/closets`. That
-mismatch is deliberate — every saved closet's link, every published entry on
-`/discover`, and every share card carries a `/closet/CODE` URL, so renaming the
-route would break links already in the wild. The spelling is a display
-decision, and it stops at the surface: wire fields, types, cookies and Redis
-keys all still say `closet`.
+The product is **Clozet**; the route is `/closet`. That mismatch is deliberate —
+every saved closet's link and every share card carries a `/closet/CODE` URL, so
+renaming the route would break links already in the wild. The spelling is a
+display decision, and it stops at the surface: wire fields, types, cookies and
+Redis keys all still say `closet`.

@@ -105,7 +105,7 @@ export default function AccountBar() {
     return (
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-room-faint">
-          <Link href="/closets" className="-my-2 py-2 font-semibold text-room-muted hover:text-room-ink sm:my-0 sm:py-0">
+          <Link href="/closet/saved" className="-my-2 py-2 font-semibold text-room-muted hover:text-room-ink sm:my-0 sm:py-0">
             Your clozets
           </Link>
           <span aria-hidden>&middot;</span>
@@ -153,7 +153,7 @@ export default function AccountBar() {
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Link
-            href="/closets"
+            href="/closet/saved"
             className="-my-2 py-2 text-xs font-semibold text-room-muted hover:text-room-ink sm:my-0 sm:py-0"
           >
             Your clozets

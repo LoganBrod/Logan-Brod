@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   }
 
   const sid = await startSession(user.id);
-  return NextResponse.redirect(new URL("/closets?signin=ok", url.origin), {
+  return NextResponse.redirect(new URL("/closet/saved?signin=ok", url.origin), {
     headers: { "Set-Cookie": sessionCookie(sid), "Cache-Control": "no-store" },
   });
 }

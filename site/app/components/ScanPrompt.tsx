@@ -123,7 +123,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
           <div className="mt-5 rounded-xl border border-room-line bg-room-bg px-4 py-3">
             <p className="text-sm text-room-ink">{failed}</p>
             {plan === "free" && (
-              <Link href="/tools#scans" className="mt-1 inline-block text-sm font-semibold text-accent">
+              <Link href="/closet/tools#scans" className="mt-1 inline-block text-sm font-semibold text-accent">
                 See what membership includes &rarr;
               </Link>
             )}
@@ -150,7 +150,7 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
         </label>
 
         <p className="mt-2 text-xs text-room-faint">
-          You can start one any time from the <Link href="/tools#scans" className="underline">Tools</Link>{" "}
+          You can start one any time from the <Link href="/closet/tools#scans" className="underline">Tools</Link>{" "}
           page - and turn this prompt back on there too.
         </p>
 
