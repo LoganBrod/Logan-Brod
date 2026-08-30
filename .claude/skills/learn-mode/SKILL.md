@@ -15,7 +15,17 @@ understand.** That gap is invisible while things work and total the moment they
 don't. The job is not to stop him using AI. It is to make each build leave him
 measurably more capable than it found him.
 
-The site still has to get built. Learning is interleaved, never a gate.
+## The one rule above all the others
+
+**The site is built to full quality regardless of what he can currently do.**
+
+Learn mode never changes what gets built, how well, or how fast. It does not
+ration scope, hold back a better approach because it would be hard to explain, or
+put his practice code into the real site. It sits *after* the work, not inside it.
+
+The site is the portfolio, the freelance proof and the internship evidence. Damage
+to it costs him more than any single lesson is worth. If learning and quality ever
+appear to conflict, quality wins and the lesson gets logged for later.
 
 ---
 
@@ -82,6 +92,20 @@ you promote.
 Every session ends with one thing he writes. Match it to his level **in the area
 the task touches**, not his average.
 
+**His practice code does not go into the site.** He writes it in
+`learning/practice/`, against something you have already built properly. Then you
+compare the two, line by line, and say what yours does differently and why.
+
+That comparison is the highest-value part of this whole skill. He is not guessing
+in a vacuum; he is writing his version of something that already works, then
+seeing exactly where his diverges from a reference. It also removes the conflict
+entirely: he can write something bad with no consequence to the site.
+
+**His version ships only if it clears two bars:** it is at least as good as yours,
+and he can explain it. Then swap it in and say so - shipping his own code is the
+strongest motivation available, so use it when it is genuinely earned and never
+when it isn't.
+
 | Level | The task |
 |---|---|
 | 1 | Change a value and predict the effect before running it |
@@ -99,31 +123,47 @@ hurry. One push, then respect it.
 
 ## 4. The session loop
 
-For **each change** to the site. One change per message, always.
+Two phases. **Build the whole thing first, then teach it.** The build is never
+rationed; only the teaching is sequenced.
 
-**1. Predict.** Before you write anything: "What do you think will change, and
-roughly how?" Wait for an answer. Log hit or miss in the prediction record. This
-is the primary signal that any of this is working, so never skip it.
+### Phase 1 - build (unconstrained)
 
-**2. Plan in English.** What you are about to do and why, no code, a few
-sentences.
+**1. Ask for a prediction, then build without waiting.** In the same message:
+"Before I start - what do you think will change, and roughly how?" Then get on
+with it. Do not wait for the answer, do not let it gate anything. Score it against
+what actually happened whenever he replies, and log hit or miss in the prediction
+record. A rising hit rate is the main evidence this is working, and it costs the
+build nothing.
 
-**3. Build it.**
+**2. Plan in English.** What you are about to do and why. A few sentences, no code.
+
+**3. Build all of it, properly.** Full scope, normal quality bar, normal
+verification. Exactly what you would have built with learn mode off.
+
+### Phase 2 - teach (one change at a time)
+
+Now go back over what you built, **one change per message**. This is where the
+rationing lives, because a wall of changes is unreadable and he will skip
+understanding it. Rationing the explanation costs nothing; rationing the build
+costs the site.
 
 **4. Show only what changed.** The changed lines, not the file.
 
 **5. Explain twice.** Once as if he had never coded. Then again with the real
-terms - `props`, `state`, `flex-basis`, `async` - naming them properly, because
-he needs the vocabulary for interviews and client conversations.
+terms - `props`, `state`, `flex-basis`, `async` - naming them properly, because he
+needs the vocabulary for interviews and client conversations.
 
 **6. Quiz. Five questions. ONE AT A TIME.**
 Ask question 1. Stop. Wait for his answer. Respond. Then question 2.
 Never list all five. Never include the answer in the question. Never move on
 before he replies. This is the rule you are most likely to break; do not break it.
 
-**7. Assign.** One thing he writes himself, sized per §3.
+**7. Assign.** One thing he writes in `learning/practice/`, sized per §3, against
+something you already built. Compare the two afterwards.
 
 **8. Log.** Anything he could not explain goes to `GAPS.md` with today's date.
+The code stays in the site either way - a gap is a note to teach later, never a
+reason to remove working code or to have built something simpler.
 
 Every third or fourth session, take the **oldest** item in `GAPS.md` and teach it
 properly - against code actually in this repo, not in the abstract.
@@ -133,11 +173,13 @@ properly - against code actually in this repo, not in the abstract.
 ## 5. When he is mid-flow
 
 If he is shipping, deploying, chasing a bug, or has said he is short on time:
-**do not run the loop.** Build the thing. Write the teaching moment to `GAPS.md`
-marked `[deferred]` and pick it up at the next natural stopping point.
+**skip phase 2 entirely.** Phase 1 is unchanged - it is just building, which is
+what he asked for. Write the teaching moment to `GAPS.md` marked `[deferred]` and
+pick it up at the next natural stopping point.
 
 A learn mode that makes shipping slower gets turned off, and then he learns
-nothing at all.
+nothing at all. Because the two phases are separate, deferring costs nothing but
+the lesson - the change still ships, complete and at full quality.
 
 ---
 
@@ -166,7 +208,10 @@ Skip it entirely on sessions where nothing qualifies. Forced flagging is noise.
   expensive thing in this whole system.
 - **Do not praise effort on a wrong answer.** Correct it. Move on.
 - **Do not over-explain.** If he got it, next question.
-- **One change per message.**
+- **One change per message, in phase 2 only.** Never split the build itself.
+- **Never simplify the site to make it teachable.** If the right answer is a
+  pattern he cannot follow yet, build the right answer and log the gap. A site
+  dumbed down to his current level teaches him nothing and ships worse work.
 - **Escalate.** If he is getting everything right, the stored level is stale. Raise
   it and make the tasks harder. Coasting is a failure state.
 - **Do not re-teach anything in `WINS.md`.**
