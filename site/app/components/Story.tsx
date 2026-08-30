@@ -293,37 +293,48 @@ export function Sources() {
             ))}
           </dl>
         </Reveal>
-      </div>
 
-      {/*
-        A grid of squares rather than a rotating strip.
+        {/*
+          Sixteen names, set as sixteen names.
 
-        The marquee moved, which made it read as decoration you wait out; a
-        block of equal squares reads as a set you can take in at once, and it
-        holds still long enough to actually be read. Sixteen labels land as a
-        4x4 on a wide screen and a 2x8 on a phone, so it stays a square block
-        rather than becoming a long ragged list.
-      */}
-      <Reveal delay={0.15}>
-        <div className="mx-auto max-w-5xl px-6 pb-24 sm:pb-28">
-          <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-room-line bg-room-line sm:grid-cols-3 lg:grid-cols-4">
-            {sources.labels.map((label) => (
-              <li
-                key={label}
-                className="group flex aspect-square items-center justify-center bg-room-panel px-3 text-center transition-colors duration-300 hover:bg-room-sunk"
-              >
-                <span className="text-[14px] font-medium tracking-[-0.01em] text-room-faint transition-colors duration-300 group-hover:text-room-ink sm:text-[15px]">
-                  {label}
+          They were sixteen bordered squares — a 4x4 block on a wide screen —
+          which spent close to a whole screen on sixteen words and gave each one
+          an empty box to sit in the middle of. A square around a word implies
+          the square means something, and here it meant nothing: no logo, no
+          link, no difference between one and the next. Run together as a line
+          they take three lines instead of a screen, and they read as what they
+          are, which is a list.
+
+          The caption is not decoration and stays. A row of brand names on a
+          homepage is read as a client list by default, and saying plainly that
+          there is no arrangement with any of them is the difference between a
+          true page and a false one — so it sits directly above the names now
+          rather than as a footnote under a grid, where it was the last thing
+          read instead of the first.
+        */}
+        <Reveal delay={0.15}>
+          <div className="mt-14 border-t border-room-line pt-8">
+            <p className="max-w-[62ch] text-[13px] leading-relaxed text-room-faint">
+              {sources.labelsCaption}
+            </p>
+            {/*
+              Each name is its own non-breaking span rather than one joined
+              string. Five of the sixteen are two words, and a plain join put
+              "Dr." at the end of one line and "Martens" at the start of the
+              next — which in a list separated by commas reads as seventeen
+              labels, two of them wrong.
+            */}
+            <p className="mt-4 max-w-[68ch] text-[15px] leading-relaxed text-room-muted">
+              {sources.labels.map((label, index) => (
+                <span key={label}>
+                  <span className="whitespace-nowrap">{label}</span>
+                  {index < sources.labels.length - 1 ? ", " : "."}
                 </span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="pt-5 text-[12px] leading-relaxed text-room-faint">
-            {sources.labelsCaption}
-          </p>
-        </div>
-      </Reveal>
+              ))}
+            </p>
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }
