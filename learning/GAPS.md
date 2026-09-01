@@ -13,3 +13,4 @@ about different code than where it came from.
 | 2026-08-30 | Reading what code *guarantees* vs what it appears to do | `Math.max(peak, raw)` in `RunProgress` | open |
 | 2026-08-30 | Denormalised data: storing a record once and referencing it by id | Closet items copied into every closet | open - taught, not yet demonstrated |
 | 2026-08-30 | Which element a CSS change actually affects | `bg-room-ink text-white` button | open |
+| 2026-08-30 | [deferred] The clozet-to-accessories bridge, built but not taught: `{code && <MatchPrompt/>}` guard, `resolveCloset` explicit-vs-fallback, `useSearchParams` seeding, feeding `whyItFits` into the cologne prompt | Phase 2 on commit e610fa7, quiz stopped at question 1 | deferred - learn mode turned off mid-lesson |
