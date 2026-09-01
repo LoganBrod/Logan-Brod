@@ -15,6 +15,7 @@
 // The important property is that a photo that can't be fetched is *one lost
 // candidate*, never a lost batch.
 
+import { safeFetch } from "./safeFetch";
 import type { ProductListing } from "./sources/types";
 
 /** What the API will decode. Anything else is not worth the round trip. */
@@ -35,18 +36,31 @@ export interface InlineImage {
 }
 
 /** Fetch one photo, or null. Never throws — a missing photo is a normal outcome. */
-export async function fetchThumbnail(url: string): Promise<InlineImage | null> {
+export type FetchOptions = Parameters<typeof safeFetch>[2];
+
+export async function fetchThumbnail(
+  url: string,
+  /** Forwarded to safeFetch. Only tests pass this; see the note there. */
+  options?: FetchOptions
+): Promise<InlineImage | null> {
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      cache: "no-store",
-      headers: {
-        // Some CDNs serve a placeholder to clients that don't look like a
-        // browser, which would waste a curation slot on a grey square.
-        Accept: "image/avif,image/webp,image/jpeg,image/png,*/*",
+    // Through safeFetch, which resolves the host and re-checks every redirect
+    // hop. These URLs come from marketplaces and from the /api/image proxy, so
+    // they are chosen by other people and this is an SSRF surface.
+    const res = await safeFetch(
+      url,
+      {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: "no-store",
+        headers: {
+          // Some CDNs serve a placeholder to clients that don't look like a
+          // browser, which would waste a curation slot on a grey square.
+          Accept: "image/avif,image/webp,image/jpeg,image/png,*/*",
+        },
       },
-    });
-    if (!res.ok) return null;
+      options
+    );
+    if (!res?.ok) return null;
 
     const mediaType = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     if (!ALLOWED.has(mediaType)) return null;
@@ -72,12 +86,13 @@ export async function fetchThumbnail(url: string): Promise<InlineImage | null> {
  * whatever ranking got them here survives.
  */
 export async function withThumbnails(
-  listings: ProductListing[]
+  listings: ProductListing[],
+  options?: FetchOptions
 ): Promise<Array<{ listing: ProductListing; image: InlineImage }>> {
   const fetched = await Promise.all(
     listings.map(async (listing) => {
       if (!listing.imageUrl) return null;
-      const image = await fetchThumbnail(listing.imageUrl);
+      const image = await fetchThumbnail(listing.imageUrl, options);
       return image ? { listing, image } : null;
     })
   );

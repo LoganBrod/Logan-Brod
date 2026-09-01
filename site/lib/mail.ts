@@ -149,7 +149,7 @@ export function digestBody(
       <p style="margin:0 0 10px;padding:8px 12px;background:#DEDFE4;border-radius:8px;font-size:13px;line-height:1.5;color:#55565C">Sizing - ${escapeHtml(item.fitNote)}</p>`
           : ""
       }
-      <a href="${item.url}" style="font-size:13px;font-weight:600;color:#1F6B47">View the listing &rarr;</a>
+      <a href="${safeHref(item.url)}" style="font-size:13px;font-weight:600;color:#1F6B47">View the listing &rarr;</a>
     </td></tr>`
     )
     .join("");
@@ -172,6 +172,25 @@ export function digestBody(
 }
 
 /** Titles come from sellers, so they go through this before they go in a page. */
+/**
+ * A listing URL, safe inside an href attribute.
+ *
+ * Every other field in the digest was escaped and this one wasn't. Listing
+ * URLs come from marketplaces - which is to say from sellers - so a quote in
+ * one would have closed the attribute and written whatever followed into the
+ * email. Escaped like the rest, and held to http(s): a `javascript:` URL in a
+ * mail client is mostly inert, but "mostly" is not a reason to send one.
+ */
+function safeHref(raw: string): string {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "#";
+    return escapeHtml(url.toString());
+  } catch {
+    return "#";
+  }
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

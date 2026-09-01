@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchableUrl } from "@/lib/judge";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { fetchThumbnail } from "@/lib/thumbnails";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,16 @@ export async function GET(req: Request) {
   const raw = new URL(req.url).searchParams.get("url") ?? "";
   if (!fetchableUrl(raw)) {
     return NextResponse.json({ error: "Not a fetchable image URL." }, { status: 400 });
+  }
+
+  // Metered like the money routes. Without this it was an unauthenticated,
+  // unlimited proxy - not a model call, but 3MB per request from any address.
+  const burst = await rateLimit("image", clientIp(req), LIMITS.image);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
   }
 
   const image = await fetchThumbnail(raw);

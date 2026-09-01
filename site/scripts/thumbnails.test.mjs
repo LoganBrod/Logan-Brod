@@ -14,6 +14,13 @@ import test, { after, before } from "node:test";
 import { createServer } from "node:http";
 import { fetchThumbnail, withThumbnails } from "../lib/thumbnails.ts";
 
+// The fixture is a real server on 127.0.0.1, which is exactly the address the
+// SSRF guard exists to refuse. These tests are about what happens *after* a
+// fetch is allowed - content types, size caps, timeouts, batch isolation - so
+// they bypass the DNS check with the same parameter the guard's own tests use.
+// The one test at the bottom leaves it off, to show the guard is really there.
+const local = { resolve: async () => true };
+
 /** A one-pixel PNG, which is a real image as far as any decoder is concerned. */
 const PNG = Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6300010000050001",
@@ -68,31 +75,31 @@ const listing = (id, imageUrl) => ({
 });
 
 test("a real image comes back as base64 with its media type", async () => {
-  const image = await fetchThumbnail(`${base}/ok.png`);
+  const image = await fetchThumbnail(`${base}/ok.png`, local);
   assert.equal(image.mediaType, "image/png");
   assert.equal(Buffer.from(image.data, "base64").length, PNG.length);
 });
 
 test("a content type with parameters is still a content type", async () => {
-  const image = await fetchThumbnail(`${base}/charset.jpg`);
+  const image = await fetchThumbnail(`${base}/charset.jpg`, local);
   assert.equal(image.mediaType, "image/jpeg");
 });
 
 test("anything that isn't an image is nothing", async () => {
   // CDNs answer image requests with error pages more often than they 404.
-  assert.equal(await fetchThumbnail(`${base}/html`), null);
-  assert.equal(await fetchThumbnail(`${base}/forbidden`), null);
-  assert.equal(await fetchThumbnail(`${base}/missing.png`), null);
-  assert.equal(await fetchThumbnail(`${base}/empty.png`), null);
+  assert.equal(await fetchThumbnail(`${base}/html`, local), null);
+  assert.equal(await fetchThumbnail(`${base}/forbidden`, local), null);
+  assert.equal(await fetchThumbnail(`${base}/missing.png`, local), null);
+  assert.equal(await fetchThumbnail(`${base}/empty.png`, local), null);
 });
 
 test("an oversized photo is refused on the declared length", async () => {
-  assert.equal(await fetchThumbnail(`${base}/huge.png`), null);
+  assert.equal(await fetchThumbnail(`${base}/huge.png`, local), null);
 });
 
 test("a host that never answers doesn't hold up the batch forever", async () => {
   const started = Date.now();
-  assert.equal(await fetchThumbnail(`${base}/hang`), null);
+  assert.equal(await fetchThumbnail(`${base}/hang`, local), null);
   assert.ok(Date.now() - started < 8000, "the timeout didn't fire");
 });
 
@@ -106,7 +113,7 @@ test("one unfetchable photo costs one candidate, not the batch", async () => {
     listing("b", `${base}/forbidden`),
     listing("c", `${base}/ok.png`),
     listing("d", undefined),
-  ]);
+  ], local);
 
   assert.deepEqual(
     got.map((entry) => entry.listing.id),
@@ -119,7 +126,7 @@ test("the order the candidates arrived in survives", async () => {
     listing("first", `${base}/ok.png`),
     listing("second", `${base}/charset.jpg`),
     listing("third", `${base}/ok.png`),
-  ]);
+  ], local);
   assert.deepEqual(
     got.map((entry) => entry.listing.id),
     ["first", "second", "third"]
@@ -127,6 +134,12 @@ test("the order the candidates arrived in survives", async () => {
 });
 
 test("every photo failing is an empty list, not an exception", async () => {
-  const got = await withThumbnails([listing("a", `${base}/html`), listing("b", undefined)]);
+  const got = await withThumbnails([listing("a", `${base}/html`), listing("b", undefined)], local);
   assert.deepEqual(got, []);
+});
+
+test("loopback is refused by the guard when nothing bypasses it", async () => {
+  // Same server, same working image - and null, because 127.0.0.1 is never a
+  // public address. This is the SSRF fix, observed from the outside.
+  assert.equal(await fetchThumbnail(`${base}/ok.png`), null);
 });

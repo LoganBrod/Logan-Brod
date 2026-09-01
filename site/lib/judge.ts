@@ -10,6 +10,7 @@
 // often than a yes, and the schema refuses an empty list of reservations on
 // anything that isn't an outright yes.
 
+import { publicUrl, safeFetch } from "./safeFetch";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODELS, anthropic, assertNotRefused, requireParsed } from "./anthropic";
 import { JudgementSchema, type Judgement } from "./schemas";
@@ -109,30 +110,10 @@ export async function judge(input: JudgeInput): Promise<Judgement> {
  * that never belong to a shopping site.
  */
 export function fetchableUrl(raw: string): URL | null {
-  let url: URL;
-  try {
-    url = new URL(raw.trim());
-  } catch {
-    return null;
-  }
-
-  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) return null;
-  if (host === "[::1]" || host === "::1") return null;
-
-  // Literal addresses in private and link-local space.
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
-    const [a, b] = host.split(".").map(Number);
-    if (a === 10 || a === 127 || a === 0) return null;
-    if (a === 172 && b >= 16 && b <= 31) return null;
-    if (a === 192 && b === 168) return null;
-    if (a === 169 && b === 254) return null;
-    if (a === 100 && b >= 64 && b <= 127) return null;
-  }
-
-  return url;
+  // The written-form check lives in lib/safeFetch.ts now, alongside the DNS
+  // and redirect checks that a hostname test alone was missing. This stays as
+  // the name the routes import, so nothing else had to move.
+  return publicUrl(raw);
 }
 
 export interface LinkPreview {
@@ -191,9 +172,10 @@ export async function previewLink(
   if (!url) return null;
 
   try {
-    const res = await fetch(url, {
+    // Through safeFetch: the pasted link is the one URL in this app that a
+    // person chose outright, and redirects are re-checked at every hop.
+    const res = await safeFetch(url.toString(), {
       signal: AbortSignal.timeout(8000),
-      redirect: "follow",
       headers: {
         // Some listing pages serve a stub to anything that doesn't look like a
         // browser, and a stub has no og:image.
@@ -203,7 +185,7 @@ export async function previewLink(
       },
       cache: "no-store",
     });
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
 
     // Only the head is needed, and a whole product page can be megabytes.
     const html = (await res.text()).slice(0, 300_000);

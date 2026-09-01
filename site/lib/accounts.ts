@@ -119,7 +119,10 @@ export async function upsertUser(email: string): Promise<User> {
 // ---------------------------------------------------------------- sessions
 
 export function readSessionToken(cookieHeader: string | null): string | null {
-  const raw = cookieHeader?.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))?.[1];
+  // Anchored to a cookie boundary: an unanchored `sid=` also matches inside
+  // `xsid=` or `closet_sid=`, so a cookie with a longer name could be read as
+  // this one.
+  const raw = cookieHeader?.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`))?.[1];
   if (!raw) return null;
   const value = decodeURIComponent(raw);
   return /^[A-Za-z0-9_-]{20,128}$/.test(value) ? value : null;

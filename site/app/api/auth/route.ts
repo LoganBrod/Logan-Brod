@@ -20,6 +20,27 @@ import { LIMITS, usage } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Where a sign-in link points.
+ *
+ * It used to be the request's own origin, which is derived from the Host
+ * header - and the Host header is whatever the caller sends. Anyone could POST
+ * a victim's address with `Host: evil.example` and the victim would receive a
+ * genuine sign-in email whose link went to the attacker, who then holds a
+ * live, single-use token for that account. That is account takeover by
+ * post, and it is the standard reason password-reset links are never built
+ * from the request.
+ *
+ * In production the origin has to be configured. Outside production the
+ * request origin is fine - it is a developer's own machine.
+ */
+function linkOrigin(req: Request): string | null {
+  const configured = process.env.APP_ORIGIN?.trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") return null;
+  return new URL(req.url).origin;
+}
+
 /** GET /api/auth — who is signed in, and whether signing in is possible at all. */
 export async function GET(req: Request) {
   const { user, plan, meterId } = await readViewer(req);
@@ -41,7 +62,8 @@ export async function GET(req: Request) {
       // it can be off while passwords stay on — the UI hides what isn't there
       // rather than offering a control that can only fail.
       available: accountsConfigured(),
-      links: mailConfigured() || process.env.NODE_ENV !== "production",
+      links:
+        linkOrigin(req) !== null && (mailConfigured() || process.env.NODE_ENV !== "production"),
       minPasswordLength: MIN_PASSWORD_LENGTH,
       user: user ? { email: user.email } : null,
     },
@@ -149,7 +171,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const origin = new URL(req.url).origin;
+    const origin = linkOrigin(req);
+    if (!origin) {
+      return NextResponse.json(
+        { error: "Sign-in links aren't configured. Set APP_ORIGIN to the site's public URL." },
+        { status: 501 }
+      );
+    }
     const link = await createLoginLink(email, origin, readTasteId(req.headers.get("cookie")));
 
     if ("rateLimited" in link) {

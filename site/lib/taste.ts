@@ -137,7 +137,8 @@ export function tasteCookie(id: string): string {
 }
 
 export function readTasteId(cookieHeader: string | null): string | null {
-  const raw = cookieHeader?.match(new RegExp(`${TASTE_COOKIE}=([^;]+)`))?.[1];
+  // Anchored to a cookie boundary; see readSessionToken in lib/accounts.ts.
+  const raw = cookieHeader?.match(new RegExp(`(?:^|;\\s*)${TASTE_COOKIE}=([^;]+)`))?.[1];
   if (!raw) return null;
   const id = decodeURIComponent(raw);
   return isValidTasteId(id) ? id : null;

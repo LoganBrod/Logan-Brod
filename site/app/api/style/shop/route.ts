@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { shop } from "@/lib/sources";
 import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
 import { readSizes } from "@/lib/taste";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { readSeen, siftSeen } from "@/lib/seen";
 
@@ -35,6 +36,16 @@ export async function GET(req: Request) {
     return NextResponse.json(
       { error: "min and max must be numbers with 0 <= min < max" },
       { status: 400 }
+    );
+  }
+
+  // Address-limited like analyze and curate. This route had no ceiling at
+  // all, and it is the one that spends the SerpAPI quota.
+  const burst = await rateLimit("shop", clientIp(req), LIMITS.shop);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
     );
   }
 

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { readUser } from "@/lib/accounts";
 import { sendDigest } from "@/lib/mail";
@@ -29,7 +30,13 @@ function authorized(req: Request): boolean {
   if (!secret) return false;
 
   const header = req.headers.get("authorization") ?? "";
-  return header === `Bearer ${secret}`;
+  // Constant-time. `===` returns the moment it finds a differing byte, which
+  // leaks how many leading bytes of the secret a guess got right. Lengths are
+  // compared first because timingSafeEqual throws on unequal buffers - and a
+  // length mismatch is not a byte-by-byte leak.
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const given = Buffer.from(header);
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
 /**

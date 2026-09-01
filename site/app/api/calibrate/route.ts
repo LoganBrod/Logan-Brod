@@ -4,6 +4,7 @@ import { readSeen, siftSeen } from "@/lib/seen";
 import { shop } from "@/lib/sources";
 import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
 import { readSizes } from "@/lib/taste";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,15 @@ export const maxDuration = 60;
  * turn a taste question into a budget one.
  */
 export async function GET(req: Request) {
+  // Fifteen marketplace searches per call; shares the shop bucket.
+  const burst = await rateLimit("shop", clientIp(req), LIMITS.shop);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
+  }
+
   try {
     const { tasteId } = await readViewer(req);
     const [sizes, seen] = await Promise.all([

@@ -110,6 +110,55 @@ Each of these cost us a round of "why can't I see the changes".
 what it does, how sign-in and saved closets work. It moved here unchanged when the
 two apps merged.
 
+## Security
+
+What is enforced, and where, so a change to any of it is a visible change.
+
+- **Identity.** A session is a 256-bit random token in an `HttpOnly; Secure;
+  SameSite=Lax` cookie, looked up in Redis and renewed on use. Anonymous
+  browsers get a UUIDv4 the same way. Both cookie names are matched at a cookie
+  boundary, so a longer name that ends the same way cannot be read as one.
+  (`lib/accounts.ts`, `lib/taste.ts`)
+- **Passwords.** scrypt from Node's standard library with a per-hash salt and a
+  self-describing format; a wrong password and an unknown address take the same
+  time and return the same message. Ten attempts per address per fifteen
+  minutes. (`lib/passwords.ts`, `lib/accounts.ts`)
+- **Sign-in links.** Single-use through `GETDEL`, fifteen-minute expiry, five
+  per address per hour. The link's origin comes from `APP_ORIGIN`, never from
+  the request's Host header - a Host header is whatever the caller sends, and
+  a link built from it is an account-takeover vector. Production refuses to
+  mint links until `APP_ORIGIN` is set. (`app/api/auth/route.ts`)
+- **Ownership.** Every read and write of a closet, library, watch, like or
+  taste record is keyed by the request's owner. Publishing or deleting a closet
+  checks `isOwned` and answers 403 for a code that is not yours.
+- **Outbound fetches.** Every URL the app fetches that it did not write itself
+  - pasted listing links, marketplace photos, size-guide pages, the image proxy
+  - goes through `lib/safeFetch.ts`: the hostname must resolve only to public
+  addresses (literal or DNS, in every IPv4 and IPv6 spelling), and redirects
+  are followed by hand with each hop re-checked. Residual risk: DNS rebinding,
+  named in that file.
+- **Spend.** Every route that calls a model or a marketplace is limited per
+  network address (`lib/ratelimit.ts`, last `X-Forwarded-For` hop, fails
+  closed if Redis errors). The image proxy is limited the same way.
+- **Cron.** `/api/cron/sweep` requires `CRON_SECRET`, compared in constant
+  time; unset means closed.
+- **Email.** Every field in a digest is HTML-escaped, including the listing
+  URL, which is also held to http(s).
+- **Headers.** `nosniff`, `X-Frame-Options: DENY`, a strict referrer policy,
+  a minimal `Permissions-Policy`, and HSTS on every response
+  (`next.config.js`). No CSP yet - the marketing walk needs a report-only pass
+  first.
+- **Secrets.** Every third-party key is read server-side only. The two
+  modules the browser imports from are split off precisely so the SDK never
+  reaches the client bundle (`lib/accessoryKinds.ts`, `lib/cologneOptions.ts`).
+
+Known and accepted: an account that exists but has no password returns a
+distinct message on password sign-in, so that address can be shown to have an
+account. It is the only way to tell that person to use a link instead. And
+`next` 14 carries advisories that mostly do not reach this app (no Server
+Actions, `next/image`, rewrites or middleware); the upgrade to 16 is a major
+version and is deliberately not bundled into a security pass.
+
 ## A note on the name
 
 The product is **Clozet**; the route is `/closet`. That mismatch is deliberate —

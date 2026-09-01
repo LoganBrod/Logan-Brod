@@ -11,6 +11,7 @@
 // to respect it is to ask few questions and cache the answers hard.
 
 import { fetchableUrl } from "./judge";
+import { safeFetch } from "./safeFetch";
 
 const ENDPOINT = "https://serpapi.com/search.json";
 
@@ -103,9 +104,9 @@ export async function readPage(raw: string): Promise<string | null> {
   if (!url) return null;
 
   try {
-    const res = await fetch(url, {
+    // Search results are third-party URLs; safeFetch re-checks every redirect.
+    const res = await safeFetch(url.toString(), {
       signal: AbortSignal.timeout(8000),
-      redirect: "follow",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
@@ -113,7 +114,7 @@ export async function readPage(raw: string): Promise<string | null> {
       },
       cache: "no-store",
     });
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
 
     const type = (res.headers.get("content-type") ?? "").toLowerCase();
     if (!type.includes("html") && !type.includes("text/plain")) return null;

@@ -106,4 +106,16 @@ export const LIMITS = {
   analyze: { limit: 6, windowSeconds: HOUR },
   curate: { limit: 40, windowSeconds: HOUR },
   judge: { limit: 30, windowSeconds: HOUR },
+  /**
+   * One marketplace fan-out per call, and SerpAPI's free tier is a hundred
+   * searches a month. Unlimited, this was the cheapest way to empty that
+   * quota from anywhere on the internet: thirty calls, no cookie needed.
+   */
+  shop: { limit: 30, windowSeconds: HOUR },
+  /**
+   * The image proxy. Not a model call, but an open proxy that fetches 3MB
+   * from any public URL on request is still a thing to meter - a share card
+   * draws a dozen images at most, so this is generous for the real use.
+   */
+  image: { limit: 120, windowSeconds: HOUR },
 } as const;
