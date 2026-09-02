@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { analyzeStyle, type Intent } from "@/lib/analyze";
 import { describeApiError } from "@/lib/anthropic";
 import { parseInlinePhotos } from "@/lib/photos";
-import { renderPreferences } from "@/lib/preferences";
+import { namedMakers, renderPreferences } from "@/lib/preferences";
 import { readPreferences } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { allowance, limitMessage, spend } from "@/lib/plans";
@@ -113,7 +113,8 @@ export async function POST(req: Request) {
       { min, max },
       renderOwned(owned),
       intent,
-      renderPreferences(prefs)
+      renderPreferences(prefs, "reader"),
+      namedMakers(prefs)
     );
 
     // Spent here rather than on save. The money leaves at the model call, so

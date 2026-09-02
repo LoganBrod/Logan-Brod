@@ -72,7 +72,12 @@ export async function analyzeStyle(
   /** More of the same, or the pieces that would go with it. Defaults to more. */
   intent: Intent = "similar",
   /** What they told us about themselves, from `lib/preferences.ts`. */
-  preferences?: string | null
+  preferences?: string | null,
+  /**
+   * The makers they named, raw, so the queries can be checked against them.
+   * The prompt asks for at most two; this is what makes the ask true.
+   */
+  namedMakers: string[] = []
 ): Promise<StyleProfile> {
   if (!photos.length) {
     throw new Error("At least one photo is required.");
@@ -143,5 +148,59 @@ Read the style across them, then give me eight to ten things to buy that would e
     queryCapFor
   );
 
-  return { ...profile, searchQueries: spread.slice(0, MAX_QUERIES) };
+  return {
+    ...profile,
+    searchQueries: limitNamedMakers(spread, namedMakers).slice(0, MAX_QUERIES),
+  };
+}
+
+/**
+ * How many of the queries may be steered by a maker the wearer named.
+ *
+ * Two of ten. Enough that "Barbour" finds the good Barbour listings a
+ * secondhand market titles by name; few enough that the other eight are the
+ * register around it rather than the same two labels eight times. A named
+ * maker is a clue about what somebody likes, not a blueprint of what to show.
+ */
+export const MAX_NAMED_MAKER_QUERIES = 2;
+
+/**
+ * Keep the first two queries that name a maker the wearer gave; strip the
+ * maker from the rest so they still search by garment, material and cut.
+ *
+ * Stripped rather than dropped: "Barbour waxed jacket olive" minus "Barbour"
+ * is still a good query, and dropping it would spend a slot on nothing. A
+ * query that is nothing but the maker is dropped, because "Red Wing" alone
+ * returns everything Red Wing has ever made. Order is preserved.
+ */
+export function limitNamedMakers<T extends { query: string }>(
+  queries: T[],
+  makers: string[],
+  max: number = MAX_NAMED_MAKER_QUERIES
+): T[] {
+  const named = makers.map((m) => m.trim()).filter(Boolean);
+  if (!named.length) return queries;
+
+  const patterns = named.map(
+    (m) => new RegExp(`\\b${m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+  );
+  let kept = 0;
+  const out: T[] = [];
+  for (const entry of queries) {
+    const mentions = patterns.some((re) => (re.lastIndex = 0, re.test(entry.query)));
+    if (!mentions) {
+      out.push(entry);
+      continue;
+    }
+    if (kept < max) {
+      kept += 1;
+      out.push(entry);
+      continue;
+    }
+    let stripped = entry.query;
+    for (const re of patterns) stripped = stripped.replace(re, " ");
+    stripped = stripped.replace(/\s+/g, " ").trim();
+    if (stripped.split(" ").length >= 2) out.push({ ...entry, query: stripped });
+  }
+  return out;
 }

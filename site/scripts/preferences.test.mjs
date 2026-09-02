@@ -169,3 +169,61 @@ test("budget reaches the prompt as a register, not a rule", () => {
   assert.match(text, /register/);
 });
 
+// --- brands are a clue, not a blueprint ---------------------------------------
+
+import { namedMakers, renderPreferences as renderForAudience } from "../lib/preferences.ts";
+import { limitNamedMakers } from "../lib/analyze.ts";
+
+test("the reader and the judge are told different things about named makers", () => {
+  const prefs = { brands: "Barbour, Red Wing" };
+  const reader = renderForAudience(prefs, "reader");
+  const judge = renderForAudience(prefs, "judge");
+  assert.match(reader, /not a list to search for/);
+  assert.match(reader, /at most two queries/);
+  assert.match(judge, /never a requirement/);
+  assert.ok(!/search for/.test(judge));
+  // The default is the judge: the safer reading for any caller that forgets.
+  assert.equal(renderForAudience(prefs), judge);
+});
+
+test("namedMakers splits what was typed and ignores noise", () => {
+  assert.deepEqual(namedMakers({ brands: "Barbour, Red Wing ,  Drake's" }), ["Barbour", "Red Wing", "Drake's"]);
+  assert.deepEqual(namedMakers({ brands: " , a, " }), []);
+  assert.deepEqual(namedMakers({}), []);
+});
+
+test("at most two queries may name a maker; the rest are stripped, not dropped", () => {
+  const q = (query) => ({ query });
+  const out = limitNamedMakers(
+    [
+      q("Barbour waxed jacket olive"),
+      q("heavyweight flannel overshirt"),
+      q("Red Wing moc toe boots"),
+      q("Barbour quilted liner"),
+      q("Red Wing"),
+      q("pleated wool trouser grey"),
+    ],
+    ["Barbour", "Red Wing"]
+  );
+  assert.deepEqual(
+    out.map((e) => e.query),
+    [
+      "Barbour waxed jacket olive",   // 1st named: kept
+      "heavyweight flannel overshirt",
+      "Red Wing moc toe boots",       // 2nd named: kept
+      "quilted liner",                // 3rd: maker stripped, query survives
+      // "Red Wing" alone: nothing left, dropped
+      "pleated wool trouser grey",
+    ]
+  );
+});
+
+test("limitNamedMakers is a no-op without named makers, and is case-insensitive", () => {
+  const q = [{ query: "barbour jacket" }, { query: "BARBOUR coat" }, { query: "Barbour hat" }];
+  assert.deepEqual(limitNamedMakers(q, []), q);
+  assert.deepEqual(
+    limitNamedMakers(q, ["barbour"]).map((e) => e.query),
+    ["barbour jacket", "BARBOUR coat"]   // third is "hat" alone -> dropped
+  );
+});
+

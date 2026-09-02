@@ -184,7 +184,32 @@ const ADVENTURE_LINE: Record<Adventure, string> = {
  * it to interpret a token. Null when nothing was answered, so the prompt doesn't
  * carry an empty heading.
  */
-export function renderPreferences(prefs: Preferences | null | undefined): string | null {
+/**
+ * Who is reading the preferences.
+ *
+ * The same fact - "they like Barbour and Red Wing" - has to be said two ways.
+ * To the reader, who writes the search queries, it is a clue about register:
+ * the price tier, the construction, the aesthetic those makers share, and the
+ * neighbouring makers a secondhand market titles listings with. Said plainly
+ * it became a shopping list - the reader was already told that naming a maker
+ * is good query material, so it wrote "Barbour waxed jacket", "Red Wing boots"
+ * and the pool was those two brands. To the judge, who only chooses from what
+ * came back, it is a small point in a piece's favour and never a requirement.
+ */
+export type PreferenceAudience = "reader" | "judge";
+
+/** The makers somebody typed, one per entry, for matching against queries. */
+export function namedMakers(prefs: Preferences | null | undefined): string[] {
+  return (prefs?.brands ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2);
+}
+
+export function renderPreferences(
+  prefs: Preferences | null | undefined,
+  audience: PreferenceAudience = "judge"
+): string | null {
   if (!hasPreferences(prefs)) return null;
   const p = prefs as Preferences;
 
@@ -200,7 +225,11 @@ export function renderPreferences(prefs: Preferences | null | undefined): string
   if (p.brands) {
     // Quoted and attributed, so a model reads it as something the wearer said
     // rather than as an instruction that arrived from the system.
-    lines.push(`Asked which makers they already like, they said: "${p.brands}".`);
+    lines.push(
+      audience === "reader"
+        ? `Asked which makers they already like, they said: "${p.brands}". Use this to understand the register they shop at - the price tier, the construction, and the aesthetic those makers share - and to name other makers of the same register that listings are titled with. It is not a list to search for: a maker they named may appear in at most two queries, and the rest are written by garment, material and cut.`
+        : `Asked which makers they already like, they said: "${p.brands}". A maker they named is a small point in a piece's favour, never a requirement; a piece from any other maker is judged exactly like the rest.`
+    );
   }
   if (p.budget) {
     lines.push(

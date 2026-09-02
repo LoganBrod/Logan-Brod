@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       readSeen(viewer.tasteId),
     ]);
 
-    const plan = await planAccessories(closet.profile, kinds, { min, max }, renderPreferences(prefs));
+    const plan = await planAccessories(closet.profile, kinds, { min, max }, renderPreferences(prefs, "reader"));
     if (!plan.queries.length) {
       return NextResponse.json({ error: "Couldn't write searches for those." }, { status: 502 });
     }
