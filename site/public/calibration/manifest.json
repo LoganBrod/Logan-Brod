@@ -1,0 +1,31 @@
+{
+  "_readme": [
+    "The calibration deck's images and their tags. Attributes are known by",
+    "construction - every variant differs from its base in exactly one axis -",
+    "which is what makes a yes/no on a variant a clean signal about that axis.",
+    "Files are referenced relative to /calibration/. Generate with the command",
+    "in docs/calibration-images.md; the proof set is the chore-jacket group."
+  ],
+  "garments": [
+    {
+      "id": "chore-jacket",
+      "slot": "outerwear",
+      "base": {
+        "file": "chore-jacket/base-olive-waxed.webp",
+        "label": "olive waxed cotton chore jacket, relaxed",
+        "colour": "olive",
+        "material": "waxed cotton",
+        "fit": "relaxed"
+      },
+      "variants": [
+        { "axis": "colour",   "value": "navy",           "file": "chore-jacket/colour-navy.webp",          "label": "navy waxed cotton chore jacket, relaxed" },
+        { "axis": "colour",   "value": "tan",            "file": "chore-jacket/colour-tan.webp",           "label": "tan waxed cotton chore jacket, relaxed" },
+        { "axis": "colour",   "value": "black",          "file": "chore-jacket/colour-black.webp",         "label": "black waxed cotton chore jacket, relaxed" },
+        { "axis": "material", "value": "wool",           "file": "chore-jacket/material-wool.webp",        "label": "olive wool chore jacket, relaxed" },
+        { "axis": "material", "value": "denim",          "file": "chore-jacket/material-denim.webp",       "label": "olive denim chore jacket, relaxed" },
+        { "axis": "material", "value": "unwaxed canvas", "file": "chore-jacket/material-canvas.webp",      "label": "olive unwaxed canvas chore jacket, relaxed" },
+        { "axis": "fit",      "value": "slim",           "file": "chore-jacket/fit-slim.webp",             "label": "olive waxed cotton chore jacket, slim" }
+      ]
+    }
+  ]
+}
