@@ -132,3 +132,40 @@ test("an untagged colour can't break a rule", () => {
   assert.equal(breaksColourRule("", { avoid: ["pink"] }), false);
   assert.equal(breaksColourRule("unknown", { avoid: ["pink"] }), false);
 });
+
+// --- the first-visit quiz's two additions ------------------------------------
+
+import { cleanPreferences as cleanForQuiz, hasPreferences as hasForQuiz, renderPreferences as renderForQuiz } from "../lib/preferences.ts";
+
+test("budget: two ordered integers inside a sane band, or nothing", () => {
+  assert.deepEqual(cleanForQuiz({ budget: { min: 40, max: 150 } }).budget, { min: 40, max: 150 });
+  assert.deepEqual(cleanForQuiz({ budget: { min: "40", max: "150.4" } }).budget, { min: 40, max: 150 });
+  for (const bad of [
+    { min: 150, max: 40 },
+    { min: -5, max: 100 },
+    { min: 10, max: 10 },
+    { min: 10, max: 99999 },
+    { min: "x", max: 100 },
+    "40-150",
+    null,
+  ]) {
+    assert.equal(cleanForQuiz({ budget: bad }).budget, undefined, JSON.stringify(bad));
+  }
+});
+
+test("onboarded is only ever true, and never counts as a preference", () => {
+  assert.equal(cleanForQuiz({ onboarded: true }).onboarded, true);
+  assert.equal(cleanForQuiz({ onboarded: "yes" }).onboarded, undefined);
+  assert.equal(cleanForQuiz({ onboarded: false }).onboarded, undefined);
+  // Having seen the quiz says nothing a prompt should carry.
+  assert.equal(hasForQuiz({ onboarded: true }), false);
+  assert.equal(renderForQuiz({ onboarded: true }), null);
+  assert.equal(hasForQuiz({ onboarded: true, fit: "slim" }), true);
+});
+
+test("budget reaches the prompt as a register, not a rule", () => {
+  const text = renderForQuiz({ budget: { min: 40, max: 150 } });
+  assert.match(text, /\$40 to \$150/);
+  assert.match(text, /register/);
+});
+

@@ -15,8 +15,9 @@ import type { RunStage } from "@/lib/progress";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
 import JudgePanel from "./JudgePanel";
 import MatchPrompt from "./MatchPrompt";
+import OnboardingQuiz from "./OnboardingQuiz";
+import PreferenceSummary from "./PreferenceSummary";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
-import StyleQuestions from "./StyleQuestions";
 import ShareCard from "./ShareCard";
 
 // Derived from the progress module rather than restated, so a new stage can't
@@ -141,6 +142,13 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const [preferences, setPreferences] = useState<Preferences>({});
   /** How many pieces this browser has already voted on. Null until known. */
   const [tasteCount, setTasteCount] = useState<number | null>(null);
+  /**
+   * The first-visit quiz. Opened once the taste record has loaded and says
+   * this browser has never swiped and never been through it; never opened when
+   * there is nowhere to store the answers, because then it would come back on
+   * every visit.
+   */
+  const [quiz, setQuiz] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -162,6 +170,15 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           setPreferences(json.preferences ?? {});
           setTasteCount(json.count ?? 0);
           setPlan(json.plan ?? "free");
+          // The quiz's budget is where the price fields start. Only on load,
+          // so a range somebody has already typed is never overwritten.
+          if (json.preferences?.budget) {
+            setMin(json.preferences.budget.min);
+            setMax(json.preferences.budget.max);
+          }
+          if (json.configured && !json.preferences?.onboarded && (json.count ?? 0) === 0) {
+            setQuiz(true);
+          }
         }
       )
       .catch(() => {});
@@ -707,25 +724,18 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             with none of it, and it's also the run that decides whether they
             come back. Hidden once there are votes, because by then it would be
             asking for something it already has. */}
-        {tasteCount === 0 && !busy && (
-          <Link
-            href="/calibrate"
-            className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-room-line bg-room-sunk px-5 py-4 transition-colors hover:border-room-ink/40"
-          >
-            <span className="text-[13px] leading-relaxed text-room-muted">
-              <span className="font-medium text-room-ink">New here?</span> Swipe fifteen pieces
-              first - about a minute, and the first clozet stops guessing.
-            </span>
-            <span className="text-[12px] font-semibold text-accent">Teach it your eye &rarr;</span>
-          </Link>
-        )}
-
-        {/* The five things the photographs can't say. Placed after "what should
-            it find?" and before the price, because it reads as one continuous
+        {/* The five things the photographs can't say, folded to one line now
+            that the first-visit quiz asks them. Placed after "what should it
+            find?" and before the price, because it reads as one continuous
             conversation: here's what I like, here's what I want, here's what I
-            am, here's what I'll pay. */}
+            am, here's what I'll pay. The full questions are one tap away. */}
         <div className="mt-7 grid grid-cols-2 gap-4">
-          <StyleQuestions value={preferences} onChange={updatePreferences} disabled={busy} />
+          <PreferenceSummary
+            value={preferences}
+            onChange={updatePreferences}
+            disabled={busy}
+            onRetake={sizesAvailable ? () => setQuiz(true) : undefined}
+          />
         </div>
 
         {/* A two-column grid on phones, the original row from sm up.
@@ -989,6 +999,20 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             )}
           </div>
         </>
+      )}
+
+      {quiz && phase === "form" && (
+        <OnboardingQuiz
+          initial={preferences}
+          onSave={(patch) => {
+            updatePreferences(patch);
+            if (patch.budget) {
+              setMin(patch.budget.min);
+              setMax(patch.budget.max);
+            }
+          }}
+          onClose={() => setQuiz(false)}
+        />
       )}
 
       {prompting && results?.profile && (

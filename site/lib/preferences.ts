@@ -76,7 +76,21 @@ export interface Preferences {
   avoid?: string[];
   /** Makers they already like, in their own words. */
   brands?: string;
+  /**
+   * What they usually spend on one piece. Prefills the price fields; it is a
+   * starting position the form can change, not a filter the search applies.
+   */
+  budget?: { min: number; max: number };
+  /**
+   * Whether the first-visit quiz has been seen through or dismissed. Either
+   * counts: a quiz that reappears because somebody closed it is a nag, and a
+   * nag gets the whole thing turned off.
+   */
+  onboarded?: boolean;
 }
+
+/** A per-piece budget past this is not a secondhand-menswear budget. */
+export const MAX_BUDGET = 10_000;
 
 /** Free text goes into a prompt, so its length is bounded rather than trusted. */
 export const MAX_BRANDS_CHARS = 120;
@@ -122,11 +136,25 @@ export function cleanPreferences(input: unknown): Preferences {
   if (avoid.length) cleaned.avoid = avoid;
   if (brands) cleaned.brands = brands;
 
+  // Budget: two finite integers, ordered, inside a sane band. Anything else
+  // costs the budget, never the rest of the answers.
+  const b = raw.budget as { min?: unknown; max?: unknown } | undefined;
+  if (b && typeof b === "object") {
+    const min = Math.round(Number(b.min));
+    const max = Math.round(Number(b.max));
+    if (Number.isFinite(min) && Number.isFinite(max) && min >= 0 && max > min && max <= MAX_BUDGET) {
+      cleaned.budget = { min, max };
+    }
+  }
+  if (raw.onboarded === true) cleaned.onboarded = true;
+
   return cleaned;
 }
 
 export function hasPreferences(prefs: Preferences | null | undefined): boolean {
-  return Boolean(prefs && Object.keys(prefs).length);
+  // `onboarded` is bookkeeping, not a preference: having seen the quiz says
+  // nothing a prompt should carry.
+  return Boolean(prefs && Object.keys(prefs).some((k) => k !== "onboarded"));
 }
 
 const OCCASION_LINE: Record<Occasion, string> = {
@@ -173,6 +201,11 @@ export function renderPreferences(prefs: Preferences | null | undefined): string
     // Quoted and attributed, so a model reads it as something the wearer said
     // rather than as an instruction that arrived from the system.
     lines.push(`Asked which makers they already like, they said: "${p.brands}".`);
+  }
+  if (p.budget) {
+    lines.push(
+      `They usually spend about $${p.budget.min} to $${p.budget.max} on a single piece, so that is the register they shop at.`
+    );
   }
 
   return `What they told us about themselves:\n${lines.map((l) => `- ${l}`).join("\n")}`;

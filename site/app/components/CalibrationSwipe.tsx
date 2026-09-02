@@ -18,7 +18,18 @@ type Card = ProductListing & { slot?: string; register?: string | null };
  * second store and no second format: what someone says here is worth exactly
  * what saying it about a finished closet is worth.
  */
-export default function CalibrationSwipe() {
+export default function CalibrationSwipe({
+  onDone,
+  compact = false,
+}: {
+  /**
+   * Inside the first-visit quiz, the deck is one step of three and hands off
+   * to the next rather than linking to the closet page it is already on.
+   */
+  onDone?: () => void;
+  /** A shorter card, for a dialog that has to fit a phone with the buttons. */
+  compact?: boolean;
+} = {}) {
   const [cards, setCards] = useState<Card[] | null>(null);
   const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -116,9 +127,15 @@ export default function CalibrationSwipe() {
           That goes into every search from here on - what you turned down as much as what you kept.
           It gets sharper every time you react to a clozet, too.
         </p>
-        <Link href="/closet" className="btn-primary mt-7 inline-block">
-          Build your clozet
-        </Link>
+        {onDone ? (
+          <button type="button" onClick={onDone} className="btn-primary mt-7 inline-block">
+            Next
+          </button>
+        ) : (
+          <Link href="/closet" className="btn-primary mt-7 inline-block">
+            Build your clozet
+          </Link>
+        )}
       </div>
     );
   }
@@ -166,7 +183,7 @@ export default function CalibrationSwipe() {
           {/* object-contain on white, for the same reason the accessories grid
               uses it: these are seller photographs at every aspect ratio there
               is, and a common crop cuts the toes off boots. */}
-          <div className="flex h-[22rem] items-center justify-center bg-white p-4">
+          <div className={`flex items-center justify-center bg-white p-4 ${compact ? "h-[16rem]" : "h-[22rem]"}`}>
             {current?.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

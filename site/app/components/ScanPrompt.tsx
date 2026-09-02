@@ -100,9 +100,10 @@ export default function ScanPrompt({ name, itemCount, onStart, onClose, plan }: 
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-prompt-title"
-        // White rather than the panel cream: this is the one thing on the page
-        // that is not part of the room, and it should read as an interruption.
-        className="w-full max-w-lg rounded-3xl bg-white p-7 shadow-[0_24px_60px_rgba(27,26,23,0.28)] sm:p-9"
+        // The room's panel surface, not hard white. It was `bg-white` with
+        // room-ink text, which is white on white the moment the theme is dark;
+        // the interruption is carried by the backdrop and the shadow instead.
+        className="w-full max-w-lg rounded-3xl border border-room-line bg-room-panel p-7 shadow-[0_24px_60px_rgba(6,6,8,0.45)] sm:p-9"
       >
         <p className="eyebrow mb-3">Keep looking</p>
         <h2 id="scan-prompt-title" className="font-semibold tracking-[-0.01em] text-3xl leading-tight text-room-ink">
