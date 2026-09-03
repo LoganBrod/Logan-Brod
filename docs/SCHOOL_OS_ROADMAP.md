@@ -62,7 +62,7 @@ Three layers, three jobs:
 | Dashboard | **A Next.js app that reads the vault** | Obsidian is confusing to navigate, so studying happens somewhere else. The app shows notes by course and unit, a study page per test, upcoming assessments, the study schedule and a notification feed. Until it exists (Phase 5), `Home.md` in the vault is the stand-in. |
 | Schoology | **iCal feed URL** | Schoology exposes a calendar feed per user (Calendar → Export). No developer key, no admin approval. |
 | Google Calendar | **Service account** with your calendar shared to it | Avoids the OAuth consent screen and the seven-day token expiry that hits unverified personal apps. |
-| Notifications | **Discord webhook** | This repo's alerts tool already posts to Discord. Reuse the pattern. |
+| Notifications | **`notifications.json` in the vault, plus a Discord webhook** | The JSON file is the record the dashboard app shows with an unread badge. Discord is the ping; this repo's alerts tool already posts there. |
 
 Two rules the brain always follows:
 
@@ -99,6 +99,8 @@ Vault/
     Needs Review.md              notes the brain was unsure about
     study-rules.md               your constraints for the planner
     agent-log.md                 what the brain did and when
+    notifications.json           feed the dashboard app shows
+    schoology-state.json         what the brain has already seen on Schoology
   _templates/
 ```
 
