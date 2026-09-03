@@ -4,6 +4,9 @@ A personal, agent-driven study system built on top of Obsidian. You take notes o
 your iPad and computer; a background agent sorts them into courses and units,
 turns them into flashcards, practice tests and unit reviews, watches your
 Schoology calendar for tests, and books study sessions into your Google Calendar.
+A separate dashboard app is where you actually go to study: it shows every note
+organized by course and unit, upcoming tests, the study schedule, and a
+notification feed, so Obsidian is only where notes get written.
 
 This document is the plan. It is written so each phase is one small script you
 can build, test and use before starting the next one.
@@ -15,10 +18,13 @@ can build, test and use before starting the next one.
 Obsidian is the note app and the database. Every note is a markdown file in a
 vault that syncs between iPad and computer. A set of small TypeScript scripts
 ("the brain") read that vault, call Claude, and write back: frontmatter, moved
-files, generated study material, and a few dashboard notes. Two feeds come in
+files, generated study material, and a notification feed. Two feeds come in
 from outside: Schoology's calendar (as an iCal URL) and your Google Calendar
 (through the Calendar API). One feed goes out: study blocks written to a
 dedicated "Study" Google Calendar, plus a Discord ping when a test is posted.
+On top of all that sits the dashboard app, a Next.js site you open on the iPad
+and computer. It reads the same vault and is the place you browse notes, study
+for a test, and see what is coming up.
 
 ```mermaid
 flowchart LR
@@ -29,7 +35,16 @@ flowchart LR
     Schoology[Schoology\niCal feed] --> Brain
     GCal[Google Calendar] <--> Brain
     Brain --> Discord[Discord ping]
+    Sync <--> App[Dashboard app\nNext.js · iPad + computer]
 ```
+
+Three layers, three jobs:
+
+| Layer | Job | You touch it when |
+|---|---|---|
+| Obsidian | Writing notes | In class, doing homework |
+| The brain | Sorting, generating, watching, scheduling | Never. It runs on its own |
+| Dashboard app | Browsing, studying, seeing what is due | Studying for a test, checking the week |
 
 ---
 
@@ -40,11 +55,11 @@ flowchart LR
 | Note app | **Obsidian** on iPad and computer | Real apps on both devices already exist. Notes are plain markdown files, so scripts can read and write them without an API. Plugins cover flashcards and templates. You do not build a note app. |
 | Storage | **The vault folder is the database** | No server, no schema migrations. Frontmatter on each note holds the metadata the agent needs. |
 | Sync | **Obsidian Sync** (paid) or **iCloud** if the computer is a Mac | The brain needs the vault on the machine it runs on. Obsidian Sync is the reliable cross-platform option. iCloud works well Mac-to-iPad and badly on Windows. |
-| Handwriting | **Typed notes first**, handwriting ingestion in Phase 6 | Obsidian has no native handwriting. Apple Pencil Scribble types into it fine. Later, handwritten pages from GoodNotes or Notability can be exported as PDF into the inbox and read by Claude vision. |
+| Handwriting | **Typed notes first**, handwriting ingestion in Phase 7 | Obsidian has no native handwriting. Apple Pencil Scribble types into it fine. Later, handwritten pages from GoodNotes or Notability can be exported as PDF into the inbox and read by Claude vision. |
 | The brain | **TypeScript scripts** in a `school-os/` folder or a new repo | Same language and tooling as this repo. Each job is one file. |
-| Where it runs | **Your computer** in Phases 1 to 4, **GitHub Actions cron** in Phase 5 | Start with `npm run sort` by hand. Move to always-on only when it hurts. |
+| Where it runs | **Your computer** in Phases 1 to 4, **GitHub Actions cron** in Phase 6 | Start with `npm run sort` by hand. Move to always-on only when it hurts. |
 | Model | `claude-opus-5` with structured outputs | Sorting and generation both need reliable JSON. Structured outputs give you a typed result instead of parsing prose. |
-| Dashboard | **Generated notes inside Obsidian** | `Home.md`, `Upcoming Tests.md` and `Study Plan.md` are rewritten by the brain. No web UI to build. A Next.js dashboard is an optional Phase 6. |
+| Dashboard | **A Next.js app that reads the vault** | Obsidian is confusing to navigate, so studying happens somewhere else. The app shows notes by course and unit, a study page per test, upcoming assessments, the study schedule and a notification feed. Until it exists (Phase 5), `Home.md` in the vault is the stand-in. |
 | Schoology | **iCal feed URL** | Schoology exposes a calendar feed per user (Calendar → Export). No developer key, no admin approval. |
 | Google Calendar | **Service account** with your calendar shared to it | Avoids the OAuth consent screen and the seven-day token expiry that hits unverified personal apps. |
 | Notifications | **Discord webhook** | This repo's alerts tool already posts to Discord. Reuse the pattern. |
@@ -245,6 +260,24 @@ Runs after every other job. Rewrites `Home.md`: next three assessments, today's
 study sessions, notes sorted in the last 24 hours, anything in Needs Review,
 and decks due for review.
 
+It also appends to `04 System/notifications.json`, which the dashboard app
+reads as its notification feed. One entry per event, newest first:
+
+```json
+{
+  "id": "n_0042",
+  "time": "2026-09-03T15:10:00-04:00",
+  "kind": "test_posted",
+  "title": "AP Biology: Unit 3 test on Oct 14",
+  "link": "03 Calendar/Upcoming Tests.md",
+  "read": false
+}
+```
+
+Kinds: `test_posted`, `assignment_posted`, `notes_sorted`, `needs_review`,
+`study_generated`, `session_today`, `deck_due`. The Discord ping is the same
+event sent one more place; the JSON file is the record.
+
 ---
 
 ## 5. Phases
@@ -315,9 +348,65 @@ Discord within 30 minutes, and rerunning the script does not re-announce it.
 on your phone, they respect `study-rules.md`, and running the planner twice in
 a row changes nothing.
 
-### Phase 5 · Always on (week 9 onward)
+### Phase 5 · Dashboard app (weeks 9 to 12)
 
-Until now the brain only runs when your computer runs it. Pick one:
+This is the part you will open every day. It is a Next.js app, the same stack
+and Tailwind setup as this repo, that reads the vault and presents it in a way
+Obsidian does not. Obsidian stays the writing tool; the app is the reading and
+studying tool.
+
+Runs on your computer first with `VAULT_PATH` pointing at the synced vault
+folder. Open it on the iPad over home wifi at the computer's local address.
+Phase 6 moves it to Vercel so it works anywhere.
+
+**Screens, in build order:**
+
+1. **Home.** Big countdown cards for the next three assessments, today's study
+   sessions with what to review in each, a notification feed with an unread
+   badge, and a row of course tiles. This screen replaces `Home.md`.
+2. **Notes browser.** Left rail: courses, then units. Main area: notes as cards
+   with date, type and topics, sortable by date or type, filterable by a
+   search box that matches titles, topics and body text. Click a note to read
+   it rendered as HTML, with `[[wikilinks]]` turned into links. This is where
+   you go to find notes for homework.
+3. **Study page.** One page per upcoming assessment: `/study/<assessment id>`.
+   It gathers everything for that unit in tabs: Notes, Unit review, Flashcards,
+   Practice tests. Flashcards flip in the browser. Practice tests hide answers
+   until you reveal them. Buttons at the top write the `#make-flashcards`,
+   `#make-test` and `#make-review` tags into the unit map, so generating new
+   material is one tap and the brain does the rest.
+4. **Week view.** Seven columns merging Google Calendar events, study blocks,
+   and assessment dates. Study blocks link to their study page.
+5. **Notifications.** Full list from `notifications.json`, mark as read,
+   filter by kind.
+
+**How it reads and writes:**
+
+- Route handlers in `app/api/` read the vault with `gray-matter` and build an
+  index once per minute: every note's frontmatter, path and first 300
+  characters. Pages query that index, never the disk directly.
+- Markdown renders with `react-markdown`. A small regex turns
+  `[[Note name]]` into a link to `/note/<path>`.
+- Writes are limited to adding a tag line to a note and flipping `read` in
+  `notifications.json`. The app never edits note bodies for the same reason
+  the brain does not.
+- Make it a PWA with an app manifest so it installs to the iPad home screen
+  like a native app and opens full screen.
+
+**Look and feel.** Dark theme by default, one accent color per course carried
+through cards, countdowns and the week view, big numbers on countdowns, and
+nothing on the home screen that is not about the next seven days. The
+`design-taste-frontend` skill in this repo is the guide for getting it past
+"template" quality.
+
+**Done when:** you study for a real test using only the app, from the iPad,
+without opening Obsidian once. Notes, flashcards, practice test and the week
+view all came from the same screen.
+
+### Phase 6 · Always on and deployed (week 13 onward)
+
+Until now the brain only runs when your computer runs it, and the dashboard
+only works at home. Pick one for the brain:
 
 - **Option A, a spare machine.** An old laptop or Mac mini left on, with the
   vault synced to it and the scripts on a `cron` or Task Scheduler entry every
@@ -333,10 +422,18 @@ Until now the brain only runs when your computer runs it. Pick one:
   agent loop hosted by Anthropic; worth looking at once B is working and you
   want the brain to do open-ended tasks rather than fixed scripts.
 
-**Done when:** you take notes only on the iPad for a whole school day and they
-are sorted by the time you sit down at the computer.
+Then deploy the dashboard. With Option B the vault is already a GitHub repo,
+so the app on Vercel reads notes through the GitHub API with a token in its
+environment, caching the index for a minute. The app's two writes (tags and
+read flags) become commits. Add web push so a new test posted on Schoology
+shows up as a notification on the iPad; iOS supports push for installed PWAs.
+Put a login in front of it, since it is your schoolwork on a public URL.
 
-### Phase 6 · Optional extensions
+**Done when:** you take notes only on the iPad for a whole school day, they
+are sorted by the time you sit down at the computer, and you can open the
+dashboard from school wifi and see them.
+
+### Phase 7 · Optional extensions
 
 - **Handwriting ingestion.** Export a GoodNotes or Notability page as PDF into
   `00 Inbox/`. The sorter sends it to Claude as a document block, gets markdown
@@ -345,8 +442,8 @@ are sorted by the time you sit down at the computer.
   people who prefer Anki's app.
 - **Calibrated study hours.** After each test, record the grade in `_Unit.md`.
   The planner nudges that course's `study_hours` up or down over time.
-- **Web dashboard.** A Next.js page reading the vault, in the same style as the
-  tools already in this repo. Only worth it if `Home.md` stops being enough.
+- **In-app spaced repetition.** Store card review history in the app so
+  flashcard scheduling lives there instead of the Obsidian plugin.
 - **Voice notes.** Record a lecture on the iPad, transcribe it, drop the
   transcript in the inbox.
 
@@ -356,14 +453,15 @@ are sorted by the time you sit down at the computer.
 
 | Piece | Tool |
 |---|---|
-| Notes | Obsidian, plugins: Templater, Dataview, Spaced Repetition, Obsidian Git (Phase 5) |
-| Sync | Obsidian Sync or iCloud, then a private GitHub repo in Phase 5 |
+| Notes | Obsidian, plugins: Templater, Dataview, Spaced Repetition, Obsidian Git (Phase 6) |
+| Sync | Obsidian Sync or iCloud, then a private GitHub repo in Phase 6 |
 | Language | TypeScript on Node, same as this repo |
 | Claude | `@anthropic-ai/sdk`, model `claude-opus-5`, `client.messages.parse()` with Zod schemas, adaptive thinking on |
 | Frontmatter | `gray-matter` |
 | Schoology | `node-ical` reading the personal feed URL |
 | Google Calendar | `googleapis` package with a service account |
-| Notifications | Discord webhook, same as this repo's alerts |
+| Notifications | `notifications.json` in the vault, shown in the app; Discord webhook as the ping, web push in Phase 6 |
+| Dashboard app | Next.js and Tailwind like this repo, `react-markdown`, PWA manifest, Vercel in Phase 6 |
 | Scheduling | By hand, then cron or Task Scheduler, then GitHub Actions |
 
 ### Rough API cost
