@@ -81,8 +81,11 @@ deliberately, so an endpoint that spends money on model calls is never left open
 GitHub disables scheduled workflows after 60 days without a push, so if sweeps
 stop arriving after a quiet stretch, re-enable it on the Actions tab.
 
-Four routes declare a `maxDuration` above 60s, which is the Hobby ceiling — see
+Six routes declare a `maxDuration` above 60s, which is the Hobby ceiling — see
 `RAILWAY.md` for what that costs and what to do about it.
+
+`LAUNCH.md` is the pre-launch checklist: every setting, secret, quota, walk-through
+and missing page that stands between a green build and strangers using the site.
 
 ### Four things that will make a green build serve the wrong thing
 
