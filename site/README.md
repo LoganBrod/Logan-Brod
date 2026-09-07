@@ -134,6 +134,31 @@ search produced and what the judge said about the pool - searches once more,
 judges only what it hasn't seen, and merges. Once. A failure there costs only
 the second pass; the first pass's pieces are already hanging.
 
+## Fifty people at once
+
+```bash
+npm run build
+npx tsx scripts/load/run.mjs --users 50             # distinct addresses
+npx tsx scripts/load/run.mjs --users 50 --shared-ip # one office, one address
+```
+
+Starts a production server whose outbound fetches are redirected to
+`scripts/load/fake-upstream.mjs` - Anthropic, eBay, SerpAPI, Resend and the
+listing pages, imitated with realistic delays - and a fake Upstash with a
+per-command delay, then walks fifty virtual users through the whole product
+with their own cookies and addresses. Prints latency per step, every non-2xx,
+the server's peak memory, Redis command volume, model calls per user, and
+whether the per-query records survived the concurrency. `--speed 0.1` makes
+the imitations ten times faster for a smoke run. No key is real and no request
+leaves the machine.
+
+It found four things the first time it ran: a run charged twice against the
+monthly allowance, so a free account could never save its first clozet; DNS
+lookups for thumbnails queueing behind Node's four-thread pool; the per-query
+records losing most of their index to a read-modify-write race; and, from one
+shared address, other people's rejected runs starving a legitimate run of its
+second search.
+
 ## Security
 
 What is enforced, and where, so a change to any of it is a visible change.

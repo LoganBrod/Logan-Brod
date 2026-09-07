@@ -142,12 +142,47 @@ export function isPrivateAddress(ip: string): boolean {
 export async function resolvesPublic(hostname: string): Promise<boolean> {
   const literal = stripBrackets(hostname);
   if (isIP(literal)) return !isPrivateAddress(literal);
+  const cached = verdicts.get(literal);
+  if (cached && cached.until > Date.now()) return cached.ok;
+  const ok = await lookupPublic(literal);
+  remember(literal, ok);
+  return ok;
+}
+
+async function lookupPublic(hostname: string): Promise<boolean> {
   try {
-    const addresses = await lookup(literal, { all: true });
+    const addresses = await lookup(hostname, { all: true });
     return addresses.length > 0 && addresses.every((entry) => !isPrivateAddress(entry.address));
   } catch {
     return false;
   }
+}
+
+/*
+ * Verdicts are remembered for a minute.
+ *
+ * Node has no DNS cache of its own: every lookup is a getaddrinfo call on the
+ * libuv thread pool, which has four threads. One curation batch resolves
+ * sixteen thumbnails, all on the same two or three image hosts, and under
+ * fifty concurrent runs that was thousands of identical lookups queued behind
+ * four threads - the image proxy timed out waiting for its turn and the
+ * batches took seconds longer than the model call inside them.
+ *
+ * A minute is short enough that a host whose records change is re-checked
+ * promptly, and it does not widen the residual risk named at the top of this
+ * file: rebinding was already possible inside the gap between the lookup and
+ * the connect, and a cached verdict is the same gap, a little longer.
+ */
+const VERDICT_TTL_MS = 60_000;
+const MAX_VERDICTS = 512;
+const verdicts = new Map<string, { ok: boolean; until: number }>();
+
+function remember(hostname: string, ok: boolean): void {
+  if (verdicts.size >= MAX_VERDICTS) {
+    const oldest = verdicts.keys().next().value;
+    if (oldest !== undefined) verdicts.delete(oldest);
+  }
+  verdicts.set(hostname, { ok, until: Date.now() + VERDICT_TTL_MS });
 }
 
 /**

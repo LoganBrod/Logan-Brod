@@ -13,7 +13,6 @@ import {
 import { addToLibrary } from "@/lib/library";
 import { redisConfigured } from "@/lib/redis";
 import { StyleProfileSchema } from "@/lib/schemas";
-import { allowance, limitMessage, spend } from "@/lib/plans";
 import { newTasteId, tasteCookie } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
 import { recordSeen } from "@/lib/seen";
@@ -174,18 +173,11 @@ export async function POST(req: Request) {
     // rather than being the one that silently never appears in their list.
     const viewer = await readViewer(req);
 
-    // Metered on save rather than on the run, so a run that fails halfway
-    // through never costs anyone their month. Updating an existing closet is
-    // free — it's the same closet.
-    if (!requestedCode) {
-      const room = await allowance(viewer.meterId, viewer.plan, "closets");
-      if (!room.allowed) {
-        return NextResponse.json(
-          { error: limitMessage("closets", room.plan), limit: room },
-          { status: 402 }
-        );
-      }
-    }
+    // Not metered here. The closet allowance is spent by /api/style/analyze,
+    // where the money leaves; this route used to check and spend it as well,
+    // which charged every run twice - and with a free allowance of one, meant
+    // the first clozet anyone built could never be saved. Found by the load
+    // simulation, not by a person, which is the argument for the simulation.
 
     const minted = viewer.owner ? null : newTasteId();
     const owner = viewer.owner ?? { kind: "browser" as const, id: minted! };
@@ -212,8 +204,6 @@ export async function POST(req: Request) {
     const cookies = minted
       ? [cookieHeader(closet.code), tasteCookie(minted)]
       : [cookieHeader(closet.code)];
-
-    if (!requestedCode) await spend(viewer.meterId ?? minted, "closets");
 
     const headers = new Headers({ "Cache-Control": "no-store" });
     for (const cookie of cookies) headers.append("Set-Cookie", cookie);

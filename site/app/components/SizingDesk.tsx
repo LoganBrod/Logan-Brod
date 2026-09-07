@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Waiting, { SkeletonRows } from "./Waiting";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import SizingWalkthrough from "./SizingWalkthrough";
 
@@ -128,7 +129,7 @@ export default function SizingDesk() {
   const set = (patch: Partial<Sizes>) => setDraft((current) => ({ ...current, ...patch }));
   const num = (value: string) => (value === "" ? undefined : Number(value));
 
-  if (!state) return null;
+  if (!state) return <SkeletonRows rows={2} />;
 
   // How many of the five the person has actually given us — shown on the first
   // card so the form reads as partly done rather than as untouched.
@@ -272,6 +273,17 @@ export default function SizingDesk() {
             <button type="submit" disabled={busy || !brand.trim() || !state.hasSizes} className="btn-primary">
               {busy ? "Reading…" : "Check"}
             </button>
+            {busy && (
+              <Waiting
+                className="w-full pt-2"
+                label={`Reading how ${brand.trim() || "that brand"} sizes`}
+                steps={[
+                  { label: "Searching for the size guide", afterMs: 0 },
+                  { label: "Reading the pages", afterMs: 6000 },
+                  { label: "Comparing to your measurements", afterMs: 15000 },
+                ]}
+              />
+            )}
             {!state.hasSizes && (
               <p className="w-full text-xs text-room-faint">
                 Save at least one measurement above first - there&rsquo;s nothing to compare

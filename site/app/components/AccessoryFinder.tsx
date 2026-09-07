@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Waiting, { Skeleton } from "./Waiting";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ACCESSORY_KINDS, MAX_KINDS, isAccessoryKind, type AccessoryKind } from "@/lib/accessoryKinds";
@@ -200,7 +201,29 @@ export default function AccessoryFinder() {
         )}
       </section>
 
-      {result && result.items.length > 0 && (
+      {busy && (
+        <section aria-label="Finding accessories" className="space-y-6">
+          <Waiting
+            label="Finding the small things"
+            steps={[
+              { label: "Reading your clozet", afterMs: 0 },
+              { label: "Searching the marketplaces", afterMs: 5000 },
+              { label: "Judging what came back", afterMs: 15000 },
+            ]}
+          />
+          <ul aria-hidden className="grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-room-line bg-room-line sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, i) => (
+              <li key={i} className="bg-room-panel p-3">
+                <Skeleton className="aspect-square w-full" />
+                <Skeleton className="mt-3 h-3 w-4/5" />
+                <Skeleton className="mt-2 h-3 w-2/5" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {!busy && result && result.items.length > 0 && (
         <section aria-label="Accessories found">
           {result.summary && (
             <p className="mb-6 max-w-[58ch] text-sm leading-relaxed text-room-muted">

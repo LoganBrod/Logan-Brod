@@ -29,6 +29,11 @@ confirm it rather than trust this list.
 - [ ] **HSTS is on with `includeSubDomains`** (`next.config.js`). Every
   subdomain of the launch domain must be served over HTTPS from now on, or
   browsers will refuse it. Check nothing else lives on a plain-HTTP subdomain.
+- [ ] **Memory fits the host.** Under fifty simultaneous runs the single Node
+  process peaked at about 450 MB (`scripts/load/run.mjs`), most of it inline
+  photos and candidate thumbnails in flight. A 512 MB container is too tight
+  for that; give the app 1 GB on Railway, and know that Vercel functions default
+  to 1 GB.
 - [ ] **Function timeouts fit the plan.** Five routes declare `maxDuration`
   above 60s: analyze, curate, fit, accessories and wardrobe at 120, the sweep
   at 300. Vercel Hobby caps at 60 and silently kills the function; a closet
@@ -80,11 +85,13 @@ second search of up to six queries.
 - [ ] **eBay Browse API daily call limit** covers the expected day. Each run
   is ten to sixteen calls against the keyset's daily cap; check the number in
   the developer portal against the traffic you expect.
-- [ ] **Upstash plan** has headroom on commands per day and storage. A run is
-  a few hundred commands once taste, seen-sets, yield records and rate-limit
-  counters are included.
+- [ ] **Upstash plan** has headroom on commands and storage. The load
+  simulation measures a full visit (quiz, run, save, votes, accessories,
+  colognes, calibration, a judgement, a sizing lookup) at about 730 commands
+  in 200 round trips, half of them the per-query records. On a plan metered
+  per command, that is the number to multiply by expected visitors.
 - [ ] **Per-address rate limits are what you want on launch day**
-  (`lib/ratelimit.ts`): analyze 6 per hour, shop 30, curate 40, judge 30, per
+  (`lib/ratelimit.ts`): analyze 6 per hour, requery 6, shop 30, curate 40, judge 30, per
   network address. Six analyses an hour is generous for one person and tight
   for a dorm, an office or a mobile carrier sharing one address. Decide
   whether launch traffic will share addresses, and raise `analyze` before
@@ -197,9 +204,15 @@ works with production keys.
 
 ## 7. Quality gates
 
-- [ ] `npm test` green (373 tests at the launch commit).
+- [ ] `npm test` green (378 tests at the launch commit).
+- [ ] **The load simulation runs clean:** `npm run build` then
+  `npx tsx scripts/load/run.mjs --users 50`. Zero non-2xx, every run
+  saved, every query in the report. No key is real and nothing leaves the
+  machine.
 - [ ] `npm run typecheck` clean.
-- [ ] `npm run lint` clean, or every warning read and accepted.
+- [ ] **ESLint is not configured.** `npm run lint` opens Next's setup prompt instead of
+  linting. Either answer it once (Strict) and commit the config, or accept that
+  typecheck and tests are the only static gates.
 - [ ] `npm run audit:contrast` passes against a fresh production build; it
   needs the server stopped and restarted after the build or it audits stale
   pages.

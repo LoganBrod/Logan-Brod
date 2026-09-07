@@ -22,14 +22,17 @@
 // pieces or it doesn't. Per-person taste lives in lib/taste.ts and is a
 // different question.
 //
-// Storage is one JSON value per query, read and rewritten on each update.
-// That is not race-free - six curation batches land at once and two can touch
-// the same query - and it is accepted: this is analytics, a lost increment
-// out of a hundred does not change which searches are good, and the
-// alternative is a hundred atomic round trips inside the slowest route in the
-// app. The counts are for reading trends, not for billing.
+// Storage is a Redis hash per query, updated with HINCRBY, plus a set for the
+// index and a capped list for run summaries. The first version kept one JSON
+// value per query and rewrote it on every update, on the theory that a lost
+// increment out of a hundred does not change which searches are good. The
+// load simulation showed the theory was wrong by an order of magnitude: ten
+// queries recorded at once from one run, and fifty runs at once, clobbered
+// each other's copy of the index until forty-seven of fifty-one searches were
+// missing from it. Increments and set-adds cannot lose each other, so every
+// write here is one of those, batched into a single round trip.
 
-import { getJson, redisConfigured, setJson } from "./redis";
+import { flatToHash, listRange, pipeline, redisConfigured, setMembers } from "./redis";
 
 export type YieldSignal = "shown" | "opened" | "clicked" | "yes" | "no";
 
@@ -66,8 +69,6 @@ export interface RunSummary {
 
 /** Ninety days: long enough to compare a prompt change against the month before it. */
 const YIELD_TTL_SECONDS = 90 * 24 * 60 * 60;
-/** How many queries the index remembers. Past this the oldest fall off. */
-const MAX_INDEXED = 2000;
 /** How many run summaries are kept, newest first. */
 const MAX_RUNS = 300;
 
@@ -97,59 +98,66 @@ const key = (slug: string) => `yield:q:${slug}`;
 const INDEX_KEY = "yield:index";
 const RUNS_KEY = "yield:runs";
 
-function empty(query: string, now: string): QueryYield {
-  return {
-    query,
-    runs: 0,
-    found: 0,
-    viewed: 0,
-    picked: 0,
-    scoreSum: 0,
-    shown: 0,
-    opened: 0,
-    clicked: 0,
-    yes: 0,
-    no: 0,
-    first: now,
-    last: now,
-  };
-}
+/** The counters a delta may carry. Everything else on the record is derived or a timestamp. */
+const COUNTERS = ["runs", "found", "viewed", "picked", "scoreSum", "shown", "opened", "clicked", "yes", "no"] as const;
+type Counter = (typeof COUNTERS)[number];
 
 /**
- * Apply a set of increments to one query's record. Pure, so it can be tested
- * without Redis; `touch` is what every recording path calls.
+ * The commands that apply one delta to one query's hash. Pure, so the shape
+ * of a write can be tested without Redis: every counter becomes an increment,
+ * the timestamps are set-if-absent and set, the index gains the slug, and
+ * both keys get their expiry refreshed.
  */
-export function merge(current: QueryYield | null, query: string, delta: Partial<QueryYield>, now: string): QueryYield {
-  const base = current ?? empty(query, now);
-  const next: QueryYield = { ...base, last: now };
-  for (const field of ["runs", "found", "viewed", "picked", "scoreSum", "shown", "opened", "clicked", "yes", "no"] as const) {
+export function deltaCommands(slug: string, query: string, delta: Partial<QueryYield>, now: string): Array<Array<string | number>> {
+  const k = key(slug);
+  const commands: Array<Array<string | number>> = [
+    ["HSETNX", k, "query", query],
+    ["HSETNX", k, "first", now],
+    ["HSET", k, "last", now],
+  ];
+  for (const field of COUNTERS) {
     const add = delta[field];
-    if (typeof add === "number" && Number.isFinite(add) && add !== 0) next[field] = base[field] + add;
+    if (typeof add !== "number" || !Number.isFinite(add) || add === 0) continue;
+    commands.push(field === "scoreSum" ? ["HINCRBYFLOAT", k, field, add] : ["HINCRBY", k, field, Math.round(add)]);
   }
-  return next;
+  commands.push(["EXPIRE", k, YIELD_TTL_SECONDS], ["SADD", INDEX_KEY, slug], ["EXPIRE", INDEX_KEY, YIELD_TTL_SECONDS]);
+  return commands;
+}
+
+/** A hash read back from Redis, as a record. Null for an empty or missing hash. */
+export function fromHash(hash: Record<string, string> | null): QueryYield | null {
+  if (!hash || !hash.query) return null;
+  const num = (field: Counter) => {
+    const n = Number(hash[field]);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return {
+    query: hash.query,
+    runs: num("runs"),
+    found: num("found"),
+    viewed: num("viewed"),
+    picked: num("picked"),
+    scoreSum: num("scoreSum"),
+    shown: num("shown"),
+    opened: num("opened"),
+    clicked: num("clicked"),
+    yes: num("yes"),
+    no: num("no"),
+    first: hash.first ?? hash.last ?? "",
+    last: hash.last ?? hash.first ?? "",
+  };
 }
 
 async function touch(query: string, delta: Partial<QueryYield>): Promise<void> {
   if (!redisConfigured()) return;
   const slug = slugOf(query);
   if (!slug) return;
-  const now = new Date().toISOString();
   try {
-    const current = await getJson<QueryYield>(key(slug));
-    const next = merge(current, query, delta, now);
-    await setJson(key(slug), next, YIELD_TTL_SECONDS);
-    if (!current) await index(slug);
+    await pipeline(deltaCommands(slug, query, delta, new Date().toISOString()));
   } catch {
     // Best effort. A measurement that can break a run is worse than no
     // measurement.
   }
-}
-
-/** Newest first, deduplicated, capped. */
-async function index(slug: string): Promise<void> {
-  const list = (await getJson<string[]>(INDEX_KEY)) ?? [];
-  if (list.includes(slug)) return;
-  await setJson(INDEX_KEY, [slug, ...list].slice(0, MAX_INDEXED), YIELD_TTL_SECONDS);
 }
 
 // ---------------------------------------------------------------- recording
@@ -187,12 +195,15 @@ export async function recordSignal(query: string | undefined, signal: YieldSigna
   await touch(query, { [signal]: 1 });
 }
 
-/** One finished run, as the client saw it. Kept newest first, capped. */
+/** One finished run, as the client saw it. Newest first, capped, in one round trip. */
 export async function recordRun(summary: RunSummary): Promise<void> {
   if (!redisConfigured()) return;
   try {
-    const runs = (await getJson<RunSummary[]>(RUNS_KEY)) ?? [];
-    await setJson(RUNS_KEY, [summary, ...runs.filter((r) => r.runId !== summary.runId)].slice(0, MAX_RUNS), YIELD_TTL_SECONDS);
+    await pipeline([
+      ["LPUSH", RUNS_KEY, JSON.stringify(summary)],
+      ["LTRIM", RUNS_KEY, 0, MAX_RUNS - 1],
+      ["EXPIRE", RUNS_KEY, YIELD_TTL_SECONDS],
+    ]);
   } catch {
     // Best effort, as above.
   }
@@ -222,10 +233,18 @@ export interface YieldReport {
  */
 export async function readYieldReport(): Promise<YieldReport> {
   if (!redisConfigured()) return { queries: [], runs: [] };
-  const slugs = (await getJson<string[]>(INDEX_KEY)) ?? [];
-  const records = await Promise.all(slugs.map((slug) => getJson<QueryYield>(key(slug))));
+  const slugs = await setMembers(INDEX_KEY);
+  const records: QueryYield[] = [];
+  // A hundred hashes per round trip; the index holds at most a few thousand.
+  for (let i = 0; i < slugs.length; i += 100) {
+    const chunk = slugs.slice(i, i + 100);
+    const flats = await pipeline<string[]>(chunk.map((slug) => ["HGETALL", key(slug)]));
+    for (const flat of flats) {
+      const record = fromHash(flatToHash(flat));
+      if (record) records.push(record);
+    }
+  }
   const queries = records
-    .filter((r): r is QueryYield => Boolean(r))
     .map((r) => ({
       ...r,
       pickRate: r.viewed ? r.picked / r.viewed : 0,
@@ -237,6 +256,14 @@ export async function readYieldReport(): Promise<YieldReport> {
       if (aRanked !== bRanked) return aRanked ? -1 : 1;
       return aRanked ? b.keepRate - a.keepRate : b.pickRate - a.pickRate;
     });
-  const runs = (await getJson<RunSummary[]>(RUNS_KEY)) ?? [];
+  const runs = (await listRange(RUNS_KEY, 0, MAX_RUNS - 1))
+    .map((raw) => {
+      try {
+        return JSON.parse(raw) as RunSummary;
+      } catch {
+        return null;
+      }
+    })
+    .filter((r): r is RunSummary => Boolean(r));
   return { queries, runs };
 }

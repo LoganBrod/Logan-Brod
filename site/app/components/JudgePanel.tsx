@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Waiting from "./Waiting";
 import { encodePhotos } from "@/lib/image";
 
 interface Judgement {
@@ -140,6 +141,17 @@ export default function JudgePanel({
           />
         </label>
       </form>
+
+      {busy && (
+        <Waiting
+          label="Looking at it"
+          steps={[
+            { label: "Opening the link", afterMs: 0 },
+            { label: "Reading the photo", afterMs: 4000 },
+            { label: "Weighing it against how you dress", afterMs: 10000 },
+          ]}
+        />
+      )}
 
       {error && <p className="text-sm text-red-700">{error}</p>}
 
