@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SkeletonRows } from "./Waiting";
 
 interface Watch {
   id: string;
@@ -61,7 +62,15 @@ export default function Watches() {
     }
   }
 
-  if (!state?.configured) return null;
+  if (!state) {
+    return (
+      <section className="space-y-3">
+        <h2 className="eyebrow">Standing searches</h2>
+        <SkeletonRows rows={2} />
+      </section>
+    );
+  }
+  if (!state.configured) return null;
 
   if (!state.watches.length) {
     return (

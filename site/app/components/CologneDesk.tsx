@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Waiting from "./Waiting";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -99,6 +100,17 @@ export default function CologneDesk() {
         <button type="button" onClick={run} disabled={busy} className="btn-primary mt-6 w-full sm:w-auto">
           {busy ? "Thinking…" : advice ? "Ask again" : "Recommend something"}
         </button>
+
+        {busy && (
+          <Waiting
+            className="mt-6"
+            label="Thinking about what sits with your clothes"
+            steps={[
+              { label: "Reading your clozet", afterMs: 0 },
+              { label: "Choosing", afterMs: 5000 },
+            ]}
+          />
+        )}
 
         {error && (
           <p className="mt-5 rounded-sm border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800">

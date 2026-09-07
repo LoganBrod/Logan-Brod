@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { SkeletonRows } from "./Waiting";
 
 interface Entry {
   code: string;
@@ -72,7 +73,7 @@ export default function ClosetLibrary() {
   }
 
   if (!library) {
-    return <p className="text-sm text-room-muted">Loading&hellip;</p>;
+    return <SkeletonRows rows={3} />;
   }
 
   if (!library.configured) {

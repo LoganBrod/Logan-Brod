@@ -195,7 +195,7 @@ export default function AccountBar() {
           className="field w-full sm:w-44"
         />
         <button type="submit" disabled={busy} className="btn-primary">
-          {busy ? "…" : creating ? "Create account" : "Sign in"}
+          {busy ? (creating ? "Creating…" : "Signing in…") : creating ? "Create account" : "Sign in"}
         </button>
       </form>
 

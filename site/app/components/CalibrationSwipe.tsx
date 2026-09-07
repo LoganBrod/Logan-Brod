@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Waiting, { Skeleton } from "./Waiting";
 import Link from "next/link";
 import type { ProductListing } from "@/lib/sources/types";
 
@@ -110,8 +111,17 @@ export default function CalibrationSwipe({
 
   if (!cards) {
     return (
-      <div className="panel flex min-h-[26rem] items-center justify-center px-6 py-8">
-        <p className="text-sm text-room-faint">Finding a few things to show you…</p>
+      <div className="panel min-h-[26rem] px-6 py-8">
+        <Skeleton className="mx-auto aspect-[3/4] w-full max-w-[16rem]" />
+        <Waiting
+          className="mx-auto mt-8"
+          label="Finding a few things to show you"
+          steps={[
+            { label: "Searching", afterMs: 0 },
+            { label: "Leaving out what you've seen", afterMs: 4000 },
+            { label: "Dealing the deck", afterMs: 8000 },
+          ]}
+        />
       </div>
     );
   }

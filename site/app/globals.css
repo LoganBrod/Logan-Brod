@@ -407,6 +407,18 @@
  * arrive past where they are going and come back, twice, smaller each time.
  * Damping is roughly a third per swing, which is what a hanger on a rail does.
  */
+/*
+ * The indeterminate bar in Waiting. A third-width segment that crosses the
+ * track and comes back around; it says "moving", and nothing about how far.
+ */
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+.animate-sweep {
+  animation: sweep 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 @keyframes rack-out {
   0%   { translate: 0 0;     rotate: 0deg;    opacity: 1; }
   25%  {                     rotate: 8deg;               }
