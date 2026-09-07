@@ -122,3 +122,57 @@ export async function bump(key: string, ttlSeconds: number): Promise<number> {
 export async function deleteKey(key: string): Promise<void> {
   await command("DEL", key);
 }
+
+/**
+ * Several commands in one round trip.
+ *
+ * Upstash's /pipeline endpoint runs them in order and answers with one result
+ * per command. Not a transaction - each command is atomic on its own, and that
+ * is what the callers here need: a hash increment or a set add cannot lose a
+ * concurrent writer's work the way a read-modify-write of a JSON blob can.
+ * Errors on one command come back in its slot and are surfaced as a thrown
+ * error, so a caller never mistakes a half-run pipeline for a whole one.
+ */
+export async function pipeline<T = unknown>(commands: Array<Array<string | number>>): Promise<T[]> {
+  if (!REST_URL || !REST_TOKEN) {
+    throw new Error("Saving is not configured.");
+  }
+  if (!commands.length) return [];
+  const res = await fetch(`${REST_URL.replace(/\/$/, "")}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${REST_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+    cache: "no-store",
+  });
+  const json = (await res.json().catch(() => null)) as Array<{ result?: T; error?: string }> | null;
+  if (!res.ok || !Array.isArray(json)) {
+    throw new Error(`Redis pipeline failed: HTTP ${res.status}`);
+  }
+  const failed = json.find((entry) => entry.error);
+  if (failed) throw new Error(`Redis pipeline failed: ${failed.error}`);
+  return json.map((entry) => entry.result as T);
+}
+
+/** Every field of a hash, as an object. Upstash answers HGETALL as a flat [k, v, k, v] list. */
+export async function readHash(key: string): Promise<Record<string, string> | null> {
+  const flat = await command<string[] | null>("HGETALL", key);
+  return flatToHash(flat);
+}
+
+export function flatToHash(flat: unknown): Record<string, string> | null {
+  if (!Array.isArray(flat) || !flat.length) return null;
+  const out: Record<string, string> = {};
+  for (let i = 0; i + 1 < flat.length; i += 2) out[String(flat[i])] = String(flat[i + 1]);
+  return out;
+}
+
+export async function setMembers(key: string): Promise<string[]> {
+  return (await command<string[] | null>("SMEMBERS", key)) ?? [];
+}
+
+export async function listRange(key: string, start: number, stop: number): Promise<string[]> {
+  return (await command<string[] | null>("LRANGE", key, start, stop)) ?? [];
+}

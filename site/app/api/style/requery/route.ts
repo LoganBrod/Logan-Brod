@@ -16,9 +16,10 @@ const MAX_NOTES_CHARS = 1200;
 /**
  * POST /api/style/requery — replacement searches for a run that came back thin.
  *
- * Shares the analyze bucket: it is a model call that writes queries, and a
- * caller who can exhaust one can exhaust the other. It does not spend a closet
- * from the monthly allowance, because it is part of the run that already did.
+ * Metered in its own bucket, sized like analyze's: a model call that writes
+ * queries, bounded per address, but not starved by other people's rejected
+ * runs from the same address. It does not spend a closet from the monthly
+ * allowance, because it is part of the run that already did.
  */
 export async function POST(req: Request) {
   let body: {
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "tried must list the first pass's queries." }, { status: 400 });
   }
 
-  const burst = await rateLimit("analyze", clientIp(req), LIMITS.analyze);
+  const burst = await rateLimit("requery", clientIp(req), LIMITS.requery);
   if (!burst.allowed) {
     return NextResponse.json(
       { error: "Too many requests just now. Try again shortly." },

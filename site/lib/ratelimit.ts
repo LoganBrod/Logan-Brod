@@ -104,6 +104,15 @@ const HOUR = 60 * 60;
  */
 export const LIMITS = {
   analyze: { limit: 6, windowSeconds: HOUR },
+  /**
+   * The second search, when a run came back thin. Its own bucket, the same
+   * size as analyze: it used to share analyze's, and under one shared address
+   * - an office, a dorm, a carrier - the rejected attempts of other people
+   * filled the bucket and a run that had legitimately got through was denied
+   * its second search. The spend stays bounded; it is just no longer bounded
+   * by strangers.
+   */
+  requery: { limit: 6, windowSeconds: HOUR },
   curate: { limit: 40, windowSeconds: HOUR },
   judge: { limit: 30, windowSeconds: HOUR },
   /**
