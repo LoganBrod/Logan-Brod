@@ -50,6 +50,8 @@ export default function ClosetStage({
   items,
   phase,
   running,
+  runId: _runId,
+
   onBuilt,
 }: {
   items: CuratedItem[];
@@ -58,7 +60,9 @@ export default function ClosetStage({
    * The run in flight, if there is one. Absent means nothing is happening and
    * no progress is drawn.
    */
-  running?: { stage: RunStage; sub?: { done: number; total: number } | null };
+  running?: { stage: RunStage; sub?: { done: number; total: number } | null; again?: boolean };
+  /** The run that built these, so a reaction can be credited to the search that found the piece. */
+  runId?: string | null;
   /** Fires when the build animation reaches its final frame. */
   onBuilt?: () => void;
 }) {
@@ -167,6 +171,9 @@ export default function ClosetStage({
           attrs: item.attrs,
           source: item.source,
           price: item.price,
+          // Which search found it. This is what turns "people clicked olive
+          // things" into "the waxed-jacket query produces kept pieces".
+          query: item.matchedQuery,
         })),
       }),
     }).catch(() => {});
@@ -261,6 +268,7 @@ export default function ClosetStage({
           attrs: item.attrs,
           source: item.source,
           price: item.price,
+          query: item.matchedQuery,
         }),
       });
       if (!res.ok) {
@@ -384,6 +392,7 @@ export default function ClosetStage({
           <RunProgress
             stage={running.stage}
             sub={running.sub}
+            again={running.again}
             compact={phase === "filled"}
           />
         </div>

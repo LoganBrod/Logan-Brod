@@ -121,6 +121,14 @@ export const CurationSchema = z.object({
 });
 
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
+
+/** The second search: replacement queries only, no profile - it already has one. */
+export const RequerySchema = z.object({
+  searchQueries: z
+    .array(SearchQuerySchema)
+    .describe("Up to six replacement searches that fix why the first pass came back thin."),
+});
+export type Requery = z.infer<typeof RequerySchema>;
 export type StyleProfile = z.infer<typeof StyleProfileSchema>;
 export type Pick = z.infer<typeof PickSchema>;
 export type Curation = z.infer<typeof CurationSchema>;

@@ -9,6 +9,9 @@ import type { ProductListing, SourceReport } from "@/lib/sources/types";
 import { REFERENCE_EDGE, encodePhotos, type EncodedPhoto } from "@/lib/image";
 import { MAX_PHOTOS, describeRejections, selectPhotos } from "@/lib/photos";
 import { PICKS_PER_BATCH, appendPicks, planBatches, rankAndCut } from "@/lib/batching";
+import { MIN_GOOD_PICKS } from "@/lib/requeryConst";
+import type { SearchQuery } from "@/lib/schemas";
+import type { RunSummary } from "@/lib/yield";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
 import type { Preferences } from "@/lib/preferences";
 import type { RunStage } from "@/lib/progress";
@@ -77,6 +80,10 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const [min, setMin] = useState(50);
   const [max, setMax] = useState(250);
   const [stage, setStage] = useState<Stage>("idle");
+  /** Set while the second search runs, so the progress copy can say so. */
+  const [again, setAgain] = useState(false);
+  /** One id per run, minted here and sent with every request the run makes. */
+  const runIdRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Results and identity are separate: a run always produces results, but only
   // gets a code if saving was available.
@@ -335,7 +342,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         try {
           const curated = await postJson<{ items: CuratedItem[]; notes: string }>(
             "/api/style/curate",
-            { profile, candidates: batch, limit: PICKS_PER_BATCH, uploads: reference, intent }
+            { profile, candidates: batch, limit: PICKS_PER_BATCH, uploads: reference, intent, runId: runIdRef.current }
           );
           if (curated.notes) notes.push(curated.notes);
 
@@ -360,6 +367,20 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
     setProgress(null);
     return { items, notes, failed, errors };
+  }
+
+  /** The run's per-query outcome, assembled as the run goes and saved with the closet. */
+  const runSummaryRef = useRef<RunSummary | null>(null);
+
+  /** One marketplace search for a set of queries, tagged with this run's id. */
+  async function shopFor(queries: SearchQuery[]) {
+    const params = new URLSearchParams({ min: String(min), max: String(max) });
+    for (const query of queries) params.append("q", query.query);
+    if (runIdRef.current) params.set("runId", runIdRef.current);
+    const res = await fetch(`/api/style/shop?${params.toString()}`);
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(json?.error ?? "Shopping search failed.");
+    return json as { listings: ProductListing[]; reports?: SourceReport[] };
   }
 
   /**
@@ -428,6 +449,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     resumable.current = null;
     setResults(null);
     setCode(null);
+    setAgain(false);
+    runIdRef.current = newRunId();
 
     // Clear the form out of frame, then let the wardrobe build over where it was.
     const reduced = prefersReducedMotion();
@@ -456,11 +479,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       );
 
       setStage("shopping");
-      const params = new URLSearchParams({ min: String(min), max: String(max) });
-      for (const query of profile.searchQueries) params.append("q", query.query);
-      const shopRes = await fetch(`/api/style/shop?${params.toString()}`);
-      const shopped = await shopRes.json().catch(() => null);
-      if (!shopRes.ok) throw new Error(shopped?.error ?? "Shopping search failed.");
+      const shopped = await shopFor(profile.searchQueries);
       const candidates: ProductListing[] = shopped.listings;
       setReports(shopped.reports ?? []);
 
@@ -477,7 +496,58 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       }
       resumable.current = { profile, batches, items: [], notes: [], reference };
 
-      const outcome = await curateBatches(profile, batches, [], [], reference);
+      let outcome = await curateBatches(profile, batches, [], [], reference);
+
+      // The second search. When the first pass judged everything and kept
+      // fewer than half a closet, the searches were the problem, not the
+      // judge - so the run asks for replacement queries that fix why, searches
+      // once more, judges only what it hasn't already seen, and merges. Once.
+      // Anything that goes wrong here costs only the second pass: the first
+      // pass's pieces are already on the rail and stay there.
+      let requeried = false;
+      let addedByRequery = 0;
+      if (outcome.items.length < MIN_GOOD_PICKS && !outcome.failed.length) {
+        try {
+          requeried = true;
+          setAgain(true);
+          setStage("shopping");
+          const tried = summarise(profile.searchQueries, candidates, batches, outcome.items);
+          const { searchQueries } = await postJson<{ searchQueries: SearchQuery[] }>(
+            "/api/style/requery",
+            { profile, tried, min, max, notes: outcome.notes.join(" ") }
+          );
+          if (searchQueries.length) {
+            const second = await shopFor(searchQueries);
+            const already = new Set(candidates.map((c) => c.id));
+            const fresh = (second.listings as ProductListing[]).filter((c) => !already.has(c.id));
+            const more = planBatches(fresh, { maxBatches: 3 });
+            if (more.length) {
+              setStage("curating");
+              const before = outcome.items.length;
+              outcome = await curateBatches(profile, more, outcome.items, outcome.notes, reference);
+              addedByRequery = outcome.items.length - before;
+              // Recorded against the second pass's queries, for the report.
+              summariseInto(runSummaryRef, searchQueries, fresh, more, outcome.items.slice(before));
+            }
+          }
+        } catch {
+          // The second search is a bonus. A failure here is not a failed run.
+        } finally {
+          setAgain(false);
+        }
+      }
+      runSummaryRef.current = {
+        ...(runSummaryRef.current ?? { queries: [] }),
+        runId: runIdRef.current ?? "",
+        at: new Date().toISOString(),
+        picks: outcome.items.length,
+        requeried,
+        addedByRequery,
+        queries: [
+          ...summarise(profile.searchQueries, candidates, batches, outcome.items),
+          ...(runSummaryRef.current?.queries ?? []),
+        ],
+      };
 
       if (!outcome.items.length) {
         // Only worth retrying if something actually broke. Batches that came
@@ -502,6 +572,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         profile,
         items: rankAndCut(outcome.items),
         notes: outcome.notes.join(" "),
+        run: runSummaryRef.current ?? undefined,
       };
       revealWhenBuilt(contents);
 
@@ -880,7 +951,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         <ClosetStage
           items={results?.items ?? []}
           phase={phase as StagePhase}
-          running={busy ? { stage, sub: progress } : undefined}
+          runId={runIdRef.current}
+          running={busy ? { stage, sub: progress, again } : undefined}
           onBuilt={onBuilt}
         />
       )}
@@ -1026,4 +1098,46 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       )}
     </div>
   );
+}
+
+/** A run id: random, URL-safe, and only ever compared by shape on the server. */
+function newRunId(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * What each query produced, as this run saw it: listings found, how many of
+ * those the judge was shown, how many reached the rail.
+ */
+function summarise(
+  queries: SearchQuery[],
+  candidates: ProductListing[],
+  batches: ProductListing[][],
+  picks: CuratedItem[]
+): RunSummary["queries"] {
+  const viewed = new Set(batches.flat().map((c) => c.id));
+  return queries.map((q) => ({
+    query: q.query,
+    slot: q.category,
+    found: candidates.filter((c) => c.matchedQuery === q.query).length,
+    viewed: candidates.filter((c) => c.matchedQuery === q.query && viewed.has(c.id)).length,
+    picked: picks.filter((p) => p.matchedQuery === q.query).length,
+  }));
+}
+
+/** Append a second pass's per-query outcome to the run summary. */
+function summariseInto(
+  ref: { current: RunSummary | null },
+  queries: SearchQuery[],
+  candidates: ProductListing[],
+  batches: ProductListing[][],
+  picks: CuratedItem[]
+): void {
+  const rows = summarise(queries, candidates, batches, picks);
+  ref.current = {
+    ...(ref.current ?? { runId: "", at: "", picks: 0, requeried: true, addedByRequery: 0, queries: [] }),
+    queries: [...(ref.current?.queries ?? []), ...rows],
+  };
 }

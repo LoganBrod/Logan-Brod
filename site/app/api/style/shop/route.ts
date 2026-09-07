@@ -5,6 +5,7 @@ import { readSizes } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { readSeen, siftSeen } from "@/lib/seen";
+import { isValidRunId, recordFound } from "@/lib/yield";
 
 export const dynamic = "force-dynamic";
 // Ten queries fanned across two sources, plus a possible taxonomy lookup on a
@@ -64,6 +65,18 @@ export async function GET(req: Request) {
     // back is about to be dropped for stating a size that can't fit.
     const perQueryLimit = hasSizes(sizes) ? 50 : 30;
     const result = await shop(queries.slice(0, MAX_QUERIES), { min, max }, { perQueryLimit });
+
+    // Measured before sizes and the seen-set thin it: "found" is what the
+    // marketplaces produced for these words, which is the property of the
+    // query. What survives the filters is a property of the person.
+    if (isValidRunId(searchParams.get("runId"))) {
+      const counts = new Map<string, number>();
+      for (const q of queries.slice(0, MAX_QUERIES)) counts.set(q, 0);
+      for (const item of result.listings) {
+        if (item.matchedQuery && counts.has(item.matchedQuery)) counts.set(item.matchedQuery, counts.get(item.matchedQuery)! + 1);
+      }
+      void recordFound([...counts].map(([query, found]) => ({ query, found })));
+    }
 
     const sized = hasSizes(sizes)
       ? result.listings.filter((item) => !conflictsWithSizes(item.title, sizes))

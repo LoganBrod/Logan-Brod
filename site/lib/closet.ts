@@ -23,6 +23,12 @@ export interface ClosetContents {
   profile: StyleProfile;
   items: CuratedItem[];
   notes?: string;
+  /**
+   * How the run that built this went, query by query. Client-reported and
+   * only ever read by the admin report, so it is stored as given after a
+   * shape check rather than trusted for anything a person sees.
+   */
+  run?: import("./yield").RunSummary;
 }
 
 /** Contents that made it into Redis, and therefore have an identity. */
