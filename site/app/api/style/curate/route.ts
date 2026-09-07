@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidRunId, recordJudged } from "@/lib/yield";
 import { curate } from "@/lib/curate";
 import type { Intent } from "@/lib/analyze";
 import { PICKS_PER_BATCH } from "@/lib/batching";
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     limit?: unknown;
     uploads?: unknown;
     intent?: unknown;
+    runId?: unknown;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -113,6 +115,10 @@ export async function POST(req: Request) {
       intent,
       prefs
     );
+    // What this batch saw and what it kept, credited to the query that found
+    // each piece. Fire-and-forget: measurement never delays the rail.
+    if (isValidRunId(body.runId)) void recordJudged(candidates, curation.items);
+
     return NextResponse.json(
       { items: curation.items, notes: curation.notes },
       { headers: { "Cache-Control": "no-store" } }

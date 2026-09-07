@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidRunId, recordRun, type RunSummary } from "@/lib/yield";
 import {
   CLOSET_COOKIE,
   CLOSET_TTL_SECONDS,
@@ -53,6 +54,33 @@ function parseDraft(body: unknown): ClosetDraft | { error: string } {
     profile: profile.data,
     items: Array.isArray(raw.items) ? (raw.items as ClosetDraft["items"]) : [],
     notes: typeof raw.notes === "string" ? raw.notes : undefined,
+    run: parseRun(raw.run),
+  };
+}
+
+/** The per-query outcome the client saw. Bounded, because it becomes a stored record. */
+function parseRun(raw: unknown): RunSummary | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  if (!isValidRunId(r.runId)) return undefined;
+  const n = (v: unknown) => Math.max(0, Math.round(Number(v)) || 0);
+  const queries = (Array.isArray(r.queries) ? r.queries : [])
+    .filter((q): q is Record<string, unknown> => Boolean(q) && typeof q === "object" && typeof q.query === "string")
+    .slice(0, 20)
+    .map((q) => ({
+      query: (q.query as string).slice(0, 120),
+      slot: typeof q.slot === "string" ? q.slot.slice(0, 20) : undefined,
+      found: n(q.found),
+      viewed: n(q.viewed),
+      picked: n(q.picked),
+    }));
+  return {
+    runId: r.runId,
+    at: new Date().toISOString(),
+    picks: n(r.picks),
+    requeried: r.requeried === true,
+    addedByRequery: n(r.addedByRequery),
+    queries,
   };
 }
 
@@ -124,6 +152,10 @@ export async function POST(req: Request) {
     const closet = requestedCode
       ? await updateCloset(requestedCode, draft)
       : await createCloset(draft);
+
+    // The run's per-query outcome, kept where the report can read it. Fire
+    // and forget: a save must never wait on analytics.
+    if (draft.run) void recordRun(draft.run);
 
     if (!closet) {
       return NextResponse.json(

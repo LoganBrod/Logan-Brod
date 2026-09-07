@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordSignal, type YieldSignal } from "@/lib/yield";
 import { redisConfigured } from "@/lib/redis";
 import {
   SIGNALS,
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
     source?: unknown;
     price?: unknown;
     attrs?: unknown;
+    query?: unknown;
     events?: unknown;
     sizes?: unknown;
     preferences?: unknown;
@@ -154,6 +156,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "events must be a non-empty array." }, { status: 400 });
       }
       await recordEvents(id, events);
+      // Credited to the search that found each piece, so a query's record
+      // runs all the way from "found" to "kept". Read off the raw entries
+      // rather than threaded through the parser, because the parser's job is
+      // the person's taste and this is about the search.
+      const raw = Array.isArray(body.events) ? (body.events as Array<{ query?: unknown; signal?: unknown }>) : [];
+      void Promise.all(
+        raw
+          .filter((e) => typeof e?.query === "string" && typeof e?.signal === "string")
+          .map((e) => recordSignal(e.query as string, e.signal as YieldSignal))
+      );
       return respond({ ok: true, recorded: events.length });
     }
 
@@ -175,6 +187,7 @@ export async function POST(req: Request) {
 
     await recordVote(id, { title, verdict, at: new Date().toISOString(), source, price });
     if (attrs) await recordEvents(id, [{ title, signal: verdict, attrs, source, price }]);
+    if (typeof body.query === "string") void recordSignal(body.query, verdict);
 
     return respond({ ok: true });
   } catch (err) {

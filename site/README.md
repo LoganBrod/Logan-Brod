@@ -110,6 +110,27 @@ Each of these cost us a round of "why can't I see the changes".
 what it does, how sign-in and saved closets work. It moved here unchanged when the
 two apps merged.
 
+## Measuring recommendations
+
+Every search query a run writes is followed from the marketplace to a person's
+reaction: how many listings it found, how many the judge saw, how many reached
+the rail, how many were scrolled to, opened, clicked through, or voted on.
+Aggregated across everyone, because the question is about the searches - a
+query either produces kept pieces or it doesn't. `lib/yield.ts` holds it.
+
+```bash
+SITE_ORIGIN=https://www.levozlabs.com ADMIN_SECRET=… node scripts/query-report.mjs
+```
+
+prints the table, proven searches first. `ADMIN_SECRET` falls back to
+`CRON_SECRET`; unset means the report is closed.
+
+**The second search.** When a run judges everything and keeps fewer than six
+pieces, it asks for replacement queries that fix *why* - given what each
+search produced and what the judge said about the pool - searches once more,
+judges only what it hasn't seen, and merges. Once. A failure there costs only
+the second pass; the first pass's pieces are already hanging.
+
 ## Security
 
 What is enforced, and where, so a change to any of it is a visible change.

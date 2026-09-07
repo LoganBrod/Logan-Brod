@@ -39,8 +39,15 @@ export default function RunProgress({
   stage,
   sub,
   compact = false,
+  again = false,
 }: {
   stage: RunStage;
+  /**
+   * The second pass. The first search came back thin and the run is trying
+   * again with better words - which is worth saying, because a bar that goes
+   * back to "searching" after it said "picking" looks like a bug otherwise.
+   */
+  again?: boolean;
   /** Finished batches, when the stage has a real count. */
   sub?: { done: number; total: number } | null;
   /**
@@ -132,7 +139,11 @@ export default function RunProgress({
     <div ref={rootRef} className="w-full max-w-xl scroll-mt-24">
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-sm tracking-wide text-room-ink">
-          {STAGE_COPY[stage]}
+          {again && stage === "shopping"
+            ? "Searching again with better terms"
+            : again && stage === "curating"
+              ? "Judging the second search"
+              : STAGE_COPY[stage]}
           <span className="text-room-muted">{counted}</span>
         </p>
         {/* Tabular figures so the timer doesn't jitter the layout each second. */}
