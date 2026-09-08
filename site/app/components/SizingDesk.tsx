@@ -9,7 +9,10 @@ interface FitAdvice {
   recommendation: string;
   runs: "small" | "true" | "large" | "unknown";
   confidence: "high" | "medium" | "low";
-  reasoning: string;
+  /** One line on how the brand runs. Absent on records answered before this shape existed. */
+  verdict?: string;
+  /** The single measurement the answer turns on. Any field may be empty when no source gave one. */
+  comparison?: { measure: string; theirs: string; yours: string };
   cautions: string[];
   sources: string[];
 }
@@ -301,13 +304,16 @@ export default function SizingDesk() {
             {state.history.map((record) => (
               <li key={`${record.brand}-${record.category}`} className="panel px-6 py-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold tracking-[-0.01em] text-xl text-room-ink">
-                      {record.brand} <span className="text-room-faint">·</span> {record.category}
+                  <div className="min-w-0">
+                    <p className="text-[13px] text-room-faint">
+                      {record.brand} <span aria-hidden>·</span> {record.category}
                     </p>
-                    <p className="mt-1 text-sm text-room-muted">
-                      Buy <strong className="text-room-ink">{record.advice.recommendation}</strong> ·{" "}
-                      {RUNS_COPY[record.advice.runs]} · {CONFIDENCE_COPY[record.advice.confidence]}
+                    {/* The line somebody actually repeats to themselves in a
+                        shop. Records answered before this field existed simply
+                        fall back to the enum, which says the same thing in
+                        fewer words. */}
+                    <p className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-room-ink">
+                      {record.advice.verdict || `${record.brand} ${RUNS_COPY[record.advice.runs].toLowerCase()}`}
                     </p>
                   </div>
                   <button
@@ -320,12 +326,48 @@ export default function SizingDesk() {
                   </button>
                 </div>
 
-                <p className="mt-3 text-sm leading-relaxed text-room-muted">{record.advice.reasoning}</p>
+                {/* Two numbers, side by side, which is the whole argument. Shown
+                    only when a chart actually gave one - an empty row here would
+                    be worse than no row, because it looks like a measurement
+                    that came back blank rather than one nobody published. */}
+                {record.advice.comparison?.theirs && (
+                  <dl className="mt-4 flex flex-wrap gap-x-10 gap-y-2 border-t border-room-line pt-4">
+                    <div>
+                      <dt className="text-[12px] text-room-faint">
+                        Their {record.advice.recommendation}
+                        {record.advice.comparison.measure ? ` ${record.advice.comparison.measure}` : ""}
+                      </dt>
+                      <dd className="font-mono text-[15px] tabular-nums text-room-ink">
+                        {record.advice.comparison.theirs}
+                      </dd>
+                    </div>
+                    {record.advice.comparison.yours && (
+                      <div>
+                        <dt className="text-[12px] text-room-faint">Yours</dt>
+                        <dd className="font-mono text-[15px] tabular-nums text-room-ink">
+                          {record.advice.comparison.yours}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
 
+                {/* The answer, at the size of the answer. */}
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-room-line pt-5">
+                  <span className="display text-[2.5rem] leading-none text-accent">
+                    {record.advice.recommendation}
+                  </span>
+                  <span className="text-[15px] text-room-ink">is the size to buy</span>
+                  <span className="text-[12px] text-room-faint">
+                    {CONFIDENCE_COPY[record.advice.confidence]}
+                  </span>
+                </div>
+
+                {/* Two at most, and the schema asks for no more. */}
                 {record.advice.cautions.length > 0 && (
-                  <ul className="mt-3 space-y-1">
-                    {record.advice.cautions.map((caution) => (
-                      <li key={caution} className="text-xs text-room-muted">
+                  <ul className="mt-4 space-y-1">
+                    {record.advice.cautions.slice(0, 2).map((caution) => (
+                      <li key={caution} className="text-[12px] leading-relaxed text-room-muted">
                         - {caution}
                       </li>
                     ))}
@@ -333,7 +375,7 @@ export default function SizingDesk() {
                 )}
 
                 {record.advice.sources.length > 0 && (
-                  <p className="mt-3 text-xs text-room-faint">
+                  <p className="mt-3 text-[11px] text-room-faint">
                     Read: {record.advice.sources.join(" · ")}
                   </p>
                 )}
