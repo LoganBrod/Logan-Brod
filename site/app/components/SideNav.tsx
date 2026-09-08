@@ -76,6 +76,16 @@ export default function SideNav() {
     };
   }, [open]);
 
+  /*
+   * The marketing page has a header of its own - the mark, the sections, a way
+   * in - so the floating button would be a second way to the same four links,
+   * sitting on top of the wordmark it duplicates. Every other page still gets
+   * it: they carry no header, and this is how you leave them.
+   *
+   * After every hook, so the order of hooks is the same on every route.
+   */
+  if (pathname === "/") return null;
+
   return (
     <>
       <button

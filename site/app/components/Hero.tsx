@@ -17,7 +17,7 @@ export default function Hero() {
   return (
     <section
       aria-label="Clozet"
-      className="relative flex min-h-[72svh] w-full flex-col items-center justify-center px-6 pb-16 pt-28 text-center sm:pt-32"
+      className="relative flex min-h-[64svh] w-full flex-col items-center justify-center px-6 pb-20 pt-20 text-center sm:pt-28"
     >
       <h1 className="display max-w-[22ch] text-room-ink [font-size:clamp(2.6rem,7vw,5.6rem)] [text-wrap:balance]">
         {hero.line}
