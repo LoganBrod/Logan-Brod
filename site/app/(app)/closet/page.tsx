@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import ClosetTabs from "@/app/components/ClosetTabs";
-import Reveal from "@/app/components/Reveal";
+import HowItWorks from "@/app/components/HowItWorks";
 import Sources from "@/app/components/Sources";
-import { beats } from "@/lib/copy";
 import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
 
@@ -41,31 +40,11 @@ export default async function Home() {
 
       <StyleRunner initialCloset={closet} />
 
-      {/* Below the form: what it is about to do, for anyone who arrived here
+      {/* Below the form: what to actually do, for anyone who arrived here
           without reading the homepage. Kept under the tool rather than above
           it - somebody returning to build their fourth clozet should not have
           to scroll past an explanation to reach the upload. */}
-      <section aria-label="What happens next" className="mt-24 border-t border-room-line pt-16">
-        <ol className="grid gap-10 sm:grid-cols-2">
-          {beats.map((beat, index) => (
-            <li key={beat.kicker}>
-              <Reveal delay={index * 0.05}>
-                <div className="flex items-baseline gap-3">
-                  <span className="font-mono text-[12px] tabular-nums text-accent">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-room-ink">
-                    {beat.heading}
-                  </h2>
-                </div>
-                <p className="mt-2 pl-8 text-[13.5px] leading-relaxed text-room-muted">
-                  {beat.body}
-                </p>
-              </Reveal>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <HowItWorks />
 
       <div className="mt-8">
         <Sources />
