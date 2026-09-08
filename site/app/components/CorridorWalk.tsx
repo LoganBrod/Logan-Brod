@@ -346,13 +346,13 @@ export default function CorridorWalk() {
             data-intro
             className={`absolute inset-0 items-center justify-center ${staticMode ? "hidden" : "flex"}`}
           >
-            <h1
+            <h2
               className={`px-10 text-center display text-footage-ink [font-size:clamp(2.4rem,5vw,4.8rem)] leading-[1.08] ${
                 isTodo(heroLine) ? "opacity-40" : ""
               }`}
             >
               {heroLine}
-            </h1>
+            </h2>
           </div>
 
           {/* Desktop: the stops, driven by the pinned timeline. */}
@@ -428,9 +428,9 @@ export default function CorridorWalk() {
 
       {/* Reduced motion, no JavaScript: the hero line and stops as a plain flow. */}
       <div data-flow className={staticMode ? "relative" : "hidden"}>
-        <h1 className={`mx-auto max-w-xl px-6 pt-10 text-center display text-4xl leading-tight text-footage-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
+        <h2 className={`mx-auto max-w-xl px-6 pt-10 text-center display text-4xl leading-tight text-footage-ink ${isTodo(heroLine) ? "opacity-40" : ""}`}>
           {heroLine}
-        </h1>
+        </h2>
         {stops.map((stop, i) => (
           <section key={i} className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-16 text-center">
             <div className="flex items-start justify-center gap-6">

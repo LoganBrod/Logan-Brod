@@ -1,13 +1,15 @@
 import CorridorWalk from "../components/CorridorWalk";
+import Hero from "../components/Hero";
 import SiteSection from "../components/SiteSection";
 import Story from "../components/Story";
 
-// One page: the corridor walk inside a pinned rounded frame — hero line, two
-// resting stops where the clothes present the writing — then the page releases
-// into the website below. Must read completely with CSS disabled.
+// One page: the front door - one line, one button - then the corridor walk
+// inside a pinned rounded frame with its two resting stops, then the page
+// releases into the website below. Must read completely with CSS disabled.
 export default function Page() {
   return (
     <main>
+      <Hero />
       <CorridorWalk />
       <Story />
       <SiteSection />

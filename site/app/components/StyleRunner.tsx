@@ -183,7 +183,13 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             setMin(json.preferences.budget.min);
             setMax(json.preferences.budget.max);
           }
-          if (json.configured && !json.preferences?.onboarded && (json.count ?? 0) === 0) {
+          // The front door's button lands here with ?quiz=1, which opens the
+          // quiz whether or not this browser has been through it - a person
+          // who pressed "get started" asked for it. The parameter is dropped
+          // from the address afterwards so a refresh doesn't ask again.
+          const asked = new URLSearchParams(window.location.search).get("quiz") === "1";
+          if (asked) window.history.replaceState(null, "", window.location.pathname);
+          if (json.configured && (asked || (!json.preferences?.onboarded && (json.count ?? 0) === 0))) {
             setQuiz(true);
           }
         }
