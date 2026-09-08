@@ -419,6 +419,62 @@
   animation: sweep 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/*
+ * The two rails of clothes under the hero.
+ *
+ * The track holds the same row twice, so translating exactly half its width
+ * lands on an identical frame - the loop has no seam and needs no JavaScript
+ * to reset it. `will-change` keeps the whole strip on its own layer; without
+ * it a phone repaints twelve photographs every frame for as long as the page
+ * is open.
+ */
+@keyframes rail {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.rail-track {
+  animation-name: rail;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.rail-track-reverse {
+  animation-direction: reverse;
+}
+
+/* A slow bob, per card, on its own clock. */
+@keyframes rail-bob {
+  0%, 100% { transform: translateY(-5px) rotate(-0.7deg); }
+  50%      { transform: translateY(5px) rotate(0.7deg); }
+}
+
+.rail-card {
+  animation-name: rail-bob;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/*
+ * Both edges dissolve rather than cutting off at the viewport, so the clothes
+ * read as passing through rather than as a strip that ends. Prefixed as well:
+ * Safari still wants -webkit-mask-image and silently shows a hard edge without.
+ */
+.rail-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+
+/*
+ * Stated preference for less movement stops both. The row parks at the start
+ * of the first copy, which is a complete row of clothes - nothing is lost but
+ * the motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .rail-track, .rail-card { animation: none !important; }
+}
+
 @keyframes rack-out {
   0%   { translate: 0 0;     rotate: 0deg;    opacity: 1; }
   25%  {                     rotate: 8deg;               }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import CalibrationSwipe from "./CalibrationSwipe";
-import { sources } from "@/lib/copy";
+import { brandChoices } from "@/lib/copy";
 import { MAX_BRANDS_CHARS, type Preferences } from "@/lib/preferences";
 
 /**
@@ -57,7 +57,7 @@ export default function OnboardingQuiz({
     (initial.brands ?? "")
       .split(",")
       .map((s) => s.trim())
-      .filter((s) => (sources.labels as readonly string[]).includes(s))
+      .filter((s) => (brandChoices as readonly string[]).includes(s))
   );
   const [extra, setExtra] = useState("");
   const [band, setBand] = useState<number | null>(null);
@@ -193,7 +193,7 @@ export default function OnboardingQuiz({
               Tap a few. It won&rsquo;t only look for these - it uses them to understand the register.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {sources.labels.map((label) => {
+              {brandChoices.map((label) => {
                 const on = picked.includes(label);
                 const full = picked.length >= MAX_LABELS && !on;
                 return (

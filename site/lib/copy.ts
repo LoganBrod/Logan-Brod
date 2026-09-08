@@ -92,15 +92,14 @@ export const siteSection = {
  */
 export const legal = `${company} - ${new Date().getFullYear()}`;
 
-// ---------------------------------------------------------------- the story
-
 /**
- * The scroll below the corridor.
+ * The four steps of a run, numbered, under the form on the Clozet page.
  *
- * The walk shows what the thing feels like and says almost nothing about what
- * it does. These are the four beats that answer that, in the order someone
- * actually wants them: what happens to my photos, what comes back, where it
- * came from, what it costs me to try.
+ * These used to be four full-screen sections on the homepage as well. They
+ * are not there any more - a visitor deciding whether to try this will not
+ * read four screens of prose first - but they earn their place inside the
+ * product, where the person reading has already decided and wants to know
+ * what the button is about to do.
  */
 export const beats = [
   {
@@ -111,10 +110,7 @@ export const beats = [
   {
     kicker: "It judges on the picture",
     heading: "The way you would in a shop.",
-    // The two figures are set above this on the page, computed from the
-    // constants that govern a run - so the prose deliberately doesn't repeat
-    // them. It carries the reasoning; the numbers carry the count.
-    body: "Every candidate is looked at as a photograph, not as a title, and only what clears the bar comes back - fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes “vintage Barbour style” gets no credit for the word; a jacket that actually looks right does.",
+    body: "Every candidate is looked at as a photograph, not as a title, and only what clears the bar comes back - fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes \u201cvintage Barbour style\u201d gets no credit for the word; a jacket that actually looks right does.",
   },
   {
     kicker: "It knows what fits",
@@ -129,11 +125,68 @@ export const beats = [
 ] as const;
 
 /**
+ * Labels to tap in the onboarding quiz.
+ *
+ * These were printed on the homepage under a caption saying there is no
+ * arrangement with any of them; both are gone from there. Here they are a
+ * question rather than a claim - "which of these do you like" implies nothing
+ * about who stocks what - and they are the fastest way for somebody to say
+ * what register they dress at without typing.
+ */
+export const brandChoices = [
+  "Barbour", "Carhartt", "Levi's", "Patagonia", "Ralph Lauren", "Uniqlo",
+  "J.Crew", "Filson", "Clarks", "Dr. Martens", "Arc'teryx", "Stone Island",
+  "APC", "Norse Projects", "Sunspel", "Red Wing",
+] as const;
+
+// ----------------------------------------------------------------- the proof
+
+/**
+ * The middle of the page: one claim, three figures, three cards.
+ *
+ * This replaced four full-screen beats and two macro photographs of cloth.
+ * The beats were true and well written and nobody read them: a visitor who
+ * has not yet used the thing will not scroll through twelve hundred words to
+ * find out whether they want to, and the photographs were texture rather than
+ * evidence. What survives is the part a reader can check - the arithmetic of
+ * a run - and three short answers to the three questions that follow it.
+ */
+export const proof = {
+  heading: "Picking the clothes for you.",
+  body: "You never type a keyword. It reads the photographs you upload, writes its own searches, and judges everything they turn up as a picture rather than as a title.",
+  /** Labels under the figures. The figures themselves come from the constants that govern a run. */
+  stats: {
+    seen: "looked at, every run",
+    picks: "come back, at most",
+    keywords: "keywords you type",
+  },
+  cards: [
+    {
+      title: "Finding the size for you",
+      body: "Five measurements, given once, and anything you could not wear is gone before you see it. Unsure of a maker, ask: the tools read that brand's own size chart and what buyers report, then name the size to buy.",
+    },
+    {
+      title: "Always learning",
+      body: "Every yes and no is remembered. The next run is weighed against what you kept and what you turned down, so it reads you better each time you use it.",
+    },
+    {
+      title: "We complete the fit",
+      body: "Once the clothes are right it finds the accessories and the cologne that sit at the same register, and the whole fit is kept together under one code.",
+    },
+  ],
+} as const;
+
+/**
  * Where the pieces actually come from.
  *
  * Worth being exact about: these are the two marketplaces searched, not
  * partners, sponsors or a stockroom. Nothing here is an affiliate arrangement
  * and no brand has any relationship with this company.
+ *
+ * Sixteen label names used to be listed here under a caption explaining that
+ * there was no arrangement with any of them. Both are gone together, which is
+ * the only honest way to remove either: the caption existed because the list
+ * did, and a homepage that names no brands implies no relationship to deny.
  */
 export const sources = {
   heading: "Everything here is somebody else's listing.",
@@ -141,16 +194,5 @@ export const sources = {
   markets: [
     { name: "eBay", note: "Live secondhand listings, searched through their own API." },
     { name: "Google Shopping", note: "Mainstream retail, for the pieces that are still made." },
-  ],
-  /**
-   * Labels that come up often in menswear searches. Deliberately introduced as
-   * what turns up rather than what is stocked — there is no arrangement with
-   * any of them, and implying one would be a lie a reader can't check.
-   */
-  labelsCaption: "Labels that tend to turn up. No arrangement with any of them - they're simply what secondhand menswear is made of.",
-  labels: [
-    "Barbour", "Carhartt", "Levi's", "Patagonia", "Ralph Lauren", "Uniqlo",
-    "J.Crew", "Filson", "Clarks", "Dr. Martens", "Arc'teryx", "Stone Island",
-    "APC", "Norse Projects", "Sunspel", "Red Wing",
   ],
 } as const;
