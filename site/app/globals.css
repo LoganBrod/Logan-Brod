@@ -53,12 +53,21 @@
     --accent: 79 160 122;
 
     /*
-     * How much of the ambience shows through. Light mode takes more of it:
-     * the same wash that reads clearly against off-black is almost invisible
-     * against an off-white ground, and a panel with nothing behind it is not
-     * glass, it is a faded rectangle.
+     * Glass, as four numbers.
+     *
+     * A panel is a white veil over whatever is behind it, a sheen falling from
+     * one corner, a rim of light along its edge, and a shadow underneath. The
+     * page behind is unchanged - the glass has to carry itself, which is what
+     * these are for.
+     *
+     * Light mode needs far more of every one of them: a white veil at 5% is
+     * plainly visible against off-black and completely invisible against
+     * off-white, so the same effect wants an order of magnitude more.
      */
-    --wash: 1;
+    --glass-veil: 0.05;
+    --glass-sheen: 0.10;
+    --glass-rim: 0.14;
+    --glass-shadow: 0.55;
     --accent-soft: 124 191 157;
 
     /* The grain, tuned per mode. On dark it has to be brighter to register at
@@ -111,7 +120,10 @@
       --accent: 31 107 71;
       --accent-soft: 47 125 88;
 
-      --wash: 1.6;
+      --glass-veil: 0.62;
+      --glass-sheen: 0.7;
+      --glass-rim: 0.95;
+      --glass-shadow: 0.16;
 
       --grain: 0.02;
       --grain-ink: 0, 0, 0;
@@ -278,39 +290,47 @@
   /*
    * Glass, not a card.
    *
-   * The surface is translucent and blurs what is behind it, which is the
-   * ambience mounted in the app layout - three wide washes of colour, so a
-   * panel at the top of a page is tinted differently from one at the bottom
-   * and its edges read as edges rather than as a change of grey.
+   * The page behind a panel is a flat colour, so there is nothing for a blur
+   * to refract and the glass has to be made out of the panel itself. Four
+   * things do it, and the second and third are the ones that matter: a white
+   * veil so the surface is lighter than its ground; a sheen falling from the
+   * top-left, because a flat pane of glass catches the light unevenly and a
+   * uniformly tinted rectangle reads as paper; a rim along the edge, brightest
+   * where the light comes from, which is what tells you the surface has a
+   * thickness; and a soft shadow, which is what lifts it off the page.
    *
-   * The inset highlight along the top is the whole trick: real glass catches
-   * light on the edge nearest it, and without that line a translucent
-   * rectangle just looks faded. It is white in both themes because the light
-   * is white in both.
+   * The blur is kept but modest. Over a flat ground it does nothing visible,
+   * and it is not free - so it is here for the places where something does
+   * pass behind a panel rather than as the effect itself.
    *
-   * Both prefixes on backdrop-filter: Safari still wants -webkit-, and without
-   * it the panel is simply a flat translucent box there, which is the failure
-   * that looks like a bug rather than a choice.
+   * Both prefixes on backdrop-filter: Safari still wants -webkit-.
    */
   .panel {
-    @apply rounded-sm border border-room-line;
-    background: rgb(var(--room-panel) / 0.55);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    backdrop-filter: blur(20px) saturate(150%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      0 12px 32px -26px rgb(0 0 0 / 0.6);
+    @apply rounded-sm;
+    background:
+      linear-gradient(
+        142deg,
+        rgb(255 255 255 / var(--glass-sheen)) 0%,
+        rgb(255 255 255 / calc(var(--glass-sheen) * 0.25)) 38%,
+        transparent 68%
+      ),
+      rgb(255 255 255 / var(--glass-veil));
+    border: 1px solid rgb(255 255 255 / var(--glass-rim));
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    backdrop-filter: blur(14px) saturate(130%);
+    box-shadow: 0 18px 40px -28px rgb(0 0 0 / var(--glass-shadow));
   }
 
   /*
    * Anyone who has asked for less transparency gets the solid panel back.
-   * The setting exists because moving, tinted, half-visible surfaces are
-   * genuinely hard to read for some people, and a decorative blur is not worth
-   * a page they cannot use.
+   * The setting exists because half-visible surfaces are genuinely hard to
+   * read for some people, and a decorative sheen is not worth a page they
+   * cannot use.
    */
   @media (prefers-reduced-transparency: reduce) {
     .panel {
-      @apply bg-room-panel;
+      @apply border-room-line bg-room-panel;
+      background-image: none;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
       box-shadow: none;
