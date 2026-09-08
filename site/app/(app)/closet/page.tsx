@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import ClosetTabs from "@/app/components/ClosetTabs";
 import Reveal from "@/app/components/Reveal";
-import { Sources } from "@/app/components/Story";
+import Sources from "@/app/components/Sources";
 import { beats } from "@/lib/copy";
 import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
