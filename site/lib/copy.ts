@@ -66,12 +66,16 @@ export const stops: Stop[] = [
   },
 ];
 
-/** The section below the corridor — the actual website. */
+/**
+ * The close, below the walk.
+ *
+ * It used to open with "We build one thing, properly." and a paragraph about
+ * the company. Both are gone: by the time anybody reaches the foot of this
+ * page they have been told what the thing does four times over, and a fifth
+ * telling standing between them and the button is a page arguing with itself.
+ * What is left is the mark, the way in, and the way to reach us.
+ */
 export const siteSection = {
-  // Written from what the product demonstrably does, and nothing else: no
-  // claims about the company, its size, or its history that aren't true today.
-  heading: "We build one thing, properly.",
-  body: "LevoZ Labs makes Clozet - a menswear tool that reads the clothes you already like and finds real secondhand pieces that belong with them. Not a feed, not a marketplace, and not a search box with a bigger budget behind it. It looks at photographs the way a person would, tells you plainly when something isn't worth buying, and keeps looking after you've closed the tab.",
   /** The product, now served from this same app. */
   appUrl: "/closet",
   appLabel: "Open Clozet",

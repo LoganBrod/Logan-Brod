@@ -42,6 +42,21 @@ export default function AccountBar() {
 
   useEffect(load, [load]);
 
+  /*
+   * The header's "Log in" lands here with ?signin=1 and expects the form to be
+   * open. Without this it arrived on a page whose way in is a button somewhere
+   * in the corner, which is the thing a person just clicked to avoid.
+   *
+   * The parameter is dropped from the address afterwards, so a refresh or a
+   * shared link is the plain page. Harmless when accounts are switched off:
+   * the component renders nothing at all in that case.
+   */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("signin") !== "1") return;
+    window.history.replaceState(null, "", window.location.pathname);
+    setMode("signin");
+  }, []);
+
   async function post(body: unknown, method = "POST") {
     setError(null);
     setBusy(true);

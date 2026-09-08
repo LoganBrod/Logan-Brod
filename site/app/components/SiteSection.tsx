@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { company, isTodo, legal, siteSection } from "@/lib/copy";
+import { Wordmark } from "./Logo";
 
 /**
  * Where the product's own pages are, listed at the foot of the walk.
@@ -14,43 +15,26 @@ const SECTIONS = [
 ] as const;
 
 /**
- * After the cinema, the actual website: who this is, and the door to the real
- * Closet app. Plain document flow — nothing here is scroll-driven.
+ * The close: the mark, the door into the product, and the way to reach us.
+ *
+ * This section used to carry a heading and a paragraph about the company,
+ * both of which have gone. Anyone standing here has read four beats about
+ * what the thing does and then watched the corridor; a fifth explanation
+ * between them and the button was the page talking past its own ending.
+ *
+ * Plain document flow - nothing here is scroll-driven.
  */
 export default function SiteSection() {
   const appReady = !isTodo(siteSection.appUrl);
 
   return (
     <section aria-label={company} className="relative w-full border-t border-room-line bg-room-panel">
-      <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-6 py-28 text-center">
-        {/* The last of the small-caps stamps. It was 11px at 0.22em tracking,
-            which on this section made three different all-caps devices — this,
-            both buttons, and seven nav links — stack up in one screen. */}
-        <span className="eyebrow">{company}</span>
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-10 px-6 py-24 text-center">
+        <Link href="/" aria-label="LevoZ Labs, home">
+          <Wordmark size="lg" />
+        </Link>
 
-        <h2
-          className={`display text-room-ink [font-size:clamp(2rem,4vw,3.5rem)] leading-tight ${
-            isTodo(siteSection.heading) ? "opacity-40" : ""
-          }`}
-        >
-          {siteSection.heading}
-        </h2>
-
-        {/*
-          The one thing on this section that isn't centred, because it is the
-          one thing long enough for centring to hurt. Six lines of centred prose
-          have a ragged left edge, and a reader's eye has to hunt for the start
-          of every line. The block stays centred; the words inside it don't.
-        */}
-        <p
-          className={`max-w-[58ch] text-left text-[15px] leading-relaxed text-room-muted ${
-            isTodo(siteSection.body) ? "opacity-40" : ""
-          }`}
-        >
-          {siteSection.body}
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4">
           <a
             href={appReady ? siteSection.appUrl : "#"}
             aria-disabled={!appReady}
@@ -72,9 +56,8 @@ export default function SiteSection() {
         </div>
       </div>
 
-      {/* The way in, spelled out. The menu button is always there, but someone
-          who has just scrolled the whole corridor shouldn't have to go looking
-          for a hamburger to find out what else exists. */}
+      {/* The way in, spelled out. The header carries these too from the width
+          where they fit; below that this row is the only list of them. */}
       <nav
         aria-label="Sections"
         className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-8 border-t border-room-line/70 px-6 py-8 sm:gap-y-3 sm:py-10"
