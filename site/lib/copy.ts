@@ -13,7 +13,24 @@ export function isTodo(value: string): boolean {
 
 export const company = "LevoZ Labs";
 
-/** The only text on the opening screen. Under 8 words. */
+/**
+ * The opening screen: one line, one sentence under it, one button.
+ *
+ * The corridor walk used to open the page. It is a good film and a poor
+ * front door - a visitor had to scroll through it to learn what the thing
+ * was for. The front door now says it in one line and hands over a button;
+ * the walk follows for whoever wants the feeling of it.
+ */
+export const hero = {
+  line: "Create a personalized clozet in minutes.",
+  sub: "Show it a few pieces you like. It finds real secondhand ones that belong with them, in your size and your budget.",
+  cta: "Get started",
+  /** Straight to the two-minute quiz, whether or not this browser has seen it. */
+  href: "/closet?quiz=1",
+  note: "Free to try. No account needed.",
+};
+
+/** The line on the first frame of the walk, now the second act. Under 8 words. */
 export const heroLine = "You already know what you like.";
 
 /**
