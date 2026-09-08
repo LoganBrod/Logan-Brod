@@ -21,6 +21,7 @@ import MatchPrompt from "./MatchPrompt";
 import OnboardingQuiz from "./OnboardingQuiz";
 import PreferenceSummary from "./PreferenceSummary";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
+import { STANDING_SCANS } from "@/lib/features";
 import ShareCard from "./ShareCard";
 
 // Derived from the progress module rather than restated, so a new stage can't
@@ -590,10 +591,16 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       if (outcome.failed.length) setError(partiallyJudged(outcome.failed.length));
 
       await save(contents);
-      setWatchState("offer");
-      // Asked once per finished run, unless they've turned it off. Checked here
-      // rather than at render so muting mid-session takes effect immediately.
-      if (!scanPromptMuted()) setPrompting(true);
+      // Both doors to a standing scan, and both shut while the list that would
+      // manage one is off the Tools page: starting something a person cannot
+      // then stop is worse than not offering it.
+      if (STANDING_SCANS) {
+        setWatchState("offer");
+        // Asked once per finished run, unless they've turned it off. Checked
+        // here rather than at render so muting mid-session takes effect
+        // immediately.
+        if (!scanPromptMuted()) setPrompting(true);
+      }
       setStage("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
