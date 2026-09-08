@@ -93,38 +93,6 @@ export const siteSection = {
 export const legal = `${company} - ${new Date().getFullYear()}`;
 
 /**
- * The four steps of a run, numbered, under the form on the Clozet page.
- *
- * These used to be four full-screen sections on the homepage as well. They
- * are not there any more - a visitor deciding whether to try this will not
- * read four screens of prose first - but they earn their place inside the
- * product, where the person reading has already decided and wants to know
- * what the button is about to do.
- */
-export const beats = [
-  {
-    kicker: "It reads the photographs",
-    heading: "Not the words under them.",
-    body: "Upload a few pieces you like and it looks at them - palette, silhouette, cloth, how formal it all is - then writes its own searches. You never type a keyword, because the thing you like is rarely a thing you can name.",
-  },
-  {
-    kicker: "It judges on the picture",
-    heading: "The way you would in a shop.",
-    body: "Every candidate is looked at as a photograph, not as a title, and only what clears the bar comes back - fewer when the search was thin, because a rail padded out to a number is a rail you scroll past. A seller who writes \u201cvintage Barbour style\u201d gets no credit for the word; a jacket that actually looks right does.",
-  },
-  {
-    kicker: "It knows what fits",
-    heading: "So you stop opening the wrong size.",
-    body: "Give it five measurements once and anything you couldn't wear is gone before you see it. Name a brand you're unsure of and it reads that maker's own size chart and what buyers report, then tells you which size to buy.",
-  },
-  {
-    kicker: "It keeps looking",
-    heading: "Secondhand moves faster than you do.",
-    body: "The right jacket in your size at your price is listed on a Tuesday and gone by Wednesday. A standing scan runs your searches twice a day and emails you only what clears the same bar - most days it finds nothing and says nothing.",
-  },
-] as const;
-
-/**
  * Labels to tap in the onboarding quiz.
  *
  * These were printed on the homepage under a caption saying there is no
