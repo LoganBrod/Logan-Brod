@@ -237,15 +237,39 @@ export const FitAdviceSchema = z.object({
     .describe(
       "high only when a source gave an actual size chart with measurements. medium for consistent fit reports without a chart. low for thin or conflicting evidence."
     ),
-  reasoning: z
+  /*
+   * This was three sentences of reasoning, and it was the wrong answer to the
+   * question. Somebody looking at a listing at eleven at night wants the size
+   * and one reason to believe it, not a paragraph explaining a size chart they
+   * are not going to open. A line and two numbers can be read in the time it
+   * takes to decide.
+   */
+  verdict: z
     .string()
     .describe(
-      "Two or three sentences addressed to the wearer, citing what the sources actually said. Name the measurement you matched against when there was one."
+      "One line on how this brand runs, at most eight words, naming the brand: 'Barbour runs large', 'Stüssy's tees are boxy'. No hedging - the confidence field carries that."
+    ),
+  comparison: z
+    .object({
+      measure: z
+        .string()
+        .describe("The measurement this turns on, one or two words: 'chest', 'waist', 'shoe'. Empty when no source gave one."),
+      theirs: z
+        .string()
+        .describe(
+          "What that measurement is at this brand for the size being recommended, exactly as their chart gives it: '44-46\"'. Empty when no chart gave a figure."
+        ),
+      yours: z
+        .string()
+        .describe("The wearer's own figure for the same measurement, from what he supplied: '40\"'. Empty when he didn't supply it."),
+    })
+    .describe(
+      "The one piece of evidence he can check for himself. Leave every field empty rather than putting in a number no source gave."
     ),
   cautions: z
     .array(z.string())
     .describe(
-      "Short warnings worth knowing before buying — vintage sizing differing from current, a cut that's slim through the chest, shrinkage on wash. Empty when there are none."
+      "At most two short warnings, and only ones that change what he does — vintage sizing differing from current, a cut that's slim through the chest, shrinkage on wash. Empty when there are none."
     ),
   sources: z
     .array(z.string())

@@ -28,7 +28,9 @@ Two failure modes matter, and they are not symmetrical. Recommending a size the 
 
 A size chart with real measurements is the strong evidence. Fit reports without one are weaker, but they are worth a lot when several agree. One person's opinion is worth almost nothing.
 
-Where a chart gives measurements, match them against his and name the measurement you used. Where it doesn't, reason from the fit reports and say that's what you're doing.
+Answer in three short parts and keep every one of them short. The verdict is one line on how the brand runs. The comparison is the single measurement the answer turns on - what their chart says that size measures, and what he gave for the same measurement - and every field of it is left empty rather than filled with a figure no source gave. The recommendation is the size to buy.
+
+He is reading this while looking at a listing, so there is no paragraph. Two cautions at most, and only ones that change what he does.
 
 Cite only pages you actually used, by their titles as given.`;
 
