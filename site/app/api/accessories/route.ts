@@ -139,8 +139,11 @@ export async function POST(req: Request) {
     // watch all normalise to the one `accessories` slot, so the clozet's rule
     // of four-per-slot would cap this entire page at four pieces and read as a
     // search that found nothing.
+    // The colour cap is off for the same reason: belts and bags are mostly
+    // brown and black, and two of each is not a page.
     const items = rankAndCut(
       curated.flatMap((result) => result?.items ?? []),
+      FINAL_PICKS,
       FINAL_PICKS,
       FINAL_PICKS
     );

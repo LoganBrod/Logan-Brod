@@ -13,7 +13,7 @@
 // slicing and doesn't re-deal.
 
 import type { ProductListing } from "./sources/types";
-import { capBySlot, normaliseSlot, pickCapFor, type Slot } from "./categories";
+import { MAX_PICKS_PER_LOOK, capByLook, capBySlot, colourFamily, normaliseSlot, pickCapFor, type Slot } from "./categories";
 
 /**
  * How many candidates one curation call looks at.
@@ -136,7 +136,7 @@ export function appendPicks<T extends { id: string }>(current: T[], arriving: T[
  * nothing is taken back down mid-run; the rail settles best-first once, at the
  * end, when there is finally something to rank against.
  */
-export function rankAndCut<T extends { score: number; price: number; attrs?: { category?: string } }>(
+export function rankAndCut<T extends { score: number; price: number; attrs?: { category?: string; colour?: string } }>(
   items: T[],
   limit: number = FINAL_PICKS,
   /**
@@ -150,7 +150,15 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
    * accessory kinds is handled where it can be: by the planner asking for two
    * or three searches of each kind.
    */
-  perSlot: number | ((slot: Slot) => number) = pickCapFor
+  perSlot: number | ((slot: Slot) => number) = pickCapFor,
+  /**
+   * How many may share a slot *and* a colour.
+   *
+   * The accessories page passes a high number: everything there is one slot,
+   * and belts are mostly brown and black, so the closet's rule would trim a
+   * page of them to four.
+   */
+  perLook: number = MAX_PICKS_PER_LOOK
 ): T[] {
   const ranked = [...items].sort((a, b) => b.score - a.score || a.price - b.price);
 
@@ -158,5 +166,15 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
   // removes the *weakest* fifth pair of boots rather than whichever happened to
   // come back first — and because `capBySlot` preserves order, what survives is
   // still strictly best-first.
-  return capBySlot(ranked, (item) => normaliseSlot(item.attrs?.category), perSlot).slice(0, limit);
+  const spread = capBySlot(ranked, (item) => normaliseSlot(item.attrs?.category), perSlot);
+
+  // Then by look. A slot cap alone lets four tan jackets through, because one
+  // of them gets called a shirt; this is keyed on what a person sees instead.
+  const varied = capByLook(
+    spread,
+    (item) => `${normaliseSlot(item.attrs?.category)}|${colourFamily(item.attrs?.colour)}`,
+    perLook
+  );
+
+  return varied.slice(0, limit);
 }

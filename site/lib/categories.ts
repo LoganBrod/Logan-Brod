@@ -169,3 +169,86 @@ export const MAX_QUERIES_PER_SLOT = 3;
  * but one slot's listings simply photographed better.
  */
 export const MAX_PICKS_PER_SLOT = 4;
+
+/**
+ * Colour families, because a closet of four tan jackets passes every other rule.
+ *
+ * The slot cap stops a run coming back as six pairs of boots. It does nothing
+ * about six pieces that are the same piece: a chore jacket, a field jacket, a
+ * work jacket and a barn coat, all in tan, are four different words for one
+ * photograph, and the judge picks all four because all four are genuinely the
+ * best match for the profile. Six batches judged in parallel, each asked for
+ * its best two, will independently arrive at the same answer.
+ *
+ * So sameness gets its own cap, and it is keyed on what a person actually
+ * sees: the slot and the colour. Not the model's `category`, which is where
+ * the four jackets escape - one of them gets called a shirt and the cap never
+ * fires.
+ *
+ * The families collapse the words people and sellers use for one colour.
+ * "Tan", "khaki", "camel" and "sand" are the same jacket in a photograph, and
+ * treating them as three distinct colours is exactly how the closet in the
+ * screenshot got made.
+ */
+const COLOUR_FAMILIES: [string, string[]][] = [
+  ["black", ["black", "jet", "onyx"]],
+  ["white", ["white", "ivory", "off-white", "optic"]],
+  ["grey", ["grey", "gray", "charcoal", "slate", "silver", "heather", "graphite", "pewter"]],
+  ["navy", ["navy", "indigo", "denim", "midnight"]],
+  ["blue", ["blue", "cobalt", "sky", "teal", "petrol", "azure"]],
+  ["green", ["green", "olive", "army", "sage", "moss", "forest", "loden", "fatigue"]],
+  ["tan", ["tan", "khaki", "beige", "sand", "camel", "stone", "oatmeal", "cream", "ecru", "taupe", "biscuit", "putty", "bone", "natural"]],
+  ["brown", ["brown", "chocolate", "coffee", "walnut", "chestnut", "tobacco", "cognac", "espresso"]],
+  ["rust", ["rust", "terracotta", "orange", "ochre", "amber", "copper", "brick"]],
+  ["red", ["red", "burgundy", "maroon", "oxblood", "wine", "claret", "crimson"]],
+  ["purple", ["purple", "plum", "aubergine", "lilac", "violet"]],
+  ["pink", ["pink", "rose", "blush", "salmon"]],
+  ["yellow", ["yellow", "mustard", "gold", "lemon"]],
+];
+
+/**
+ * The family a colour belongs to, or "unknown".
+ *
+ * "unknown" is deliberately not capped alongside the rest: a run where the
+ * model failed to name any colour would otherwise be trimmed to two pieces.
+ */
+export function colourFamily(raw: string | undefined | null): string {
+  const text = (raw ?? "").toLowerCase().trim();
+  if (!text) return "unknown";
+  for (const [family, words] of COLOUR_FAMILIES) {
+    if (words.some((word) => text.includes(word))) return family;
+  }
+  return "unknown";
+}
+
+/**
+ * How many pieces of one slot may also share a colour.
+ *
+ * Two. Three tan jackets is a colour somebody likes; four is the search
+ * having found one thing and the judge having agreed with itself six times.
+ */
+export const MAX_PICKS_PER_LOOK = 2;
+
+/** Keep at most `cap` items sharing a slot and a colour family, in the order given. */
+export function capByLook<T>(
+  items: T[],
+  lookOf: (item: T) => string,
+  cap: number = MAX_PICKS_PER_LOOK
+): T[] {
+  const counts = new Map<string, number>();
+  const kept: T[] = [];
+  for (const item of items) {
+    const look = lookOf(item);
+    // Unnamed colours are not a look, and capping them would trim a run where
+    // the model simply did not say.
+    if (look.endsWith("|unknown")) {
+      kept.push(item);
+      continue;
+    }
+    const seen = counts.get(look) ?? 0;
+    if (seen >= cap) continue;
+    counts.set(look, seen + 1);
+    kept.push(item);
+  }
+  return kept;
+}
