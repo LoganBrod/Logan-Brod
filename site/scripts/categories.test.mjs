@@ -173,8 +173,8 @@ test("the cap removes the weakest of a slot, not the last to arrive", () => {
   const closet = rankAndCut(items);
   assert.deepEqual(
     closet.map((c) => c.score),
-    [99, 98, 97, 96, 70],
-    "the 60 shirt should have gone, and the 70 trouser stayed"
+    [99, 98, 97, 70],
+    "three shirts, weakest first out, and the 70 trouser stayed"
   );
 });
 
