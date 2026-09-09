@@ -136,7 +136,9 @@ export function appendPicks<T extends { id: string }>(current: T[], arriving: T[
  * nothing is taken back down mid-run; the rail settles best-first once, at the
  * end, when there is finally something to rank against.
  */
-export function rankAndCut<T extends { score: number; price: number; attrs?: { category?: string; colour?: string } }>(
+export function rankAndCut<
+  T extends { score: number; price: number; title?: string; imageUrl?: string; attrs?: { category?: string; colour?: string } },
+>(
   items: T[],
   limit: number = FINAL_PICKS,
   /**
@@ -160,7 +162,9 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
    */
   perLook: number = MAX_PICKS_PER_LOOK
 ): T[] {
-  const ranked = [...items].sort((a, b) => b.score - a.score || a.price - b.price);
+  const ranked = dropDuplicates(
+    [...items].sort((a, b) => b.score - a.score || a.price - b.price)
+  );
 
   // Ranked first, then thinned by slot. Doing it in this order means the cap
   // removes the *weakest* fifth pair of boots rather than whichever happened to
@@ -177,4 +181,57 @@ export function rankAndCut<T extends { score: number; price: number; attrs?: { c
   );
 
   return varied.slice(0, limit);
+}
+
+/**
+ * The same thing, listed twice.
+ *
+ * The pool is deduplicated on title *and* rounded price, which catches one
+ * listing found by two searches and misses the case people actually notice:
+ * two sellers with the same jacket at ninety and ninety-five pounds. Those are
+ * two different listings by every measure the code had, and one rail with both
+ * on it looks broken in a way no amount of good judging can excuse.
+ *
+ * So the finished closet gets a stricter rule than the pool does. Nothing is
+ * lost by it - the second copy is the same garment at a worse price or a worse
+ * score, and the pool keeps both in case the better one is filtered out
+ * upstream.
+ *
+ * Two keys, because sellers are inconsistent in different ways. An identical
+ * photograph is the same product or the same seller relisting; nobody
+ * photographs two garments into one URL. And a title stripped of the noise
+ * that varies between listings of one product - the gender word, the word
+ * "size", the size itself, the condition shorthand - catches the rest.
+ */
+const TITLE_NOISE =
+  /\b(mens?|womens?|unisex|size|sz|nwt|nwot|euc|vgc|bnwt|new|used|rare|htf|free\s+shipping|fast\s+ship)\b/g;
+const SIZE_TOKEN = /\b(xxs|xs|s|m|l|xl|xxl|xxxl|[2-5]xl|\d{2}(r|s|l)?|\d{2}x\d{2})\b/g;
+
+export function sameThingKey(item: { title?: string }): string {
+  return (item.title ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(TITLE_NOISE, " ")
+    .replace(SIZE_TOKEN, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
+/** Keep the first of anything that is the same photograph or the same garment. */
+export function dropDuplicates<T extends { title?: string; imageUrl?: string }>(items: T[]): T[] {
+  const photos = new Set<string>();
+  const things = new Set<string>();
+  const kept: T[] = [];
+  for (const item of items) {
+    const photo = item.imageUrl ?? "";
+    if (photo && photos.has(photo)) continue;
+    const thing = sameThingKey(item);
+    // A title that normalises to nothing is not evidence of anything.
+    if (thing && things.has(thing)) continue;
+    if (photo) photos.add(photo);
+    if (thing) things.add(thing);
+    kept.push(item);
+  }
+  return kept;
 }

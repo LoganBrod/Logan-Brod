@@ -163,12 +163,17 @@ export const MAX_QUERIES_PER_SLOT = 3;
 /**
  * How many pieces in a finished closet may fill the same slot.
  *
- * Four of twelve, so a full closet always spans at least three slots. This is
- * the backstop rather than the fix — by the time picks are being capped, the
- * money is already spent. It catches the case where the searches were varied
- * but one slot's listings simply photographed better.
+ * Three. It was four, which is a third of a full closet and reads as a
+ * wardrobe - but a thin search returns eight pieces, not twelve, and four of
+ * eight is half a page of jackets, which is what it looked like. Three of
+ * twelve spans four slots, three of eight spans three, and the number does
+ * not quietly mean something different depending on how the search went.
+ *
+ * This is the backstop rather than the fix — by the time picks are being
+ * capped, the money is already spent. It catches the case where the searches
+ * were varied but one slot's listings simply photographed better.
  */
-export const MAX_PICKS_PER_SLOT = 4;
+export const MAX_PICKS_PER_SLOT = 3;
 
 /**
  * Colour families, because a closet of four tan jackets passes every other rule.
