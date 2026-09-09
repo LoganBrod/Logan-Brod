@@ -29,9 +29,9 @@ export default function Sources() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <dl className="mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-[14px] border border-room-line bg-room-line sm:grid-cols-2">
+          <dl className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
             {sources.markets.map((market) => (
-              <div key={market.name} className="bg-room-panel px-6 py-6">
+              <div key={market.name} className="panel px-6 py-6">
                 <dt className="text-[16px] font-semibold tracking-[-0.015em] text-room-ink">
                   {market.name}
                 </dt>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo, JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { company } from "@/lib/copy";
@@ -49,6 +49,19 @@ const mono = JetBrains_Mono({
   variable: "--font-mono",
   display: "swap",
 });
+
+/*
+ * The browser chrome, matched to the page.
+ *
+ * There is one palette now, so this is a constant rather than a pair. Without
+ * it a phone set to dark paints its address bar and the area behind the home
+ * indicator in its own near-black, and the page appears to be floating in a
+ * frame belonging to something else.
+ */
+export const viewport: Viewport = {
+  themeColor: "#EDEEF4",
+  colorScheme: "light",
+};
 
 export const metadata: Metadata = {
   title: company,

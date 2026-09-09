@@ -122,9 +122,9 @@ export default function SizingWalkthrough({ filledCount }: { filledCount: number
 
   return (
     <div className="space-y-3">
-      <ol className="grid gap-px overflow-hidden rounded-sm border border-room-line bg-room-line sm:grid-cols-3">
+      <ol className="grid gap-4 sm:grid-cols-3">
         {STEPS.map((step, index) => (
-          <li key={step.title} className="flex flex-col gap-4 bg-room-panel px-5 py-5">
+          <li key={step.title} className="panel flex flex-col gap-4 px-5 py-5">
             <div className="flex items-start justify-between gap-2">
               <Art kind={step.art} />
               {index === 0 && filledCount > 0 && (
@@ -141,7 +141,7 @@ export default function SizingWalkthrough({ filledCount }: { filledCount: number
 
       {/* A disclosure rather than five permanent paragraphs: anyone who knows
           their sizes should not have to scroll past instructions to type them. */}
-      <div className="rounded-sm border border-room-line bg-room-panel">
+      <div className="panel">
         <button
           type="button"
           onClick={() => setShowing((v) => !v)}

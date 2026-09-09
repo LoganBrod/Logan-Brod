@@ -128,7 +128,7 @@ export default function HowItWorks() {
         {STEPS.map((step, index) => (
           <li key={step.title}>
             <Reveal delay={index * 0.06}>
-              <div className="aspect-[4/3] overflow-hidden rounded-[14px] border border-room-line bg-room-sunk">
+              <div className="panel aspect-[4/3] overflow-hidden">
                 {step.panel}
               </div>
               <div className="mt-4 flex items-baseline gap-3">

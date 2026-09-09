@@ -30,7 +30,7 @@ export default function Proof() {
   ];
 
   return (
-    <section aria-label="How it picks" className="w-full border-y border-room-line bg-room-panel">
+    <section aria-label="How it picks" className="w-full">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
         <Reveal>
           <div className="mx-auto max-w-[36ch] text-center">
@@ -72,7 +72,7 @@ export default function Proof() {
             {proof.cards.map((card) => (
               <li
                 key={card.title}
-                className="rounded-[14px] border border-room-line bg-room-bg px-6 py-7"
+                className="panel px-6 py-7"
               >
                 <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-room-ink">
                   {card.title}

@@ -1,22 +1,18 @@
 import ClosetTabs from "@/app/components/ClosetTabs";
-import JudgePanel from "@/app/components/JudgePanel";
-import ScanSettings from "@/app/components/ScanSettings";
 import SizingDesk from "@/app/components/SizingDesk";
-import Watches from "@/app/components/Watches";
 
 import PageHeader from "@/app/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The three things you want while you're actually out looking.
+ * Sizing: what you want while you're actually out looking.
  *
- * These were two pages and a footnote: measurements on /sizing, standing scans
- * on /scan, and "is this any good?" collapsed under the closet form where
- * nobody found it. Splitting them was a mistake of category — they aren't three
- * features, they're three moments of the same one. You're stood in front of
- * something, or scrolling a listing at eleven at night, and you want to know
- * whether it fits, whether it's worth it, and whether to keep looking.
+ * This page carried three sections. Two are off it for now - "is it any good?",
+ * which still sits under a finished clozet where the question actually comes
+ * up, and standing scans, which are off entirely (`lib/features.ts` says why).
+ * Neither is deleted: their components, API routes and tests are all still
+ * here, and each is a `<Section>` away from coming back.
  *
  * Building a clozet is the thing you do once. This is the page you come back to.
  *
@@ -33,12 +29,12 @@ export default function ToolsPage() {
 
       <PageHeader
         title={<>For when you&rsquo;re out looking.</>}
-        lede="A clozet is one search on one day. These are the three things you want every other day."
+        lede="Your measurements, and how a brand's sizes actually run. Used on every search a clozet makes."
       />
 
       {/* Anchored so the closet page and old bookmarks can point at a section
           rather than dropping someone at the top of a long page. */}
-      <div className="space-y-16">
+      <div>
         <Section
           id="fit"
           title="Will it fit?"
@@ -47,27 +43,6 @@ export default function ToolsPage() {
           <SizingDesk />
         </Section>
 
-        <Section
-          id="judge"
-          title="Is it any good?"
-          blurb="Paste a link to anything you've found. It reads the photograph and answers."
-        >
-          {/* The range is the app's default band rather than anything personal:
-              this panel can be used before a clozet has ever been built, so it
-              can't depend on one having been. */}
-          <JudgePanel range={{ min: 50, max: 250 }} defaultOpen />
-        </Section>
-
-        <Section
-          id="scans"
-          title="Keep looking."
-          blurb="Your searches, run twice a day. It emails you only when something clears the bar."
-        >
-          <div className="space-y-10">
-            <Watches />
-            <ScanSettings />
-          </div>
-        </Section>
       </div>
     </main>
   );
