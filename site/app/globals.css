@@ -4,134 +4,69 @@
 
 @layer base {
   /*
-   * The room, after dark.
+   * One room, lit.
    *
-   * The old ground was #F6F5F2 with a brass accent, and measured against the
-   * "premium consumer" palette that gets reached for by default -- warm cream,
-   * brass, espresso -- it was one unit away from it in RGB. Nothing about the
-   * brand chose that colour; it is simply where you land when nobody decides.
+   * There were two modes and now there is one. Dark was a real decision and a
+   * good one for the corridor footage, but the product is a page of forms and
+   * photographs of clothes, and a photograph of a garment is lit the way a
+   * shop is lit: white, even, from above. Two palettes also meant every
+   * surface had to be argued twice, which is how a "softer" panel ends up
+   * looking soft in one mode and grey in the other.
    *
-   * Off-black is a decision, and it earns its keep here specifically. Every
-   * clip on this site -- the corridor, the wardrobe -- was filmed against warm
-   * near-white. On a cream page they wash into the background, which is why
-   * they needed a feathered mask to sit at all. Against a dark room they read
-   * as what they are: a light being switched on, a wardrobe opening. The
-   * footage stops fighting the page and starts being lit by it.
+   * `color-scheme: light` is declared rather than assumed, so a phone set to
+   * dark still gets light form controls, light scrollbars and a light
+   * keyboard-accessory bar instead of a page that is half ours.
    *
-   * Every value is checked rather than eyeballed. Body text clears WCAG AA in
-   * both modes, the accent clears AA against ground and panel, and the accent
-   * sits at 51% saturation, under the 80% ceiling.
+   * The ground is a cool near-white and cards are pure white above it. That
+   * gap is small on purpose: the shadow does the separating, not the fill.
    */
   :root {
-    color-scheme: dark;
+    color-scheme: light;
 
-    --room-bg: 13 13 15;
-    --room-panel: 22 22 25;
-    --room-sunk: 8 8 10;
-    --room-line: 42 42 46;
-    --room-ink: 241 241 239;
-    --room-muted: 161 161 164;
-    --room-faint: 127 127 130;
+    --room-bg: 237 238 244;
+    --room-panel: 255 255 255;
+    --room-sunk: 244 245 250;
+    --room-line: 227 229 238;
+    --room-ink: 17 17 19;
+    --room-muted: 76 76 80;
+    --room-faint: 105 105 109;
 
-    /* One accent, everywhere, for the whole app. Desaturated emerald: high
-       contrast on both grounds, and nowhere near the brass it replaces. */
-    /* What sits *on* an ink-filled surface: a filled button, a selected chip.
-       This is the page ground in both modes, which is what makes it correct in
-       both. `text-white` was hardcoded across the app while ink was always
-       near-black; the moment ink went light, every filled button became white
-       on white. */
-    --room-on-ink: 13 13 15;
+    /* What sits *on* an ink-filled surface: a filled button, a selected chip. */
+    --room-on-ink: 255 255 255;
 
-    /* Text laid over the footage. Fixed in both modes, because the footage is
-       fixed in both modes: it is warm near-white whatever the page around it
-       is. This used to be `room-ink` and that worked only by accident, while
-       the page happened to be cream too. The moment the ground went dark, the
-       hero headline became near-white on near-white. */
+    /* Text laid over the footage, which is warm near-white and has no modes. */
     --on-footage: 20 19 17;
     --on-footage-muted: 74 71 66;
 
-    --accent: 79 160 122;
+    /* One accent, everywhere. Desaturated emerald, dark enough to clear AA
+       against both the ground and a white card. */
+    --accent: 31 107 71;
+    --accent-soft: 47 125 88;
 
     /*
-     * Glass, as four numbers.
+     * How a surface leaves the page.
      *
-     * A panel is a white veil over whatever is behind it, a sheen falling from
-     * one corner, a rim of light along its edge, and a shadow underneath. The
-     * page behind is unchanged - the glass has to carry itself, which is what
-     * these are for.
-     *
-     * Light mode needs far more of every one of them: a white veil at 5% is
-     * plainly visible against off-black and completely invisible against
-     * off-white, so the same effect wants an order of magnitude more.
+     * Three shadows rather than one, because a single blur reads as a drop
+     * shadow and a stack reads as height: a tight dark line for the contact
+     * edge, a mid layer for the body of the shadow, and a wide soft one for
+     * the ambient occlusion further out. All of them are the ink colour with
+     * a blue cast rather than black - a neutral black shadow on a cool white
+     * ground looks like dirt.
      */
-    --glass-veil: 0.05;
-    --glass-sheen: 0.10;
-    --glass-rim: 0.14;
-    --glass-shadow: 0.55;
-    --accent-soft: 124 191 157;
+    --lift: 0 1px 2px rgb(24 27 42 / 0.05), 0 6px 14px -6px rgb(24 27 42 / 0.07),
+      0 22px 38px -22px rgb(24 27 42 / 0.13);
+    --lift-high: 0 1px 2px rgb(24 27 42 / 0.06), 0 10px 22px -8px rgb(24 27 42 / 0.10),
+      0 34px 54px -28px rgb(24 27 42 / 0.18);
+    /* A well rather than a surface: inputs are cut into the page, not raised
+       off it, which is the whole reason a person knows to type in one. */
+    --well: inset 0 1px 2px rgb(24 27 42 / 0.06), inset 0 0 0 1px rgb(24 27 42 / 0.04);
 
-    /* The grain, tuned per mode. On dark it has to be brighter to register at
-       all; the same 1.8% black that lifted a cream page is invisible here. */
-    /* Channels, not hex: Tailwind can only apply an opacity modifier
-       (`bg-room-ink/85`) to a colour it can compose, which means the variable
-       has to hold "r g b" and the config has to wrap it in
-       `rgb(var(--x) / <alpha-value>)`. Hex here silently breaks every /NN
-       utility in the app. */
-    /* `faint` is the quietest tier, but "quiet" still has a floor: it carries
-       11px hint text under every picker on the site, and 11px needs 4.5:1.
-       These are the darkest (on dark) and lightest (on light) neutrals that
-       clear AA against *both* the page ground and the raised panel, solved
-       rather than eyeballed. The old values sat at 3.45 and failed 89 times. */
-    --grain: 0.035;
-    --grain-ink: 255, 255, 255;
+    --grain: 0.015;
+    --grain-ink: 0, 0, 0;
 
-    /* Photographs, dimmed to the room they hang in.
-       The cloth stills were shot under bright warm light, like the footage. On
-       an off-black ground a full-brightness photograph is the brightest thing
-       on the page by a wide margin and pulls the eye off whatever it was meant
-       to illustrate. Dimming is the same move as turning a gallery's lights
-       down: nothing about the picture changes, it just stops shouting. */
-    --photo-dim: 0.74;
-  }
-
-  /*
-   * Light is a real mode, not an afterthought.
-   *
-   * A cool grey rather than another cream: the point of leaving #F6F5F2 was to
-   * leave that family, and a warm off-white light mode would walk straight back
-   * into it. The accent darkens here because the same emerald that clears AA on
-   * off-black does not clear it on a light ground.
-   */
-  @media (prefers-color-scheme: light) {
-    :root {
-      color-scheme: light;
-
-      --room-bg: 233 234 238;
-      --room-panel: 251 251 253;
-      --room-sunk: 222 223 228;
-      --room-line: 201 202 209;
-      --room-ink: 17 17 19;
-      --room-muted: 76 76 80;
-      --room-faint: 105 105 109;
-
-      --room-on-ink: 251 251 253;
-      /* Unchanged: see above. The footage does not have a light mode. */
-
-      --accent: 31 107 71;
-      --accent-soft: 47 125 88;
-
-      --glass-veil: 0.62;
-      --glass-sheen: 0.7;
-      --glass-rim: 0.95;
-      --glass-shadow: 0.16;
-
-      --grain: 0.02;
-      --grain-ink: 0, 0, 0;
-
-      /* Nothing to dim: on a light ground the photographs already sit at the
-         same brightness as the page. */
-      --photo-dim: 1;
-    }
+    /* Nothing to dim: on a light ground the photographs already sit at the
+       same brightness as the page. */
+    --photo-dim: 1;
   }
 
   html {
@@ -288,53 +223,22 @@
    * whitespace do the separating that a border was doing badly.
    */
   /*
-   * Glass, not a card.
+   * A surface, lifted.
    *
-   * The page behind a panel is a flat colour, so there is nothing for a blur
-   * to refract and the glass has to be made out of the panel itself. Four
-   * things do it, and the second and third are the ones that matter: a white
-   * veil so the surface is lighter than its ground; a sheen falling from the
-   * top-left, because a flat pane of glass catches the light unevenly and a
-   * uniformly tinted rectangle reads as paper; a rim along the edge, brightest
-   * where the light comes from, which is what tells you the surface has a
-   * thickness; and a soft shadow, which is what lifts it off the page.
+   * This was a hairline rectangle with a two-pixel radius: correct, legible,
+   * and hard. Every panel on the page was a box drawn with a pen, and a page
+   * of them reads as a form to be filled rather than a thing to be used.
    *
-   * The blur is kept but modest. Over a flat ground it does nothing visible,
-   * and it is not free - so it is here for the places where something does
-   * pass behind a panel rather than as the effect itself.
-   *
-   * Both prefixes on backdrop-filter: Safari still wants -webkit-.
+   * There is no border now. The shadow is the edge - a card that is a shade
+   * lighter than its ground and casts something underneath is read as being
+   * above the page, and once a surface has height it does not need an outline
+   * to say where it stops. The radius is large enough that the corner is a
+   * curve rather than a chamfer.
    */
   .panel {
-    @apply rounded-sm;
-    background:
-      linear-gradient(
-        142deg,
-        rgb(255 255 255 / var(--glass-sheen)) 0%,
-        rgb(255 255 255 / calc(var(--glass-sheen) * 0.25)) 38%,
-        transparent 68%
-      ),
-      rgb(255 255 255 / var(--glass-veil));
-    border: 1px solid rgb(255 255 255 / var(--glass-rim));
-    -webkit-backdrop-filter: blur(14px) saturate(130%);
-    backdrop-filter: blur(14px) saturate(130%);
-    box-shadow: 0 18px 40px -28px rgb(0 0 0 / var(--glass-shadow));
-  }
-
-  /*
-   * Anyone who has asked for less transparency gets the solid panel back.
-   * The setting exists because half-visible surfaces are genuinely hard to
-   * read for some people, and a decorative sheen is not worth a page they
-   * cannot use.
-   */
-  @media (prefers-reduced-transparency: reduce) {
-    .panel {
-      @apply border-room-line bg-room-panel;
-      background-image: none;
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-      box-shadow: none;
-    }
+    border-radius: 22px;
+    background: rgb(var(--room-panel));
+    box-shadow: var(--lift);
   }
 
   /*
@@ -402,15 +306,30 @@
    * target, a pointer needs none of it.
    */
   .btn {
-    @apply rounded-sm px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5;
+    @apply rounded-full px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5;
   }
 
+  /* Raised, and it presses. The shadow shrinking on :active is the whole of
+     the tactile feedback - a button that lifts off the page has to be able to
+     go back down into it. */
   .btn-primary {
     @apply btn bg-room-ink text-room-on-ink hover:bg-room-ink/85;
+    box-shadow: var(--lift);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    box-shadow: 0 1px 2px rgb(24 27 42 / 0.10);
+    transform: translateY(1px);
   }
 
   .btn-ghost {
-    @apply btn border border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink;
+    @apply btn bg-room-panel text-room-muted hover:text-room-ink;
+    box-shadow: var(--lift);
+  }
+
+  .btn-ghost:active:not(:disabled) {
+    box-shadow: 0 1px 2px rgb(24 27 42 / 0.10);
+    transform: translateY(1px);
   }
 
   /*
@@ -427,7 +346,8 @@
    * a surface to write on.
    */
   .field {
-    @apply rounded-sm border border-room-line border-b-room-ink/25 bg-room-panel px-3 py-2.5 text-base text-room-ink placeholder:text-room-faint focus:border-room-ink/50 focus:outline-none sm:py-2 sm:text-sm;
+    @apply rounded-[14px] border border-transparent bg-room-sunk px-3.5 py-2.5 text-base text-room-ink placeholder:text-room-faint focus:border-accent/40 focus:outline-none sm:py-2 sm:text-sm;
+    box-shadow: var(--well);
   }
 }
 

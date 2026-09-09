@@ -1,7 +1,6 @@
 // Does every piece of text on the site clear WCAG AA, in both modes?
 //
 //   node scripts/contrast-audit.mjs            # needs the site on :3311
-//   SCHEME=light node scripts/contrast-audit.mjs
 //
 // Written because a repaint is exactly the change a build cannot check. Moving
 // the palette from a light ground to a dark one turned every `bg-room-ink
@@ -37,7 +36,8 @@ try {
 const BASE = process.env.BASE ?? "http://127.0.0.1:3311";
 const EXE =
   process.env.CHROMIUM ?? "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell";
-const SCHEME = process.env.SCHEME === "light" ? "light" : "dark";
+// One palette now: the dark mode this used to switch between is gone.
+const SCHEME = "light";
 
 /*
  * Every page a visitor can actually reach.

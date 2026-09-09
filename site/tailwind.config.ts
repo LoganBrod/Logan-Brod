@@ -61,6 +61,18 @@ const config: Config = {
         hang: "0 10px 14px rgba(6, 6, 8, 0.45)",
         lift: "0 16px 22px rgba(6, 6, 8, 0.6)",
       },
+      /*
+       * The radius scale, softened.
+       *
+       * `sm` is 2px in Tailwind's own scale and it is used on nearly every
+       * surface in this app, which is why every one of them read as hard.
+       * Redefining it here softens all of them at once and keeps them
+       * identical to each other, which is the part that matters - a page of
+       * cards at four different radii is worse than a page of sharp ones.
+       */
+      borderRadius: {
+        sm: "14px",
+      },
       animation: {
         sway: "sway 4.5s ease-in-out infinite",
       },
