@@ -67,7 +67,13 @@ export async function search({
     tbs: `mr:1,price:1,ppr_min:${range.min},ppr_max:${range.max}`,
   });
 
-  const res = await fetch(`${ENDPOINT}?${params.toString()}`, { cache: "no-store" });
+  // Longer than eBay's: SerpAPI is scraping Google on our behalf and a slow
+  // answer is normal rather than a sign of trouble. Still bounded, for the
+  // same reason - the caller gathers these with allSettled.
+  const res = await fetch(`${ENDPOINT}?${params.toString()}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

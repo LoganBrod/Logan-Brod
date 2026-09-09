@@ -21,12 +21,33 @@ export function ebayConfigured(): boolean {
 
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
+/*
+ * One request in flight per scope.
+ *
+ * The cache is only consulted once a token exists. On a cold process the
+ * fifteen searches that build the calibration deck all miss it in the same
+ * millisecond and each asked eBay for its own token - fifteen OAuth round
+ * trips to get one string, and a good way to be throttled by the endpoint
+ * that gates every other call. Holding the promise means the second caller
+ * waits on the first caller's request instead of making another.
+ */
+const pending = new Map<string, Promise<string>>();
+
 export async function getAppToken(scope: string = BASE_SCOPE): Promise<string> {
   const cached = tokenCache.get(scope);
   if (cached && cached.expiresAt > Date.now() + 30_000) {
     return cached.token;
   }
 
+  const already = pending.get(scope);
+  if (already) return already;
+
+  const request = mintToken(scope).finally(() => pending.delete(scope));
+  pending.set(scope, request);
+  return request;
+}
+
+async function mintToken(scope: string): Promise<string> {
   const clientId = process.env.EBAY_CLIENT_ID;
   const clientSecret = process.env.EBAY_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -42,6 +63,9 @@ export async function getAppToken(scope: string = BASE_SCOPE): Promise<string> {
     },
     body: new URLSearchParams({ grant_type: "client_credentials", scope }),
     cache: "no-store",
+    // Every search waits behind this one call, so it gets the tightest
+    // deadline of the three.
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!res.ok) {

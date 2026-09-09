@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { readUser } from "@/lib/accounts";
 import { sendDigest } from "@/lib/mail";
 import { planFor } from "@/lib/plans";
+import { warmCalibrationPool } from "@/lib/calibrationPool";
 import { recordSwept, sweepWatch } from "@/lib/sweep";
 import { listWatchers, readWatches } from "@/lib/watches";
 import { tasteIdFor } from "@/lib/viewer";
@@ -100,8 +101,26 @@ export async function GET(req: Request) {
     }
   }
 
+  /*
+   * Leave the quiz's deck warm.
+   *
+   * It is the first screen a new visitor sees and it is not optional, so it
+   * is the worst place in the app to spend fifteen marketplace searches. The
+   * pool lasts a day and this runs twice a day, which means in practice
+   * nobody ever waits for one to be built.
+   *
+   * Awaited rather than left floating - this route has five minutes and a
+   * promise nobody is holding is a promise that may not survive the
+   * response - and never allowed to fail the sweep, which has already done
+   * the work it exists for.
+   */
+  const deck = await warmCalibrationPool().catch((err) => {
+    summary.errors.push(`calibration deck: ${err instanceof Error ? err.message : "failed"}`);
+    return 0;
+  });
+
   return NextResponse.json(
-    { ...summary, ms: Date.now() - started, rostered: roster.length },
+    { ...summary, deck, ms: Date.now() - started, rostered: roster.length },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

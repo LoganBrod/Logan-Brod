@@ -27,10 +27,10 @@ SRC = "public/garments-sm"
 # the one part of these photographs whose position is predictable, so a
 # protected band is enough without segmenting anything.
 VARIANTS = {
-    "garment-shirt": [("rust", 0.035), ("cobalt", 0.60)],
-    "garment-jacket": [("plum", 0.86), ("teal", 0.47)],
-    "garment-knit": [("amber", 0.09), ("moss", 0.28)],
-    "garment-pants": [("clay", 0.05), ("indigo", 0.68)],
+    "garment-shirt": [("rust", 0.035), ("cobalt", 0.60), ("sand", 0.12), ("forest", 0.36)],
+    "garment-jacket": [("plum", 0.86), ("teal", 0.47), ("navy", 0.63), ("ochre", 0.10)],
+    "garment-knit": [("amber", 0.09), ("moss", 0.28), ("rose", 0.95), ("slate", 0.57)],
+    "garment-pants": [("clay", 0.05), ("indigo", 0.68), ("olive", 0.20), ("burgundy", 0.92)],
 }
 
 # Trousers hang from a bar in full view; the others show only a hook.
