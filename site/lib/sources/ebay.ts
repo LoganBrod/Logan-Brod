@@ -64,6 +64,17 @@ export async function search({
       "Content-Type": "application/json",
     },
     cache: "no-store",
+    /*
+     * A deadline, because a search that never returns used to hold up
+     * everything waiting on it.
+     *
+     * Fifteen of these run at once to build the calibration deck and ten to
+     * build a clozet, and they are gathered with allSettled - so one slow
+     * query dropping out costs its own results and nothing else, while one
+     * slow query hanging costs the whole request. Nine seconds is far longer
+     * than a healthy response and far shorter than a person's patience.
+     */
+    signal: AbortSignal.timeout(9_000),
   });
 
   if (!res.ok) {

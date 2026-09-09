@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
-import { CALIBRATION_PROBES, CARDS, PER_PROBE, dealCards, type Probe } from "@/lib/calibration";
+import { CALIBRATION_PROBES, CARDS, dealCards, type Probe } from "@/lib/calibration";
+import { FALLBACK_DECK } from "@/lib/calibrationFallback";
+import { calibrationPool } from "@/lib/calibrationPool";
 import { readSeen, siftSeen } from "@/lib/seen";
-import { shop } from "@/lib/sources";
 import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
 import { readSizes } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 
 export const dynamic = "force-dynamic";
-// Fifteen searches, no model call at all.
+// Fifteen searches on a cold pool, a Redis read on a warm one, and no model
+// call either way.
 export const maxDuration = 60;
 
 /**
@@ -23,7 +25,9 @@ export const maxDuration = 60;
  * turn a taste question into a budget one.
  */
 export async function GET(req: Request) {
-  // Fifteen marketplace searches per call; shares the shop bucket.
+  // Shares the shop bucket: on a cold pool this is fifteen marketplace
+  // searches, and the limiter cannot know in advance that it will be a
+  // cache hit.
   const burst = await rateLimit("shop", clientIp(req), LIMITS.shop);
   if (!burst.allowed) {
     return NextResponse.json(
@@ -39,17 +43,14 @@ export async function GET(req: Request) {
       readSeen(tasteId),
     ]);
 
-    const found = await shop(
-      CALIBRATION_PROBES.map((probe) => probe.query),
-      { min: 20, max: 400 },
-      { perQueryLimit: PER_PROBE + 2 }
-    );
+    // Shared, and almost always cached: the probes and the band are the same
+    // for everybody, so the searching is done once for all of them and only
+    // what happens below here is personal. See lib/calibrationPool.ts.
+    const pool = await calibrationPool();
 
     // Sizes still apply — being asked to rate a jacket you could never wear is
     // a worse question than not being asked.
-    const sized = hasSizes(sizes)
-      ? found.listings.filter((item) => !conflictsWithSizes(item.title, sizes))
-      : found.listings;
+    const sized = hasSizes(sizes) ? pool.filter((item) => !conflictsWithSizes(item.title, sizes)) : pool;
 
     // And nothing already shown, so a second pass through this isn't the same
     // fifteen pieces.
@@ -67,8 +68,14 @@ export async function GET(req: Request) {
       register: byQuery.get(listing.matchedQuery ?? "")?.register ?? null,
     }));
 
+    // There is always a deck. This screen is the first thing a new visitor
+    // sees and it is not optional, so an empty pool - no marketplace key, a
+    // cold cache, a dead upstream - falls back to the app's own garments
+    // rather than to an apology. See lib/calibrationFallback.ts.
+    const cards = dealCards(tagged, CARDS);
+
     return NextResponse.json(
-      { cards: dealCards(tagged, CARDS) },
+      { cards: cards.length ? cards : dealCards(FALLBACK_DECK, CARDS) },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (err) {
