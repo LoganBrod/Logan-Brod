@@ -72,7 +72,7 @@ export async function search({
   // same reason - the caller gathers these with allSettled.
   const res = await fetch(`${ENDPOINT}?${params.toString()}`, {
     cache: "no-store",
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {

@@ -513,7 +513,16 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       // pass's pieces are already on the rail and stay there.
       let requeried = false;
       let addedByRequery = 0;
-      if (outcome.items.length < MIN_GOOD_PICKS && !outcome.failed.length) {
+      /*
+       * Counted after the caps, not before them.
+       *
+       * This asked whether the judge had *kept* six pieces, and what a person
+       * sees is what survives `rankAndCut` - the slot cap, the colour cap and
+       * the duplicate rule all remove, and none of them backfill. So a run
+       * that kept eight jackets counted eight, decided it was fine, and hung
+       * three. The gap was always there and the tighter caps widened it.
+       */
+      if (rankAndCut(outcome.items).length < MIN_GOOD_PICKS && !outcome.failed.length) {
         try {
           requeried = true;
           setAgain(true);
