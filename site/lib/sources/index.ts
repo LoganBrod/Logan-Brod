@@ -32,7 +32,20 @@ const SOURCES: Array<{
  * ordered by how central they are to the style, so the first four are the ones
  * worth spending on.
  */
-const QUERY_CAP: Partial<Record<SourceName, number>> = { serpapi: 4 };
+/*
+ * SerpAPI's share of a run's queries, and why it is a setting.
+ *
+ * Google Shopping is the source that carries actual brands - it is retail,
+ * with the labels people have heard of - and it was throttled to the first
+ * four of ten queries purely by the free tier's hundred searches a month. That
+ * throttle is a budget decision wearing a constant's clothes, so it reads from
+ * the environment: buy a tier, raise SERPAPI_QUERY_CAP, and the brand-carrying
+ * half of the pool grows without a deploy. Set it to 10 to let every query go
+ * to both sources.
+ */
+const SERPAPI_QUERY_CAP = Math.max(0, Number(process.env.SERPAPI_QUERY_CAP ?? 4) || 0);
+
+const QUERY_CAP: Partial<Record<SourceName, number>> = { serpapi: SERPAPI_QUERY_CAP };
 
 /** Exported for the test: the cap is a quota decision, so it needs pinning. */
 export function queriesFor(source: SourceName, queries: string[]): string[] {
@@ -118,6 +131,52 @@ export function interleaveByQuery(
 }
 
 /**
+ * Share the pool between the sources, rather than between the queries alone.
+ *
+ * Every query goes to eBay and only the first few go to Google Shopping,
+ * because of the quota above. Interleaving by query alone turns that quota
+ * into an editorial decision nobody made: ten eBay queues against four mixed
+ * ones is a pool that is roughly seventy per cent secondhand marketplace, and
+ * the finished closet inherits that ratio. It is why the results read as "eBay
+ * with extra steps".
+ *
+ * So the sources take turns at the top level, and the queries take turns
+ * inside each source. Both halves are still spread across garment types; what
+ * changes is that a source cannot dominate the pool merely by having been
+ * asked more questions. When one source is unconfigured or comes back empty
+ * the other fills the whole pool, so this costs nothing in the thin case.
+ */
+export function balanceSources(listings: ProductListing[], cap: number): ProductListing[] {
+  const bySource = new Map<SourceName, ProductListing[]>();
+  for (const item of listings) {
+    const bucket = bySource.get(item.source);
+    if (bucket) bucket.push(item);
+    else bySource.set(item.source, [item]);
+  }
+
+  // Uncapped within a source: the cap is applied once, when the sources are
+  // merged, or the first source would spend the whole allowance.
+  const streams = [...bySource.values()].map((items) =>
+    interleaveByQuery(items, Number.MAX_SAFE_INTEGER)
+  );
+
+  const out: ProductListing[] = [];
+  for (let i = 0; out.length < cap; i += 1) {
+    let added = false;
+    for (const stream of streams) {
+      if (out.length >= cap) break;
+      const next = stream[i];
+      if (next) {
+        out.push(next);
+        added = true;
+      }
+    }
+    if (!added) break;
+  }
+  return out;
+}
+
+/**
  * Run every query against every configured source in parallel.
  *
  * A source that throws is reported and skipped — one dead source (expired eBay
@@ -181,5 +240,5 @@ export async function shop(
     unique.push(item);
   }
 
-  return { listings: interleaveByQuery(unique, cap), reports };
+  return { listings: balanceSources(unique, cap), reports };
 }

@@ -4,13 +4,16 @@ import { imageSize, meter } from "./meter";
 import { StyleProfileSchema, type StyleProfile } from "./schemas";
 import type { PriceRange } from "./sources/types";
 import { capBySlot, normaliseSlot, queryCapFor } from "./categories";
+import { renderLabels } from "./labels";
 
 /** How many searches one run fans out to. Bounds the shopping stage. */
 export const MAX_QUERIES = 10;
 
 const SYSTEM = `You are a menswear stylist reading a small set of pieces someone already likes, in order to extend their wardrobe in that direction.
 
-Your queries are typed straight into eBay and Google Shopping, so they live or die on how a seller would have titled the thing. Write them the way a listing reads: garment noun, plus the material, colour, or cut that actually matters. "Waxed cotton field jacket olive" finds it. "Heavyweight flannel overshirt charcoal" finds it. "Pleated wool trouser grey" finds it. "Men's shoes" returns ten thousand things and wastes a slot. A well-known maker is worth naming when the style clearly points at one — "Barbour waxed jacket", "Levi's 501 selvedge" — because on a secondhand market that is how the good listings are titled. Never invent a brand the pieces don't suggest.
+Your queries are typed straight into eBay and Google Shopping, so they live or die on how a seller would have titled the thing. Write them the way a listing reads: garment noun, plus the material, colour, or cut that actually matters. "Waxed cotton field jacket olive" finds it. "Heavyweight flannel overshirt charcoal" finds it. "Pleated wool trouser grey" finds it. "Men's shoes" returns ten thousand things and wastes a slot.
+
+Name a maker in about half of them, and this matters more than any adjective you could add instead. A title is written by whoever is selling the thing, and they write the brand, because that is what buyers type — so "Barbour Bedale olive" returns the garment while "waxed cotton field jacket olive" returns everything that shares those words. Below is the vocabulary to draw from, by register. Use the labels belonging to the register the photographs actually sit in, pick makers whose house style matches what you are looking at, and spread them: naming one label four times finds one label four times. Leave the rest of the queries unbranded so the search can still turn up something good with no name on it. Never invent a brand the pieces don't suggest, and never name one from a register these photographs are not in.
 
 Spread the queries across garment types, and count them as you go. This is the instruction that gets ignored most often, so it is worth being blunt: a wardrobe is mostly things you wear on your torso and legs. Footwear is one slot in an outfit and should be one or two searches out of ten, never four. The same goes for any single type — eight near-identical jacket searches return the same jacket eight times. Tag each query with the slot it fills so the spread can be checked.
 
@@ -87,7 +90,10 @@ export async function analyzeStyle(
     model: MODELS.analyze,
     // Covers thinking and the response together — Opus 5 thinks by default.
     max_tokens: 8000,
-    system: `${SYSTEM}\n\n${INTENT[intent]}`,
+    // The label vocabulary rides with the system prompt rather than the
+    // photographs: it is a standing instruction about how to write a search,
+    // not a fact about this wearer.
+    system: `${SYSTEM}\n\nLabels by register:\n${renderLabels()}\n\n${INTENT[intent]}`,
     output_config: {
       effort: "high",
       format: zodOutputFormat(StyleProfileSchema),
