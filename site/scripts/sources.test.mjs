@@ -60,11 +60,19 @@ test("shop degrades to an empty result when no source is configured", async () =
   delete process.env.EBAY_CLIENT_ID;
   delete process.env.EBAY_CLIENT_SECRET;
   delete process.env.SERPAPI_KEY;
+  delete process.env.SHOPIFY_STORES;
 
   const { listings, reports } = await shop(["waxed cotton jacket"], { min: 50, max: 250 });
 
   assert.equal(listings.length, 0);
-  assert.equal(reports.length, 2, "both sources should still report in");
+  // Named rather than counted: the point is that every source accounts for
+  // itself, and a count is an assertion that has to be edited every time one
+  // is added, which is how it stops meaning anything.
+  assert.deepEqual(
+    reports.map((r) => r.source).sort(),
+    ["ebay", "serpapi", "shopify"],
+    "every source should still report in"
+  );
   assert.ok(
     reports.every((r) => r.configured === false && r.ok === true),
     "an unconfigured source is not a failed source"
