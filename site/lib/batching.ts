@@ -172,8 +172,23 @@ export function rankAndCut<
   // still strictly best-first.
   const spread = capBySlot(ranked, (item) => normaliseSlot(item.attrs?.category), perSlot);
 
-  // Then by look. A slot cap alone lets four tan jackets through, because one
-  // of them gets called a shirt; this is keyed on what a person sees instead.
+  /*
+   * Then by look.
+   *
+   * A slot cap alone lets four tan jackets through, because one of them gets
+   * called a shirt; this is keyed on what a person sees instead.
+   *
+   * It does not relax when it leaves the rail thin, and that was tried and
+   * thrown away. Relaxing fills the rail with the repetition it just removed,
+   * and worse, it hides the thinness from the one thing that can actually fix
+   * it: the run asks for a second search when fewer than six pieces survive,
+   * and a cap that pads back up to eight means that search never happens. A
+   * short rail is a signal. Padding it is deleting the signal.
+   *
+   * "Fewer is correct when the batch came back thin - never pad" is the rule
+   * the curation prompt already states. This is the same rule, applied to how
+   * things look rather than to how they scored.
+   */
   const varied = capByLook(
     spread,
     (item) => `${normaliseSlot(item.attrs?.category)}|${colourFamily(item.attrs?.colour)}`,

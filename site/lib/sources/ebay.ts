@@ -71,10 +71,14 @@ export async function search({
      * Fifteen of these run at once to build the calibration deck and ten to
      * build a clozet, and they are gathered with allSettled - so one slow
      * query dropping out costs its own results and nothing else, while one
-     * slow query hanging costs the whole request. Nine seconds is far longer
-     * than a healthy response and far shorter than a person's patience.
+     * slow query hanging costs the whole request.
+     *
+     * Twelve seconds rather than the nine it started at. A healthy search
+     * answers in well under a second, so anything near this is already
+     * unusual - but an aborted search is a smaller pool, and a smaller pool
+     * is worse recommendations, which is a higher price than three seconds.
      */
-    signal: AbortSignal.timeout(9_000),
+    signal: AbortSignal.timeout(12_000),
   });
 
   if (!res.ok) {
