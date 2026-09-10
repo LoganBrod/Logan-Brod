@@ -8,6 +8,7 @@
     "start": "next start",
     "start:railway": "next start -H 0.0.0.0",
     "sweep:once": "node scripts/sweep-once.mjs",
+    "probe:shopify": "tsx scripts/shopify-probe.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test scripts/*.test.mjs",

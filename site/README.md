@@ -159,6 +159,35 @@ records losing most of their index to a read-modify-write race; and, from one
 shared address, other people's rejected runs starving a legitimate run of its
 second search.
 
+## Where the pieces come from
+
+Three sources, and which of them a run asks is the "Where from?" setting on
+the form: secondhand, new, or both.
+
+| | |
+|---|---|
+| eBay | The only one carrying both. The setting picks its condition filter. |
+| Google Shopping | Retail, through SerpAPI. `SERPAPI_QUERY_CAP` decides how many of a run's ten searches it sees - four on the free tier, raise it on a paid one. |
+| The brands' own shops | Every Shopify store serves its catalogue at `/products.json`. Named in `SHOPIFY_STORES`, cached for a day, searched locally. No key, no quota. |
+
+Before adding a brand, check it actually serves one. From `site/`, on a
+machine with normal internet access:
+
+```bash
+npm install
+npm run probe:shopify taylorstitch.com buckmason.com 3sixteen.com
+```
+
+It reports per domain whether the endpoint answered, how many usable garments
+came back, the price range and three sample titles, then prints the
+`SHOPIFY_STORES=` line to paste into the deployment. It writes nothing, so run
+it as often as you like while choosing brands.
+
+The source itself is tested against a local server serving a real-shaped
+payload, which covers the parsing, the matching, the caching and what happens
+when a store is unreachable. The probe is the other half: only a machine that
+can reach a brand's website can tell you whether that brand answers.
+
 ## Security
 
 What is enforced, and where, so a change to any of it is a visible change.
