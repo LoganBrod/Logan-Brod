@@ -116,6 +116,24 @@ test("the cheapest buyable variant sets the price", () => {
   assert.equal(garment.price, 150, "not the sixty nobody can buy");
 });
 
+test("the parse says what it threw away, and why", () => {
+  const { garments, dropped } = shopify.explainCatalogue(
+    {
+      products: [
+        product(),
+        product({ id: 2, title: "Womens Silk Blouse" }),
+        product({ id: 3, title: "Sold Out Chore Coat", variants: [{ price: "160.00", available: false }] }),
+        product({ id: 4, title: "No Photo Trousers", images: [] }),
+        null,
+      ],
+    },
+    "example.com"
+  );
+
+  assert.equal(garments.length, 1);
+  assert.deepEqual(dropped, { seen: 5, malformed: 1, title: 1, soldOut: 1, noImage: 1 });
+});
+
 test("a payload that is not a catalogue is nothing, not a crash", () => {
   for (const junk of [null, {}, { products: "no" }, { products: [null] }, "<html>"]) {
     assert.deepEqual(shopify.parseCatalogue(junk, "example.com"), []);

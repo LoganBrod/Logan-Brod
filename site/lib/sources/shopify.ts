@@ -88,17 +88,54 @@ interface ShopifyProduct {
  * these out. Anything missing a title, a price or a photograph is not a
  * garment we can show, so it is dropped rather than patched up.
  */
-export function parseCatalogue(raw: unknown, domain: string): Garment[] {
+export interface Dropped {
+  /** Products in the payload, before any of this. */
+  seen: number;
+  malformed: number;
+  /** Rejected by the menswear title filter - womenswear, lots, and the rest. */
+  title: number;
+  soldOut: number;
+  noImage: number;
+}
+
+/**
+ * The same parse, with a note of what it threw away and why.
+ *
+ * A brand that answers with two hundred products and no usable garments is
+ * either the wrong brand or a filter being too strict, and from the outside
+ * those look identical. `scripts/shopify-probe.mjs` prints this breakdown so
+ * the difference is visible before somebody spends an evening guessing.
+ *
+ * It exists rather than a second copy of the rules in the probe, because a
+ * probe with its own idea of what counts as a garment would cheerfully report
+ * a catalogue the app cannot read.
+ */
+export function explainCatalogue(
+  raw: unknown,
+  domain: string
+): { garments: Garment[]; dropped: Dropped } {
   const products = (raw as { products?: ShopifyProduct[] } | null)?.products;
-  if (!Array.isArray(products)) return [];
+  const dropped: Dropped = { seen: 0, malformed: 0, title: 0, soldOut: 0, noImage: 0 };
+  if (!Array.isArray(products)) return { garments: [], dropped };
+  dropped.seen = products.length;
 
   const out: Garment[] = [];
   for (const product of products) {
     // A null or a string where an object should be. Third-party payloads have
     // no contract, and the whole point of this function is to survive that.
-    if (!product || typeof product !== "object") continue;
+    if (!product || typeof product !== "object") {
+      dropped.malformed += 1;
+      continue;
+    }
     const title = typeof product.title === "string" ? product.title.trim() : "";
-    if (!title || rejectTitle(title)) continue;
+    if (!title) {
+      dropped.malformed += 1;
+      continue;
+    }
+    if (rejectTitle(title)) {
+      dropped.title += 1;
+      continue;
+    }
 
     // The cheapest variant that is actually buyable. A sold-out product with a
     // price is still a product nobody can have.
@@ -106,10 +143,16 @@ export function parseCatalogue(raw: unknown, domain: string): Garment[] {
       .filter((v) => v.available !== false)
       .map((v) => Number(v.price))
       .filter((n) => Number.isFinite(n) && n > 0);
-    if (!prices.length) continue;
+    if (!prices.length) {
+      dropped.soldOut += 1;
+      continue;
+    }
 
     const image = product.images?.find((i) => typeof i.src === "string")?.src;
-    if (!image) continue;
+    if (!image) {
+      dropped.noImage += 1;
+      continue;
+    }
 
     const tags = Array.isArray(product.tags)
       ? product.tags.filter((t): t is string => typeof t === "string")
@@ -128,7 +171,12 @@ export function parseCatalogue(raw: unknown, domain: string): Garment[] {
       image,
     });
   }
-  return out;
+  return { garments: out, dropped };
+}
+
+/** Just the garments. What the source itself uses. */
+export function parseCatalogue(raw: unknown, domain: string): Garment[] {
+  return explainCatalogue(raw, domain).garments;
 }
 
 /**
