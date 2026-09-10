@@ -3,7 +3,7 @@
 // (curation, outfits, UI) should ever branch on which source an item came from,
 // except to render the `source` badge.
 
-export type SourceName = "ebay" | "serpapi";
+export type SourceName = "ebay" | "serpapi" | "shopify";
 
 export interface ProductListing {
   /** Stable within a run; prefixed with the source so IDs can't collide. */

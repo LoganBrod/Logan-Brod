@@ -1,5 +1,6 @@
 import * as ebay from "./ebay";
 import * as serpapi from "./serpapi";
+import * as shopify from "./shopify";
 import type {
   PriceRange,
   ProductListing,
@@ -11,6 +12,7 @@ import type {
 export * from "./types";
 export { ebayConfigured } from "./ebay";
 export { serpapiConfigured } from "./serpapi";
+export { shopifyConfigured } from "./shopify";
 export { isMenswearListing, rejectTitle } from "./menswear";
 
 const SOURCES: Array<{
@@ -20,6 +22,9 @@ const SOURCES: Array<{
 }> = [
   { name: "ebay", configured: ebay.ebayConfigured, search: ebay.search },
   { name: "serpapi", configured: serpapi.serpapiConfigured, search: serpapi.search },
+  // The brands' own shops. Every query goes to it: matching happens locally
+  // against a cached catalogue, so there is no quota to spend.
+  { name: "shopify", configured: shopify.shopifyConfigured, search: shopify.search },
 ];
 
 /**
