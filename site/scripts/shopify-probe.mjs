@@ -1,7 +1,15 @@
 // Does this brand actually serve its catalogue, and is it any good?
 //
-//   node scripts/shopify-probe.mjs taylorstitch.com buckmason.com 3sixteen.com
-//   SHOPIFY_STORES=$(cat stores.txt) node scripts/shopify-probe.mjs
+// Run it from `site/`, on a machine that can reach the open internet:
+//
+//   npm install
+//   npx tsx scripts/shopify-probe.mjs taylorstitch.com buckmason.com 3sixteen.com
+//   SHOPIFY_STORES=$(cat stores.txt) npx tsx scripts/shopify-probe.mjs
+//
+// `npx tsx` rather than `node`, because this shares the real parser with the
+// source it is checking - importing a .ts file, which plain node will not do.
+// Sharing it is the point: a probe with its own copy of the parsing would
+// happily report a catalogue the app then fails to read.
 //
 // The Shopify source is tested against a local server serving a real-shaped
 // payload, which proves the parsing, the matching and the caching. What it
@@ -22,7 +30,7 @@ const domains = (
   .filter(Boolean);
 
 if (!domains.length) {
-  console.error("Give it some domains: node scripts/shopify-probe.mjs taylorstitch.com buckmason.com");
+  console.error("Give it some domains: npx tsx scripts/shopify-probe.mjs taylorstitch.com buckmason.com");
   process.exit(1);
 }
 
