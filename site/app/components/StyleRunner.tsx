@@ -13,6 +13,7 @@ import { MIN_GOOD_PICKS } from "@/lib/requeryConst";
 import type { SearchQuery } from "@/lib/schemas";
 import type { RunSummary } from "@/lib/yield";
 import { LETTER_SIZES, type Sizes } from "@/lib/sizing";
+import { MARKETS, asMarket, type Market } from "@/lib/market";
 import type { Preferences } from "@/lib/preferences";
 import type { RunStage } from "@/lib/progress";
 import ClosetStage, { prefersReducedMotion, type StagePhase } from "./ClosetStage";
@@ -138,6 +139,11 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
    * the person's own style and still be working exactly as written.
    */
   const [intent, setIntent] = useState<"similar" | "gaps">("similar");
+  /**
+   * Secondhand, new, or both. Read from the stored preference on load and
+   * written back when it changes, so it is chosen once rather than every run.
+   */
+  const [market, setMarket] = useState<Market>(asMarket(undefined));
 
   /**
    * The five things three photographs can't tell you.
@@ -176,6 +182,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           setSizesAvailable(Boolean(json.configured));
           setSizes(json.sizes ?? {});
           setPreferences(json.preferences ?? {});
+          setMarket(asMarket(json.preferences?.market));
           setTasteCount(json.count ?? 0);
           setPlan(json.plan ?? "free");
           // The quiz's budget is where the price fields start. Only on load,
@@ -381,7 +388,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
   /** One marketplace search for a set of queries, tagged with this run's id. */
   async function shopFor(queries: SearchQuery[]) {
-    const params = new URLSearchParams({ min: String(min), max: String(max) });
+    const params = new URLSearchParams({ min: String(min), max: String(max), market });
     for (const query of queries) params.append("q", query.query);
     if (runIdRef.current) params.set("runId", runIdRef.current);
     const res = await fetch(`/api/style/shop?${params.toString()}`);
@@ -677,7 +684,10 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const leaving = phase === "exiting";
   const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
   // Configured, asked, and came back with either an error or nothing at all.
-  const sourceTrouble = reports.filter((r) => r.configured && (!r.ok || r.count === 0));
+  // Only sources this run actually asked. One that the "where from?" setting
+  // sat out has not failed at anything, and saying it found nothing would be
+  // reporting a decision as a fault.
+  const sourceTrouble = reports.filter((r) => r.configured && r.asked !== false && (!r.ok || r.count === 0));
 
   return (
     <div className="space-y-10">
@@ -808,6 +818,45 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
             {intent === "similar"
               ? "Same kind of pieces as the ones you upload."
               : "The pieces that would go with them, that you don't already have."}
+          </p>
+        </fieldset>
+
+        {/* Where the pieces come from. This used to be a premise rather than a
+            question - everything was secondhand because a marketplace was the
+            only source there was - and it is a choice now that the brands'
+            own shops are one too. Same shape as the control above it, because
+            it is the same kind of question asked about the same upload. */}
+        <fieldset className="mt-7">
+          <legend className="label mb-2">Where from?</legend>
+          <div className="flex flex-wrap gap-2">
+            {MARKETS.map((option) => (
+              <label
+                key={option.value}
+                title={option.hint}
+                className={`cursor-pointer rounded-sm border px-4 py-2.5 text-[13px] transition-colors ${
+                  market === option.value
+                    ? "border-room-ink bg-room-ink text-room-on-ink"
+                    : "border-room-line bg-room-panel text-room-muted hover:border-room-ink/40 hover:text-room-ink"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="market"
+                  value={option.value}
+                  checked={market === option.value}
+                  disabled={busy}
+                  onChange={() => {
+                    setMarket(option.value);
+                    updatePreferences({ market: option.value });
+                  }}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-room-faint">
+            {MARKETS.find((o) => o.value === market)?.hint}
           </p>
         </fieldset>
 

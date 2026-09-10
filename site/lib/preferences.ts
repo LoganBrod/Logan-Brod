@@ -1,3 +1,4 @@
+import { MARKETS, type Market } from "./market";
 // The things three photographs cannot tell you.
 //
 // Until now a run knew exactly two things about a person beyond their uploads:
@@ -82,6 +83,11 @@ export interface Preferences {
    */
   budget?: { min: number; max: number };
   /**
+   * Secondhand, new, or both. Remembered so the choice survives a run rather
+   * than being made again every time; see lib/market.ts.
+   */
+  market?: Market;
+  /**
    * Whether the first-visit quiz has been seen through or dismissed. Either
    * counts: a quiz that reappears because somebody closed it is a nag, and a
    * nag gets the whole thing turned off.
@@ -135,6 +141,11 @@ export function cleanPreferences(input: unknown): Preferences {
   if (adventure) cleaned.adventure = adventure;
   if (avoid.length) cleaned.avoid = avoid;
   if (brands) cleaned.brands = brands;
+
+  // Same treatment as the pickers above: a value we do not recognise costs
+  // this one preference and falls back to the default at the point of use.
+  const market = has(MARKETS, raw.market);
+  if (market) cleaned.market = market;
 
   // Budget: two finite integers, ordered, inside a sane band. Anything else
   // costs the budget, never the rest of the answers.

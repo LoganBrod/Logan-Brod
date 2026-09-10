@@ -6,6 +6,7 @@
 import { BROWSE_BASE, getAppToken } from "./ebayAuth";
 import { menswearCategoryIds } from "./ebayCategories";
 import { rejectTitle, thumbnailUrl } from "./menswear";
+import { DEFAULT_MARKET, conditionIdsFor } from "../market";
 import type { ProductListing, SourceSearchOptions } from "./types";
 
 export { ebayConfigured, getAppToken } from "./ebayAuth";
@@ -23,17 +24,18 @@ interface EbayItemSummary {
   seller?: { username?: string; feedbackPercentage?: string };
 }
 
-/**
- * Everything except "For parts or not working" (7000) and the manufacturer-
- * refurbished tiers we can't judge. Used and vintage stock is most of what
- * makes eBay worth searching, so it stays in.
+/*
+ * Which conditions are allowed is now the market's decision - eBay is the only
+ * source carrying both new and used, so it is the only one where the setting
+ * has anything to filter. See lib/market.ts. "For parts or not working" (7000)
+ * is in none of them.
  */
-const CONDITION_IDS = ["1000", "1500", "1750", "2000", "2500", "3000", "4000", "5000"];
 
 export async function search({
   query,
   range,
   limit = 30,
+  market = DEFAULT_MARKET,
 }: SourceSearchOptions): Promise<ProductListing[]> {
   const [token, categoryIds] = await Promise.all([getAppToken(), menswearCategoryIds()]);
 
@@ -43,7 +45,7 @@ export async function search({
     `price:[${range.min}..${range.max}]`,
     "priceCurrency:USD",
     "buyingOptions:{FIXED_PRICE}",
-    `conditionIds:{${CONDITION_IDS.join("|")}}`,
+    `conditionIds:{${conditionIdsFor(market).join("|")}}`,
   ].join(",");
 
   const params = new URLSearchParams({

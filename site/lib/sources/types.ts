@@ -30,11 +30,21 @@ export interface SourceSearchOptions {
   query: string;
   range: PriceRange;
   limit?: number;
+  /** Secondhand, new, or both. Only eBay carries both, so only eBay reads it. */
+  market?: import("../market").Market;
 }
 
 /** What ran, what it returned, and why it returned nothing. */
 export interface SourceReport {
   source: SourceName;
+  /**
+   * Whether this run had any use for the source.
+   *
+   * A secondhand run does not ask a brand's own shop. Without this the report
+   * for one reads exactly like a source that ran and came back empty, and the
+   * closet page tells somebody the shops found nothing when nobody asked them.
+   */
+  asked?: boolean;
   configured: boolean;
   ok: boolean;
   count: number;
