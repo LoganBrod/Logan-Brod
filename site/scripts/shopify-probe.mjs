@@ -35,10 +35,20 @@ if (!domains.length) {
 }
 
 const money = (n) => `$${Math.round(n)}`;
-/** Only the domains that actually returned garments; the line at the end is meant to be pasted. */
-const usable = [];
 
-for (const domain of domains) {
+/**
+ * Six at a time.
+ *
+ * Checking forty brands one after another is minutes of waiting, most of it
+ * spent on whichever one is slow. They are independent, so they run together -
+ * bounded at six because this is somebody's shop being read, not a load test,
+ * and a burst of forty simultaneous requests from one address is how a probe
+ * turns into something a brand blocks.
+ */
+const CONCURRENCY = 6;
+
+/** Look at one brand. Returns what to print, so the printing can stay in input order. */
+async function probe(domain) {
   const started = Date.now();
   let status = "";
   let garments = [];
@@ -61,8 +71,27 @@ for (const domain of domains) {
   } catch (err) {
     status = err?.name === "TimeoutError" ? "timed out" : (err?.message ?? "failed").slice(0, 60);
   }
+  return { domain, status, garments, dropped, ms: Date.now() - started };
+}
 
-  const ms = Date.now() - started;
+const results = new Array(domains.length);
+let next = 0;
+await Promise.all(
+  Array.from({ length: Math.min(CONCURRENCY, domains.length) }, async () => {
+    while (true) {
+      const index = next++;
+      if (index >= domains.length) return;
+      results[index] = await probe(domains[index]);
+    }
+  })
+);
+
+/** Only the domains that actually returned garments; the line at the end is meant to be pasted. */
+const usable = [];
+
+// Printed in the order they were asked for, not the order they came back, so
+// the output can be compared against the list that was pasted in.
+for (const { domain, status, garments, dropped, ms } of results) {
   if (garments.length) {
     usable.push(domain);
     const prices = garments.map((g) => g.price);
