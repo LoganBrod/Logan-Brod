@@ -1,3 +1,4 @@
+import { DEFAULT_MARKET, sourcesFor, type Market } from "../market";
 import * as ebay from "./ebay";
 import * as serpapi from "./serpapi";
 import * as shopify from "./shopify";
@@ -191,26 +192,35 @@ export function balanceSources(listings: ProductListing[], cap: number): Product
 export async function shop(
   queries: string[],
   range: PriceRange,
-  opts: { perQueryLimit?: number; cap?: number } = {}
+  opts: { perQueryLimit?: number; cap?: number; market?: Market } = {}
 ): Promise<ShopResult> {
+  const market = opts.market ?? DEFAULT_MARKET;
+  const wanted = new Set(sourcesFor(market));
   // A tight final list needs a wide pool to choose from, not a narrow one —
   // curation can only be selective if there is something to select between.
   const perQueryLimit = opts.perQueryLimit ?? 30;
   const cap = opts.cap ?? 120;
 
-  const active = SOURCES.filter((source) => source.configured());
-  const reports: SourceReport[] = SOURCES.filter((s) => !s.configured()).map((s) => ({
+  // A source this market has no use for is sat out rather than run and
+  // discarded: a secondhand search has nothing to do with a brand's own shop,
+  // and asking anyway would spend a quota to throw the answer away.
+  const asked = SOURCES.filter((source) => wanted.has(source.name));
+  const active = asked.filter((source) => source.configured());
+  const reports: SourceReport[] = SOURCES.filter(
+    (s) => !wanted.has(s.name) || !s.configured()
+  ).map((s) => ({
     source: s.name,
-    configured: false,
+    configured: s.configured(),
+    asked: false,
     ok: true,
     count: 0,
   }));
 
   const settled = await Promise.all(
     active.map(async (source) => {
-      const asked = queriesFor(source.name, queries);
+      const queriesAsked = queriesFor(source.name, queries);
       const results = await Promise.allSettled(
-        asked.map((query) => source.search({ query, range, limit: perQueryLimit }))
+        queriesAsked.map((query) => source.search({ query, range, limit: perQueryLimit, market }))
       );
 
       const items: ProductListing[] = [];
@@ -222,10 +232,11 @@ export async function shop(
 
       // Only a total wipeout counts as a failed source; partial errors across
       // eight queries are normal and shouldn't be surfaced as breakage.
-      const ok = asked.length === 0 || errors.length < asked.length;
+      const ok = queriesAsked.length === 0 || errors.length < queriesAsked.length;
       const report: SourceReport = {
         source: source.name,
         configured: true,
+        asked: true,
         ok,
         count: items.length,
         error: errors.length ? errors[0] : undefined,

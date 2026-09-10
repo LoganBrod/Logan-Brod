@@ -5,6 +5,7 @@ import { readSizes } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { readSeen, siftSeen } from "@/lib/seen";
+import { asMarket } from "@/lib/market";
 import { isValidRunId, recordFound } from "@/lib/yield";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,9 @@ export async function GET(req: Request) {
   const queries = searchParams.getAll("q").map((q) => q.trim()).filter(Boolean);
   const min = Number(searchParams.get("min") ?? 0);
   const max = Number(searchParams.get("max") ?? 0);
+  // Secondhand, new or both. Anything unrecognised falls to the default
+  // rather than erroring: this is a preference, not a contract.
+  const market = asMarket(searchParams.get("market"));
 
   if (!queries.length) {
     return NextResponse.json(
@@ -64,7 +68,7 @@ export async function GET(req: Request) {
     // A wider net when sizes are known, because a good fraction of what comes
     // back is about to be dropped for stating a size that can't fit.
     const perQueryLimit = hasSizes(sizes) ? 50 : 30;
-    const result = await shop(queries.slice(0, MAX_QUERIES), { min, max }, { perQueryLimit });
+    const result = await shop(queries.slice(0, MAX_QUERIES), { min, max }, { perQueryLimit, market });
 
     // Measured before sizes and the seen-set thin it: "found" is what the
     // marketplaces produced for these words, which is the property of the

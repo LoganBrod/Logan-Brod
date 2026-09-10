@@ -23,7 +23,7 @@ export const company = "LevoZ Labs";
  */
 export const hero = {
   line: "Create a personalized clozet in minutes.",
-  sub: "Show it a few pieces you like. It finds real secondhand ones that belong with them, in your size and your budget.",
+  sub: "Show it a few pieces you like. It finds real ones that belong with them, new or secondhand, in your size and your budget.",
   cta: "Get started",
   /** Straight to the two-minute quiz, whether or not this browser has seen it. */
   href: "/closet?quiz=1",
@@ -158,9 +158,10 @@ export const proof = {
  */
 export const sources = {
   heading: "Everything here is somebody else's listing.",
-  body: "Clozet holds no stock and sells nothing. It searches two marketplaces, judges what comes back, and sends you to the seller - the same listing you would have found yourself, if you had the afternoon.",
+  body: "Clozet holds no stock and sells nothing. It searches marketplaces and the brands' own shops, judges what comes back, and sends you to whoever is selling it - the same listing you would have found yourself, if you had the afternoon. Secondhand, new, or both, and that is your choice rather than ours.",
   markets: [
-    { name: "eBay", note: "Live secondhand listings, searched through their own API." },
+    { name: "eBay", note: "Live listings, worn and new, searched through their own API." },
     { name: "Google Shopping", note: "Mainstream retail, for the pieces that are still made." },
+    { name: "The brands themselves", note: "Read from each shop's own catalogue, straight from the people who make it." },
   ],
 } as const;
