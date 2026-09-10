@@ -35,7 +35,8 @@ if (!domains.length) {
 }
 
 const money = (n) => `$${Math.round(n)}`;
-let usable = 0;
+/** Only the domains that actually returned garments; the line at the end is meant to be pasted. */
+const usable = [];
 
 for (const domain of domains) {
   const started = Date.now();
@@ -60,7 +61,7 @@ for (const domain of domains) {
 
   const ms = Date.now() - started;
   if (garments.length) {
-    usable += 1;
+    usable.push(domain);
     const prices = garments.map((g) => g.price);
     console.log(
       `\n✓ ${domain}  ${status}  ${ms}ms\n  ${garments.length} usable garments, ${money(Math.min(...prices))}–${money(Math.max(...prices))}`
@@ -74,7 +75,10 @@ for (const domain of domains) {
   }
 }
 
+// The line names only what answered. Printing every domain asked would put a
+// dead one into the deployment's config, where it costs a failed request per
+// refresh and reads like a brand that has gone missing.
 console.log(
-  `\n${usable} of ${domains.length} domains usable.` +
-    (usable ? `\n\nSHOPIFY_STORES=${domains.join(",")}` : "")
+  `\n${usable.length} of ${domains.length} domains usable.` +
+    (usable.length ? `\n\nSHOPIFY_STORES=${usable.join(",")}` : "")
 );
