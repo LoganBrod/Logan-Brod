@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { company } from "@/lib/copy";
+import { Suspense } from "react";
+import Beacon from "./components/Beacon";
 import SideNav from "./components/SideNav";
 
 /**
@@ -80,6 +82,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen font-sans antialiased">
         <SideNav />
         {children}
+        {/* Counts a pageview on every route, including soft navigations. See
+            lib/analytics.ts for what is and is not recorded. */}
+        <Suspense fallback={null}>
+          <Beacon />
+        </Suspense>
       </body>
     </html>
   );

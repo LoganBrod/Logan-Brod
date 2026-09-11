@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analyticsEvents";
 import Link from "next/link";
 import type { Closet, ClosetContents } from "@/lib/closet";
 import type { CuratedItem } from "@/lib/curate";
@@ -255,6 +256,9 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     };
   }, []);
 
+  /** Whether this visit has already been counted as having uploaded something. */
+  const uploaded = useRef(false);
+
   const addFiles = useCallback((files: FileList | null) => {
     if (!files) return;
 
@@ -275,6 +279,13 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       preview: URL.createObjectURL(file),
     }));
     setPhotos((current) => [...current, ...added]);
+    // Once per visit, not once per photo: the funnel step is "got as far as
+    // putting a picture in", and somebody adding six would otherwise read as
+    // six people doing it.
+    if (!uploaded.current) {
+      uploaded.current = true;
+      track("upload");
+    }
   }, []);
 
   const removePhoto = useCallback((index: number) => {
@@ -314,6 +325,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
     setStage("saving");
     try {
       const saved = await postJson<{ closet: Closet }>("/api/closet", contents);
+      track("closet_saved");
       setCode(saved.closet.code);
       setSaveNotice(null);
     } catch (err) {
@@ -497,6 +509,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       // than pushed, so the badge can live anywhere on the page without this
       // component needing to know it exists.
       window.dispatchEvent(new Event("clozet:spent"));
+      track("run_start");
 
       setStage("shopping");
       const shopped = await shopFor(profile.searchQueries);
@@ -616,6 +629,8 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
       // Both doors to a standing scan, and both shut while the list that would
       // manage one is off the Tools page: starting something a person cannot
       // then stop is worse than not offering it.
+      track("run_done");
+
       if (STANDING_SCANS) {
         setWatchState("offer");
         // Asked once per finished run, unless they've turned it off. Checked

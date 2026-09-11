@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analyticsEvents";
 import CalibrationSwipe from "./CalibrationSwipe";
 import { brandChoices } from "@/lib/copy";
 import { MAX_BRANDS_CHARS, type Preferences } from "@/lib/preferences";
@@ -63,8 +64,22 @@ export default function OnboardingQuiz({
   const [band, setBand] = useState<number | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
-  // Closing by any route marks the quiz seen. See the note at the top.
-  function finish() {
+  // Seen on mount: the quiz is shown rather than opened, so "started it" is
+  // the moment it appears and there is no click to hang it off.
+  useEffect(() => {
+    track("quiz_start");
+  }, []);
+
+  /**
+   * Closing by any route marks the quiz seen. See the note at the top.
+   *
+   * `reached` is which step they were on when it closed, which is the whole
+   * difference between finishing and giving up — and the difference the
+   * report needs, because the quiz is where a first visit most obviously
+   * either takes or doesn't.
+   */
+  function finish(reached: Step = step) {
+    track(reached === STEPS[STEPS.length - 1] ? "quiz_done" : "quiz_skip");
     onSave({ onboarded: true });
     onClose();
   }
@@ -87,7 +102,7 @@ export default function OnboardingQuiz({
   const next = () => {
     const at = STEPS.indexOf(step);
     if (at < STEPS.length - 1) setStep(STEPS[at + 1]);
-    else finish();
+    else finish(STEPS[STEPS.length - 1]);
   };
 
   function saveBrands() {
@@ -148,7 +163,7 @@ export default function OnboardingQuiz({
           </ol>
           <button
             type="button"
-            onClick={finish}
+            onClick={() => finish()}
             className="-mr-2 px-2 py-1 text-[12px] font-semibold text-room-faint hover:text-room-ink"
           >
             Skip all

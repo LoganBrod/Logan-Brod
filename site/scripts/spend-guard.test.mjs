@@ -94,6 +94,14 @@ test("the exemptions are real, and still check a secret", () => {
   }
 });
 
+/**
+ * Routes whose caller cannot read a response, so a 429 would be bytes spent on
+ * nobody. `sendBeacon` has no way to see a status code and the page has
+ * nothing to do about a refused analytics hit anyway — it answers 204 to
+ * everything, including the things it drops.
+ */
+const NO_RESPONSE = new Set(["beacon/route.ts"]);
+
 test("a rate-limited route refuses with 429 and says when to come back", () => {
   // A 429 without Retry-After is a client that retries immediately and a
   // limiter that spends its budget on being hit.
@@ -101,7 +109,18 @@ test("a rate-limited route refuses with 429 and says when to come back", () => {
     const source = readFileSync(path, "utf8");
     if (!source.includes("rateLimit(")) continue;
     const relative = path.slice(API.length + 1);
+    if (NO_RESPONSE.has(relative)) continue;
     assert.match(source, /429/, relative);
     assert.match(source, /Retry-After/, relative);
+  }
+});
+
+test("the routes that skip the 429 really do answer nothing", () => {
+  // Otherwise the exemption above becomes a place to put a route that simply
+  // forgot, which is the failure mode of every allowlist.
+  for (const relative of NO_RESPONSE) {
+    const source = readFileSync(join(API, relative), "utf8");
+    assert.match(source, /status: 204/, `${relative} is exempt and must answer 204`);
+    assert.doesNotMatch(source, /NextResponse\.json/, `${relative} must not return a body`);
   }
 });

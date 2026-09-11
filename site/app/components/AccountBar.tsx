@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { track } from "@/lib/analyticsEvents";
 
 interface AuthState {
   available: boolean;
@@ -92,6 +93,10 @@ export default function AccountBar() {
 
     const result = await post({ email, password, create: mode === "create" });
     if (!result) return;
+
+    // Counted before the reload, and with a beacon rather than a fetch,
+    // precisely because the next line throws the page away.
+    if (mode === "create") track("signup");
 
     // A full reload: closets and taste are read server-side under the identity
     // that just changed, so re-rendering in place would show the old one.

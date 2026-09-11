@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analyticsEvents";
 import { KINDS, MAX_MESSAGE, type FeedbackKind } from "@/lib/feedbackKinds";
 
 const LABEL: Record<FeedbackKind, { name: string; hint: string }> = {
@@ -60,6 +61,7 @@ export default function FeedbackForm() {
         setError(json.error ?? "Couldn't send that. Try again in a moment.");
         return;
       }
+      track("feedback_sent");
       setSent(true);
       setMessage("");
       setContact("");
