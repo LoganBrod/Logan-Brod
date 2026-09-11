@@ -144,6 +144,13 @@ export const LIMITS = {
    */
   save: { limit: 20, windowSeconds: HOUR },
   /**
+   * The analytics beacon. Cheap per call and public, which is exactly the
+   * combination that needs a number on it: a real session is a dozen of
+   * these, and without a ceiling it is a free way to run up Redis commands
+   * and make the numbers say whatever somebody wants them to say.
+   */
+  beacon: { limit: 300, windowSeconds: HOUR },
+  /**
    * Bug reports and suggestions. Nothing here costs a model call, but it is an
    * unauthenticated write that a stranger can reach, so it gets a ceiling like
    * everything else a stranger can reach. Ten an hour is more than anyone with

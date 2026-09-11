@@ -13,6 +13,7 @@ One Next.js app serving both halves of the company:
 | `/colognes` | Recommended rather than searched — see the page for why |
 | `/calibrate` | Fifteen swipes that sharpen the profile, with no model call |
 | `/feedback` | Bug reports and suggestions — no account, straight into Redis |
+| `/admin` | Traffic: who showed up, from where, how far they got |
 | `/api/**` | The endpoints (Claude, eBay, Google Shopping, auth, taste, fit, social) |
 
 Clozet's three tabs are real routes, so each one is linkable, openable in a new
@@ -197,6 +198,30 @@ people are meeting for the first time: a month means "come back in three
 weeks", which means don't. The cycle is per-meter in `lib/plans.ts`, and
 `/api/auth` reports both what's used and when it comes back, which is what the
 corner dock reads.
+
+## Is anybody showing up
+
+`/admin`, behind `ADMIN_SECRET`. No third-party script, no second service, no
+cookie banner: `/api/beacon` writes counters into the Redis that is already
+there, and `lib/analytics.ts` reads ninety days back out of them.
+
+A visitor is a daily rotating hash of address and browser string — the same
+approach Plausible takes — fed to a HyperLogLog, which answers "how many
+distinct" and cannot answer "was this one of them". So there is no visitor
+table to leak and nothing that follows a person between days. It began as the
+existing taste cookie and that was wrong in the one place it mattered: somebody
+arriving from a video onto the marketing page has never been given one, so the
+entire audience counted as zero people.
+
+Every field name is drawn from an allowlist before it reaches Redis — paths,
+referrers and events alike. That is the load-bearing part rather than a
+tidiness measure: this is a public write endpoint, and a field name taken from
+a request is a hash a stranger can grow to any size they like.
+`scripts/analytics.test.mjs` is mostly about that.
+
+The funnel is what to read — landed, started the quiz, uploaded, ran, got
+pieces back, saved — measured against visits rather than pageviews. Add `?c=`
+and a short tag to a link to tell one video from the next.
 
 ## Security
 

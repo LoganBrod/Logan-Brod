@@ -188,6 +188,39 @@ the same app from the same database.
 
 ---
 
+## Watching for traction
+
+`/admin` on the live domain is the traffic page. It asks for `ADMIN_SECRET` —
+the same value as the service variable — and keeps it for the tab only, so
+there is nothing to sign out of and nothing stored in the app.
+
+Set both of these on the service before you post anything, or the page has
+nothing to show:
+
+| | |
+|---|---|
+| `ADMIN_SECRET` | required — unset means `/admin` and every `/api/report/*` route answers 401 |
+| `ANALYTICS_SALT` | optional — any long random string, so the visitor hash survives a deploy |
+
+There is no third-party script, no second service and no cookie banner to add:
+counting happens in `/api/beacon` against the Redis you already pay for, and a
+visitor is a daily rotating hash of address and browser string rather than an
+identifier that follows anybody. Ninety days, then it expires.
+
+**Tagging a link.** Add `?c=` and a short lowercase tag to the URL in a bio or
+a caption — `https://www.levozlabs.com/?c=blue-jacket` — and that link gets its
+own row under "Campaign tags". It is the only way to tell one video from the
+next, because every one of them arrives as the same `tiktok` referrer. Fifty
+distinct tags a day, then the day stops listening.
+
+**What to read first.** The funnel, not the visit count. A thousand people who
+never start the quiz is a worse day than fifty who build a clozet, and the step
+with the steepest fall is the one to fix. The counts are approximate by about
+1% by construction — a HyperLogLog trades exactness for a fixed size — and an
+office behind one address reads as one person.
+
+---
+
 ## Why this, and what it costs
 
 **Why.** Vercel Hobby caps a function at 60 seconds. Curation fetches sixteen

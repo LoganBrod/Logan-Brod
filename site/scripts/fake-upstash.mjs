@@ -1,6 +1,7 @@
 // A tiny in-memory stand-in for the Upstash REST API, enough to exercise the
 // closet round-trip (SET/GET/EXPIRE/DEL, including the NX flag the code
-// allocator depends on) without real credentials.
+// allocator depends on) without real credentials, plus the hashes, sets,
+// lists and HyperLogLogs the yield, feedback and traffic records use.
 //
 // Test support only — never imported by the app.
 
@@ -117,6 +118,30 @@ export function startFakeUpstash(port = 0, opts = {}) {
         const entry = live(rest[0]);
         if (!entry) return [];
         return [...entry.value].flat();
+      }
+      case "HLEN": {
+        const entry = live(rest[0]);
+        return entry ? entry.value.size : 0;
+      }
+      // A HyperLogLog, stood in for by an exact set. The real one trades about
+      // 1% accuracy for a fixed twelve kilobytes; a test wants the arithmetic
+      // to be checkable, and nothing here depends on the approximation.
+      case "PFADD": {
+        const set = container(rest[0], () => new Set());
+        let changed = 0;
+        for (const member of rest.slice(1)) {
+          if (!set.has(String(member))) changed = 1;
+          set.add(String(member));
+        }
+        return changed;
+      }
+      case "PFCOUNT": {
+        let count = 0;
+        for (const key of rest) {
+          const entry = live(key);
+          if (entry) count += entry.value.size;
+        }
+        return count;
       }
       case "SADD": {
         const set = container(rest[0], () => new Set());
