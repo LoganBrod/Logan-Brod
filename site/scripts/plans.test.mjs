@@ -1,4 +1,4 @@
-// Plans, limits, and the monthly meter.
+// Plans, limits, and the weekly meter.
 //
 //   npm test
 //
@@ -25,12 +25,12 @@ after(() => stop?.());
 const plans = await import("../lib/plans.ts");
 
 test("free gets a real closet, not a crippled one", () => {
-  // One closet a month is a whole closet — nine pieces, the animation, the
-  // taste memory. What's withheld is the service, not the product.
+  // Three closets a week is enough to watch it change its mind about you.
+  // What's withheld is the service, not the product.
   const free = plans.limitsFor("free");
-  assert.equal(free.closets, 1);
+  assert.equal(free.closets, 3);
   assert.equal(free.judgements, 3);
-  assert.equal(free.keeps, 1);
+  assert.equal(free.keeps, 2);
 });
 
 test("membership lifts the counted things and bounds the running ones", () => {
@@ -69,6 +69,7 @@ test("the meter counts, and the allowance sees it", async () => {
     used: 0,
     limit: 3,
     plan: "free",
+    resets: plans.resetsAt("judgements"),
   });
 
   await plans.spend(me, "judgements");
@@ -123,6 +124,48 @@ test("a limit says what to do about it, not just no", () => {
     assert.ok(free.length > 20, meter);
     assert.ok(plans.limitMessage(meter, "member").length > 20, meter);
   }
-  // The free messages name the way out.
+  // The free messages name the way out, and the two weekly ones say when.
   assert.match(plans.limitMessage("closets", "free"), /[Mm]embership/);
+  assert.match(plans.limitMessage("closets", "free"), /Monday/);
+  assert.match(plans.limitMessage("judgements", "free"), /Monday/);
+});
+
+test("the window is the week, and it turns over on Monday", () => {
+  // Friday 2026-09-11: the Monday that started this week is the 7th, and the
+  // counter goes back to zero on the 14th.
+  const friday = Date.UTC(2026, 8, 11, 17, 30);
+  assert.equal(plans.resetsAt("closets", friday), "2026-09-14T00:00:00.000Z");
+
+  // The boundary itself belongs to the week it opens, not the one it closes.
+  const monday = Date.UTC(2026, 8, 14, 0, 0, 0);
+  assert.equal(plans.resetsAt("closets", monday), "2026-09-21T00:00:00.000Z");
+  assert.equal(plans.resetsAt("closets", monday - 1), "2026-09-14T00:00:00.000Z");
+
+  // A Sunday is the end of its week, not the start of the next one - the
+  // off-by-one that a week anchored to Sunday would produce here.
+  const sunday = Date.UTC(2026, 8, 13, 23, 0);
+  assert.equal(plans.resetsAt("closets", sunday), "2026-09-14T00:00:00.000Z");
+});
+
+test("a week's spending does not carry into the next week", async () => {
+  const me = "metertest0006";
+  for (let i = 0; i < 3; i += 1) await plans.spend(me, "closets");
+  assert.equal((await plans.allowance(me, "free", "closets")).allowed, false, "three is the week's lot");
+
+  // The next week is a different key, so the same person starts clean. Proven
+  // by asking for a period that cannot be this one rather than by waiting.
+  assert.notEqual(plans.resetsAt("closets"), plans.resetsAt("closets", Date.now() + 8 * 24 * 60 * 60 * 1000));
+});
+
+test("an allowance says when it comes back, so a refusal can name a day", async () => {
+  const room = await plans.allowance("metertest0007", "free", "closets");
+  assert.match(room.resets, /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+  assert.ok(new Date(room.resets).getTime() > Date.now(), "always in the future");
+  assert.equal(new Date(room.resets).getUTCDay(), 1, "and it is a Monday");
+});
+
+test("even the refusal with nothing to meter against says when", async () => {
+  const room = await plans.allowance(null, "free", "closets");
+  assert.equal(room.allowed, false);
+  assert.ok(room.resets, "a 402 with no reset time is a dead end");
 });

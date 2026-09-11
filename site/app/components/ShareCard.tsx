@@ -118,7 +118,7 @@ export default function ShareCard({ code, name, items, palette }: Props) {
 
     ctx.fillStyle = FAINT;
     ctx.font = "400 26px Georgia, serif";
-    ctx.fillText(`${items.length} pieces, found secondhand`, pad, captionTop + 46);
+    ctx.fillText(`${items.length} pieces, found for sale`, pad, captionTop + 46);
 
     // The palette is the one part of a style profile that reads at a glance.
     (palette ?? []).slice(0, 6).forEach((colour, index) => {

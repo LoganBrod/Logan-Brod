@@ -147,8 +147,8 @@ export const proof = {
 /**
  * Where the pieces actually come from.
  *
- * Worth being exact about: these are the two marketplaces searched, not
- * partners, sponsors or a stockroom. Nothing here is an affiliate arrangement
+ * Worth being exact about: these are the places searched, not partners,
+ * sponsors or a stockroom. Nothing here is an affiliate arrangement
  * and no brand has any relationship with this company.
  *
  * Sixteen label names used to be listed here under a caption explaining that

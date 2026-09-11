@@ -16,7 +16,7 @@ import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/passwords";
 import { adoptTaste, readTasteId } from "@/lib/taste";
 import { readViewer, tasteIdFor } from "@/lib/viewer";
 import { mailConfigured, sendLoginLink } from "@/lib/mail";
-import { LIMITS, usage } from "@/lib/plans";
+import { LIMITS, resetsAt, usage } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ function linkOrigin(req: Request): string | null {
 export async function GET(req: Request) {
   const { user, plan, meterId } = await readViewer(req);
 
-  // What's left this month, so the UI can say so before someone presses a
+  // What's left this week, so the UI can say so before someone presses a
   // button that's going to refuse them.
   const [closets, judgements, keeps] = await Promise.all([
     usage(meterId, "closets"),
@@ -58,6 +58,13 @@ export async function GET(req: Request) {
       plan,
       limits: LIMITS[plan],
       used: { closets, judgements, keeps },
+      // When each of those goes back to zero. The badge in the corner says
+      // "resets Monday" from this rather than assuming the cycle.
+      resets: {
+        closets: resetsAt("closets"),
+        judgements: resetsAt("judgements"),
+        keeps: resetsAt("keeps"),
+      },
       // Passwords need nothing but storage. A link needs a way to arrive, so
       // it can be off while passwords stay on — the UI hides what isn't there
       // rather than offering a control that can only fail.

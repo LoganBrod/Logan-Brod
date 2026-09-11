@@ -14,6 +14,7 @@ import { addToLibrary } from "@/lib/library";
 import { redisConfigured } from "@/lib/redis";
 import { StyleProfileSchema } from "@/lib/schemas";
 import { newTasteId, tasteCookie } from "@/lib/taste";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { recordSeen } from "@/lib/seen";
 
@@ -34,6 +35,11 @@ function cookieHeader(code: string): string {
     .join("; ");
 }
 
+/** A rail is eight to twelve pieces; accessories are added to the same closet later. */
+const MAX_ITEMS = 60;
+/** The curator's note about the closet, not a place to put a novel. */
+const MAX_NOTES = 2000;
+
 function parseDraft(body: unknown): ClosetDraft | { error: string } {
   const raw = body as Record<string, unknown> | null;
   if (!raw) return { error: "Body must be JSON." };
@@ -48,11 +54,26 @@ function parseDraft(body: unknown): ClosetDraft | { error: string } {
     return { error: "range.min and range.max must be numbers with 0 <= min < max." };
   }
 
+  /*
+   * Items are bounded rather than parsed, and the two are not the same choice.
+   *
+   * A full schema here would be stricter and would also be the thing that
+   * rejects a legitimate save the first time the curator returns a field this
+   * file has not heard of. What actually needed fixing is that `items` was
+   * taken from the body with no ceiling at all: a closet is eight to twelve
+   * pieces, and this accepted a hundred thousand and wrote them to Redis,
+   * which is somebody else's bill and an unauthenticated way to run it up.
+   *
+   * Sixty is far above any real closet - a full rail plus accessories added
+   * later - and far below anything worth storing on purpose.
+   */
+  const items = Array.isArray(raw.items) ? (raw.items as ClosetDraft["items"]).slice(0, MAX_ITEMS) : [];
+
   return {
     range: { min, max },
     profile: profile.data,
-    items: Array.isArray(raw.items) ? (raw.items as ClosetDraft["items"]) : [],
-    notes: typeof raw.notes === "string" ? raw.notes : undefined,
+    items,
+    notes: typeof raw.notes === "string" ? raw.notes.slice(0, MAX_NOTES) : undefined,
     run: parseRun(raw.run),
   };
 }
@@ -128,6 +149,17 @@ export async function POST(req: Request) {
           "Saving isn't set up. Add Upstash Redis (Vercel → Storage → Marketplace) to keep closets between visits.",
       },
       { status: 501 }
+    );
+  }
+
+  // No model call here, so this is not about the Anthropic balance - it is
+  // about Redis. Every save allocates a key with a long TTL, and unbounded
+  // that is an open endpoint for filling somebody else's storage.
+  const burst = await rateLimit("save", clientIp(req), LIMITS.save);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many saves just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
     );
   }
 

@@ -183,9 +183,9 @@ export default function CologneDesk() {
             <p className="text-[13px] leading-relaxed text-room-muted">{advice.howToBuy}</p>
             <p className="mt-3 text-[12px] leading-relaxed text-room-faint">
               These are recommendations, not listings - nothing here is for sale through us and
-              we&rsquo;re not paid for the links. Fragrance is heavily counterfeited on secondhand
-              marketplaces, which is why this page doesn&rsquo;t search them the way the rest of the
-              site does.
+              we&rsquo;re not paid for the links. Fragrance is heavily counterfeited, and a fake is
+              indistinguishable in a photograph, which is why this page doesn&rsquo;t search the
+              marketplaces the way the rest of the site does.
             </p>
           </div>
         </section>

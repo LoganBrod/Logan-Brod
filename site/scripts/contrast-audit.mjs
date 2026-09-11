@@ -55,6 +55,7 @@ const ROUTES = [
   "/accessories",
   "/colognes",
   "/calibrate",
+  "/feedback",
 ];
 
 const audit = () => {

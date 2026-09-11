@@ -56,7 +56,7 @@ export default async function Home({
 
       <PageHeader
         title={<>Show me what you like.</>}
-        lede="A few photographs of clothes you like, and it finds real secondhand pieces that belong with them."
+        lede="A few photographs of clothes you like, and it finds real pieces that belong with them - new, secondhand, or both."
         /* The way out of a reopened clozet, at the top of the page rather than
            under the wardrobe, the accessories offer and the share card. There
            is a button down there too and it is better - it swaps the form in

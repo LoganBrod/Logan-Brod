@@ -132,7 +132,7 @@ export function digestBody(
       item.url,
       "",
     ]),
-    "These are live listings and secondhand stock moves fast.",
+    "These are live listings and stock moves fast - secondhand especially.",
   ].join("\n");
 
   const rows = items
@@ -163,7 +163,7 @@ export function digestBody(
     }</p>
     <table style="width:100%;border-collapse:collapse">${rows}</table>
     <p style="margin:22px 0 0;padding-top:18px;border-top:1px solid #C9CAD1;font-size:12px;line-height:1.6;color:#7E7F87">
-      These are live listings and secondhand stock moves fast. Stop this scan any time from your Scan page.
+      These are live listings and stock moves fast - secondhand especially. Stop this scan any time from your Scan page.
     </p>
   </div>
 </body></html>`;

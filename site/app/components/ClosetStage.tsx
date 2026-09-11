@@ -11,7 +11,7 @@ export type StagePhase = "building" | "open" | "filled";
 
 type Verdict = "yes" | "no";
 
-const SOURCE_LABEL: Record<string, string> = { ebay: "eBay", serpapi: "Retail" };
+const SOURCE_LABEL: Record<string, string> = { ebay: "eBay", serpapi: "Retail", shopify: "The brand" };
 
 /**
  * How long the panel survives the pointer leaving. Long enough to cross the gap

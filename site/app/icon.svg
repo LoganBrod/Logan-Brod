@@ -1,26 +1,23 @@
 <!--
-  The browser tab, which until now 404'd on every page of the site.
+  The browser tab.
 
-  Drawn rather than lettered: at 16px a glyph from the display face is a smudge,
-  and the one shape this product is about that survives being that small is a
-  hanger. Two paths and a heavy stroke, so it still holds together when a tab is
-  inactive and the browser greys it out.
+  The same drawing as `LogoMark` in app/components/Logo.tsx, and it has to stay
+  that way: a tab icon and a header logo that disagree read as two companies.
 
-  The geometry was checked at 16, 32 and 64 rather than eyeballed at one size.
-  An earlier version had a larger hook set off to the right of the apex, which
-  looked deliberate at 64px and looked broken at 16.
-
-  Fixed colours, not the palette variables. A favicon is composited by the
+  Fixed colours, not the palette variables — a favicon is composited by the
   browser chrome against a tab strip, not against the page, so it cannot follow
-  prefers-color-scheme the way the site does - an off-black plate with the
-  accent on it reads on a light tab strip and a dark one alike.
+  the site's palette. The dark plate is what makes the teal legible, and it
+  reads on a light tab strip and a dark one alike.
+
+  Letters drawn as paths rather than set in a face: a favicon cannot wait for a
+  webfont. Checked at 16, 32 and 64 rather than eyeballed at one size — the
+  strokes are this heavy because at 16px anything lighter closes up.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="6" fill="#0D0D0F" />
-  <g fill="none" stroke="#4FA07A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- The hook, and the neck down to the shoulder point. -->
-    <path d="M13.9 10.3a2.1 2.1 0 1 1 2.1 2.1v1.6" />
-    <!-- The bar, with both shoulders running down to it. -->
-    <path d="M16 14 6 22.5h20L16 14Z" />
-  </g>
+  <rect width="32" height="32" rx="8.5" fill="#46585B" />
+  <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="6.4" fill="#16201E" />
+  <!-- L in grey, Z in teal. -->
+  <path d="M8.8 8.5h3.1v8h4.4v3H8.8Z" fill="#A3ACAD" />
+  <path d="M17.6 8.5h7v2.7l-4.4 5.3h4.4v3h-7.2v-2.7l4.4-5.3h-4.2Z" fill="#33D6C3" />
+  <rect x="13" y="21.6" width="6" height="2.3" rx="1.15" fill="#33D6C3" />
 </svg>

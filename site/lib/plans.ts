@@ -2,9 +2,14 @@
 //
 // The limits exist to make the paid tier obvious, not to make the free one
 // annoying. Everything free is a working taste of something that gets better
-// with use: one closet a month is a real closet, three judgements is enough to
-// see that the answers are good. What's held back is the part that only makes
-// sense as a service — searches that keep running, a wardrobe that accumulates.
+// with use: three closets a week is enough to see it change its mind about
+// you, three judgements is enough to see that the answers are good. What's
+// held back is the part that only makes sense as a service — searches that
+// keep running, a wardrobe that accumulates.
+//
+// The cycle is a week rather than a month because the free tier's job is to
+// bring somebody back, and "come back in three weeks" is the same sentence as
+// "don't".
 //
 // Taking money is deliberately not in here. The plan is a field on the account,
 // and `grantPlan` is the entire integration surface: a Stripe webhook, an admin
@@ -31,7 +36,7 @@ export interface Limits {
 const UNLIMITED = Number.MAX_SAFE_INTEGER;
 
 export const LIMITS: Record<Plan, Limits> = {
-  free: { closets: 1, keeps: 1, judgements: 3, watches: 0, wardrobe: 0 },
+  free: { closets: 3, keeps: 2, judgements: 3, watches: 0, wardrobe: 0 },
   member: {
     closets: UNLIMITED,
     keeps: UNLIMITED,
@@ -89,23 +94,73 @@ export async function grantPlan(userId: string, plan: Plan): Promise<void> {
 // ------------------------------------------------------------------ metering
 
 /**
- * Usage is counted per calendar month rather than on a rolling window.
+ * Usage is counted per whole week rather than on a rolling window.
  *
- * A rolling window is fairer and impossible to explain; "three a month,
- * resets on the 1st" is something a person can hold in their head, which
- * matters more for a limit they're supposed to notice.
+ * A rolling window is fairer and impossible to explain; "three a week,
+ * resets Monday" is something a person can hold in their head, which matters
+ * more for a limit they're supposed to notice.
+ *
+ * It was a calendar month, and a month is the wrong unit for something people
+ * are meeting for the first time. Somebody arrives, builds a clozet, and the
+ * next thing the product says is "come back in three weeks" - which is the
+ * same as saying don't. A week is short enough to be a reason to return.
+ *
+ * Weeks are anchored to Monday UTC. 1970-01-05 was a Monday, so whole weeks
+ * since then is the index, and the Monday it names is the label - which makes
+ * `usage:someone:2026-09-07:closets` legible in Redis rather than a number
+ * nobody can date.
  */
-function period(): string {
-  const now = new Date();
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const FIRST_MONDAY_MS = 4 * 24 * 60 * 60 * 1000;
+
+function weekStart(at: number): number {
+  return FIRST_MONDAY_MS + Math.floor((at - FIRST_MONDAY_MS) / WEEK_MS) * WEEK_MS;
+}
+
+/**
+ * Which cycle each meter runs on.
+ *
+ * `wardrobe` and `watches` are not periodic at all - they are caps on how many
+ * things may exist at once, counted by looking at the things rather than by a
+ * meter - so their entry here is never read. It is present so that adding a
+ * meter forces a decision about its cycle instead of inheriting one.
+ */
+const CYCLE: Record<Meter, "week" | "month"> = {
+  closets: "week",
+  keeps: "week",
+  judgements: "week",
+  watches: "month",
+  wardrobe: "month",
+};
+
+function period(meter: Meter, at = Date.now()): string {
+  if (CYCLE[meter] === "month") {
+    const now = new Date(at);
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  return new Date(weekStart(at)).toISOString().slice(0, 10);
+}
+
+/** When this meter's window rolls over, so the UI can say when rather than just no. */
+export function resetsAt(meter: Meter, at = Date.now()): string {
+  if (CYCLE[meter] === "month") {
+    const now = new Date(at);
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
+  }
+  return new Date(weekStart(at) + WEEK_MS).toISOString();
 }
 
 function meterKey(ownerId: string, meter: Meter): string {
-  return `usage:${ownerId}:${period()}:${meter}`;
+  return `usage:${ownerId}:${period(meter)}:${meter}`;
 }
 
-/** Two months, so last month's number is still readable while this one runs. */
-const METER_TTL_SECONDS = 62 * 24 * 60 * 60;
+/**
+ * Long enough that the previous window is still readable while this one runs,
+ * and no longer - a counter nobody will read again is storage being paid for.
+ */
+function meterTtlSeconds(meter: Meter): number {
+  return CYCLE[meter] === "month" ? 62 * 24 * 60 * 60 : 21 * 24 * 60 * 60;
+}
 
 export async function usage(ownerId: string | null, meter: Meter): Promise<number> {
   if (!ownerId || !redisConfigured()) return 0;
@@ -121,6 +176,8 @@ export interface Allowance {
   used: number;
   limit: number;
   plan: Plan;
+  /** When the window rolls over, so a refusal can say when rather than just no. */
+  resets: string;
 }
 
 /**
@@ -143,17 +200,17 @@ export async function allowance(
   // on the site. A caller with no identity now gets nothing — routes that serve
   // anonymous people are expected to mint an id first (see `identify`), which
   // is a deliberate act rather than an accident of a missing header.
-  if (!ownerId) return { allowed: false, used: limit, limit, plan };
+  if (!ownerId) return { allowed: false, used: limit, limit, plan, resets: resetsAt(meter) };
 
   const used = await usage(ownerId, meter);
-  return { allowed: used < limit, used, limit, plan };
+  return { allowed: used < limit, used, limit, plan, resets: resetsAt(meter) };
 }
 
 /** Count one against the meter. Never throws — a lost count beats a lost run. */
 export async function spend(ownerId: string | null, meter: Meter): Promise<void> {
   if (!ownerId || !redisConfigured()) return;
   try {
-    await bump(meterKey(ownerId, meter), METER_TTL_SECONDS);
+    await bump(meterKey(ownerId, meter), meterTtlSeconds(meter));
   } catch {
     // Metering is bookkeeping. It must never be the reason something fails.
   }
@@ -170,11 +227,11 @@ export function limitMessage(meter: Meter, plan: Plan): string {
 
   switch (meter) {
     case "closets":
-      return "That's your clozet for this month. Membership builds as many as you like.";
+      return "That's your three clozets for this week - it resets Monday. Membership builds as many as you like.";
     case "keeps":
-      return "Free keeps one clozet permanently. Membership keeps all of them.";
+      return "Free keeps two clozets a week; it resets Monday. Membership keeps all of them.";
     case "judgements":
-      return "That's three pieces judged this month. Membership doesn't count them.";
+      return "That's three questions for this week - it resets Monday. Membership doesn't count them.";
     case "watches":
       return "Standing searches are part of membership — they keep looking after you close the tab.";
     case "wardrobe":

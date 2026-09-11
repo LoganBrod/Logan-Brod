@@ -66,7 +66,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: company,
   description:
-    "Clozet reads the clothes you already like and finds real secondhand pieces that belong with them - in your size, in your budget, and still for sale.",
+    "Clozet reads the clothes you already like and finds real pieces that belong with them - from the brands' own shops, retail, and secondhand - in your size, in your budget, and still for sale.",
 };
 
 /**
