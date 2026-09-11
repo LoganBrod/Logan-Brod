@@ -168,7 +168,7 @@ the form: secondhand, new, or both.
 |---|---|
 | eBay | The only one carrying both. The setting picks its condition filter. |
 | Google Shopping | Retail, through SerpAPI. `SERPAPI_QUERY_CAP` decides how many of a run's ten searches it sees - four on the free tier, raise it on a paid one. |
-| The brands' own shops | Every Shopify store serves its catalogue at `/products.json`. Named in `SHOPIFY_STORES`, cached for a day, searched locally. No key, no quota. |
+| The brands' own shops | Every Shopify store serves its catalogue at `/products.json`. Named in `SHOPIFY_STORES`, cached for a day, searched locally. No key, no quota. Six stores are read at a time and 400 garments kept from each, and the twice-daily sweep refreshes all of them so a cold cache never lands on somebody's run. |
 
 Before adding a brand, check it actually serves one. From `site/`, on a
 machine with normal internet access:

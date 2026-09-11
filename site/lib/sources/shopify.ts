@@ -49,6 +49,23 @@ const MAX_PAGES = 4;
 const PAGE_SIZE = 250;
 /** A catalogue changes slowly; stock does not, which is why availability is re-read from it rather than trusted forever. */
 const CATALOGUE_TTL_SECONDS = 24 * 60 * 60;
+/**
+ * The most one store may occupy.
+ *
+ * With a couple of brands this never mattered. With twenty-seven it is the
+ * difference between a few megabytes in Redis and a bill: a thousand-product
+ * catalogue is about a third of a megabyte once trimmed, and Upstash charges
+ * for what it holds and what it moves.
+ */
+const MAX_GARMENTS_PER_STORE = 400;
+/**
+ * Stores read at once.
+ *
+ * Twenty-seven simultaneous requests from one address is how this turns into
+ * something a brand blocks. Six is the same bound the probe uses, and for the
+ * same reason.
+ */
+const STORE_CONCURRENCY = 6;
 const FETCH_TIMEOUT_MS = 12_000;
 
 /** What we keep of a product. The rest of the payload is description HTML and variant noise. */
@@ -219,8 +236,25 @@ async function fetchCatalogue(domain: string): Promise<Garment[]> {
     garments.push(...batch);
     // A short page is the last page.
     if (batch.length === 0) break;
+    if (garments.length >= MAX_GARMENTS_PER_STORE) break;
   }
-  return garments;
+  return garments.slice(0, MAX_GARMENTS_PER_STORE);
+}
+
+/** Run tasks a few at a time, preserving order. */
+async function inBatches<T, R>(items: T[], size: number, run: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(size, items.length) }, async () => {
+      for (;;) {
+        const index = next++;
+        if (index >= items.length) return;
+        out[index] = await run(items[index]);
+      }
+    })
+  );
+  return out;
 }
 
 const key = (domain: string) => `shopify:catalogue:${domain}`;
@@ -228,10 +262,28 @@ const key = (domain: string) => `shopify:catalogue:${domain}`;
 /** In-process, so ten queries in one run do not each re-read the same catalogue. */
 const inFlight = new Map<string, Promise<Garment[]>>();
 
+/**
+ * What this process already read, and when.
+ *
+ * A run issues ten searches and each one asks every store, so without this a
+ * single run is ten Redis reads per brand - two hundred and seventy of them
+ * across twenty-seven brands, for data that cannot have changed in the
+ * seconds between. Short-lived on purpose: the authority is still Redis, this
+ * only stops one run asking it the same question ten times.
+ */
+const MEMO_MS = 5 * 60 * 1000;
+const memo = new Map<string, { at: number; garments: Garment[] }>();
+
 async function catalogue(domain: string): Promise<Garment[]> {
+  const remembered = memo.get(domain);
+  if (remembered && Date.now() - remembered.at < MEMO_MS) return remembered.garments;
+
   if (redisConfigured()) {
     const cached = await getJson<Garment[]>(key(domain)).catch(() => null);
-    if (cached?.length) return cached;
+    if (cached?.length) {
+      memo.set(domain, { at: Date.now(), garments: cached });
+      return cached;
+    }
   }
 
   const already = inFlight.get(domain);
@@ -239,8 +291,11 @@ async function catalogue(domain: string): Promise<Garment[]> {
 
   const request = fetchCatalogue(domain)
     .then(async (garments) => {
-      if (garments.length && redisConfigured()) {
-        await setJson(key(domain), garments, CATALOGUE_TTL_SECONDS).catch(() => {});
+      if (garments.length) {
+        memo.set(domain, { at: Date.now(), garments });
+        if (redisConfigured()) {
+          await setJson(key(domain), garments, CATALOGUE_TTL_SECONDS).catch(() => {});
+        }
       }
       return garments;
     })
@@ -293,7 +348,9 @@ export async function search({
   if (!domains.length) return [];
 
   const tokens = tokenise(query);
-  const catalogues = await Promise.all(domains.map((domain) => catalogue(domain).catch(() => [])));
+  const catalogues = await inBatches(domains, STORE_CONCURRENCY, (domain) =>
+    catalogue(domain).catch(() => [] as Garment[])
+  );
 
   const scored: Array<{ garment: Garment; domain: string; score: number }> = [];
   domains.forEach((domain, index) => {
@@ -320,4 +377,36 @@ export async function search({
     condition: "New",
     matchedQuery: query,
   }));
+}
+
+/**
+ * Read every configured store now, so nobody's run pays for it.
+ *
+ * Twenty-seven catalogues on a cold cache is a burst of requests and tens of
+ * seconds, landing on whoever happens to arrive first after a deploy or a
+ * day's expiry. The sweep already warms the quiz's deck twice a day; this is
+ * the same trade for the same reason.
+ *
+ * Never throws: a brand that has gone away is not a failed sweep.
+ */
+export async function warmShopifyCatalogues(): Promise<{ stores: number; garments: number }> {
+  const domains = stores();
+  if (!domains.length) return { stores: 0, garments: 0 };
+
+  const catalogues = await inBatches(domains, STORE_CONCURRENCY, async (domain) => {
+    // Past the cache deliberately: warming means refreshing, and a warm cache
+    // would make this a no-op on the one run whose job is to replace it.
+    memo.delete(domain);
+    const garments = await fetchCatalogue(domain).catch(() => [] as Garment[]);
+    if (garments.length) {
+      memo.set(domain, { at: Date.now(), garments });
+      if (redisConfigured()) await setJson(key(domain), garments, CATALOGUE_TTL_SECONDS).catch(() => {});
+    }
+    return garments.length;
+  });
+
+  return {
+    stores: catalogues.filter((n) => n > 0).length,
+    garments: catalogues.reduce((sum, n) => sum + n, 0),
+  };
 }
