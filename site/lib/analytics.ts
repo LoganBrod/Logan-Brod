@@ -50,6 +50,8 @@ const KNOWN_PATHS = new Set([
   "/colognes",
   "/calibrate",
   "/feedback",
+  "/privacy",
+  "/terms",
 ]);
 
 export function normalisePath(raw: unknown): string {

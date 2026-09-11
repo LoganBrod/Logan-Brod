@@ -169,12 +169,32 @@ export default function SideNav() {
             })}
           </ul>
 
-          <a
-            href={siteSection.contactHref}
-            className="mt-auto pt-8 text-[12px] uppercase tracking-[0.22em] text-room-faint transition-colors duration-200 ease-out hover:text-accent"
-          >
-            {siteSection.contactLabel}
-          </a>
+          <div className="mt-auto pt-8">
+            <a
+              href={siteSection.contactHref}
+              className="text-[12px] uppercase tracking-[0.22em] text-room-faint transition-colors duration-200 ease-out hover:text-accent"
+            >
+              {siteSection.contactLabel}
+            </a>
+
+            {/* The product's pages have no footer of their own, so this menu is
+                the only place these are reachable from inside the app. Set
+                smaller and quieter than the sections above: findable, not
+                competing with them. */}
+            <p className="mt-5 text-[11px] text-room-faint">
+              <Link href="/feedback" className="transition-colors duration-200 ease-out hover:text-accent">
+                Report a bug
+              </Link>
+              {" · "}
+              <Link href="/privacy" className="transition-colors duration-200 ease-out hover:text-accent">
+                Privacy
+              </Link>
+              {" · "}
+              <Link href="/terms" className="transition-colors duration-200 ease-out hover:text-accent">
+                Terms
+              </Link>
+            </p>
+          </div>
         </nav>
       </div>
     </>

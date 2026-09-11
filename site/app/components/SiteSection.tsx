@@ -79,7 +79,21 @@ export default function SiteSection() {
         ))}
       </nav>
 
-      <p className="pb-8 text-center text-[11px] text-room-faint">{legal}</p>
+      {/* Below the section list rather than in it: these are the two links a
+          person looks for when they have already decided to check something,
+          and putting them level with "Clozet" would give them a weight they
+          do not want. */}
+      <p className="pb-8 text-center text-[11px] text-room-faint">
+        {legal}
+        {" · "}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-room-ink">
+          Privacy
+        </Link>
+        {" · "}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-room-ink">
+          Terms
+        </Link>
+      </p>
     </section>
   );
 }
