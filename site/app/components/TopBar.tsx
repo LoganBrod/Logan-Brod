@@ -29,9 +29,23 @@ export default function TopBar() {
   return (
     <header className="w-full border-b border-room-line bg-room-panel">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5 sm:h-[4.5rem] sm:gap-6 sm:px-8">
-        <Link href="/" aria-label="LevoZ Labs, home" className="shrink-0">
-          <Wordmark />
-        </Link>
+        {/* The chip belongs to the name, so it sits in the name's group rather
+            than as a third item in the bar's own spacing. Said on the front
+            door rather than discovered halfway through a run: somebody
+            arriving from a video has no idea how old this is, and "beta" is
+            the difference between a rough edge being a disappointment and
+            being expected. It links to where to report one. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <Link href="/" aria-label="LevoZ Labs, home">
+            <Wordmark />
+          </Link>
+          <Link
+            href="/feedback"
+            className="rounded-sm bg-room-sunk px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-room-muted transition-colors duration-200 ease-out hover:text-room-ink"
+          >
+            Beta
+          </Link>
+        </div>
 
         {/* Below md the right-hand pair takes the room these would need, and a
             wrapped nav row inside a fixed-height bar is worse than no nav row:

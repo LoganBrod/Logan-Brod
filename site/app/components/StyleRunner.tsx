@@ -54,7 +54,7 @@ function partiallyJudged(count: number): string {
   return `${count === 1 ? "One batch" : `${count} batches`} of the search couldn't be judged, so this clozet is thinner than it should be. Try again to fill it out.`;
 }
 
-const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Shopping" };
+const SOURCE_NAME: Record<string, string> = { ebay: "eBay", serpapi: "Google Shopping", shopify: "The brands' own shops" };
 
 /** What a closet's standing scan is called, taken from what the style turned out to be. */
 function watchName(profile: StyleProfile): string {
@@ -492,6 +492,12 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
         { photos: encoded, min, max, intent }
       );
 
+      // Analyze is where the week's allowance is actually spent, so this is
+      // the moment the counter in the corner is out of date. Announced rather
+      // than pushed, so the badge can live anywhere on the page without this
+      // component needing to know it exists.
+      window.dispatchEvent(new Event("clozet:spent"));
+
       setStage("shopping");
       const shopped = await shopFor(profile.searchQueries);
       const candidates: ProductListing[] = shopped.listings;
@@ -499,7 +505,7 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
 
       if (!candidates.length) {
         throw new Error(
-          "No listings came back. Widen the price range, or check that the eBay credentials are set."
+          "No listings came back. Try widening the price range, or switching \u201cWhere from?\u201d to include more sources."
         );
       }
 
@@ -682,7 +688,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   const busy = stage !== "idle";
   const onStage = phase === "building" || phase === "open" || phase === "filled";
   const leaving = phase === "exiting";
-  const eBayOnly = reports.some((r) => r.source === "serpapi" && !r.configured);
   // Configured, asked, and came back with either an error or nothing at all.
   // Only sources this run actually asked. One that the "where from?" setting
   // sat out has not failed at anything, and saying it found nothing would be
@@ -1010,11 +1015,6 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           </div>
         )}
 
-        {eBayOnly && !busy && (
-          <p className="mt-5 text-xs text-room-faint">
-            Searching eBay only. Add a SERPAPI_KEY to include mainstream retail.
-          </p>
-        )}
       </section>
       )}
 

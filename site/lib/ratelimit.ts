@@ -122,6 +122,35 @@ export const LIMITS = {
    */
   shop: { limit: 30, windowSeconds: HOUR },
   /**
+   * A brand sizing lookup: a web search, up to three page fetches and a
+   * high-effort pass over all of them, which makes it the most expensive
+   * single call on the site. It was metered but not limited, and a meter is
+   * not a limit - the meter counts against a cookie, and the attacker's move
+   * is to send no cookie and be minted a fresh allowance every request. Ten
+   * an hour is more brands than anyone checks in a sitting.
+   */
+  fit: { limit: 10, windowSeconds: HOUR },
+  /**
+   * Reading photos into the owned wardrobe, and building outfits from it.
+   * Members only, so an attacker needs an account first - but an account is
+   * free to ask for and the outfit pass reads a whole wardrobe, so it is
+   * bounded here rather than trusted to the plan.
+   */
+  wardrobe: { limit: 20, windowSeconds: HOUR },
+  /**
+   * Saving a closet. Not a model call - this one is about Redis, where every
+   * save allocates a key with a long TTL. A person builds a closet, saves it,
+   * and comes back; twenty an hour is far past that and still a ceiling.
+   */
+  save: { limit: 20, windowSeconds: HOUR },
+  /**
+   * Bug reports and suggestions. Nothing here costs a model call, but it is an
+   * unauthenticated write that a stranger can reach, so it gets a ceiling like
+   * everything else a stranger can reach. Ten an hour is more than anyone with
+   * something to say, and less than anyone with a script.
+   */
+  feedback: { limit: 10, windowSeconds: HOUR },
+  /**
    * The image proxy. Not a model call, but an open proxy that fetches 3MB
    * from any public URL on request is still a thing to meter - a share card
    * draws a dozen images at most, so this is generous for the real use.

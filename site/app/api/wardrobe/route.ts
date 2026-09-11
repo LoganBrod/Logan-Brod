@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { describeApiError } from "@/lib/anthropic";
 import { limitMessage, limitsFor } from "@/lib/plans";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { redisConfigured } from "@/lib/redis";
 import { tasteMemo } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
@@ -44,6 +45,17 @@ export async function GET(req: Request) {
     );
   }
 
+  // Building outfits is a model pass over the whole wardrobe, so it is bounded
+  // by address like every other call that costs money. Reading the list is not,
+  // and is answered above before this point.
+  const burst = await rateLimit("wardrobe", clientIp(req), LIMITS.wardrobe);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { configured: true, allowed: true, items, limit: cap, plan, error: "Too many outfit passes just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter), "Cache-Control": "no-store" } }
+    );
+  }
+
   try {
     const outfits = await buildOutfits(items, await tasteMemo(tasteId));
     return NextResponse.json(
@@ -61,6 +73,16 @@ export async function GET(req: Request) {
 
 /** POST /api/wardrobe — read a batch of photos into the inventory. */
 export async function POST(req: Request) {
+  // A vision call per batch of photos. The plan gate below stops the public;
+  // this stops an account.
+  const burst = await rateLimit("wardrobe", clientIp(req), LIMITS.wardrobe);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "Too many photos just now. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
+  }
+
   const { owner, plan } = await readViewer(req);
   if (!owner) {
     return NextResponse.json({ error: "Nothing identifies this browser yet." }, { status: 401 });

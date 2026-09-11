@@ -4,6 +4,7 @@ import { adviseFit, forgetLookup, readHistory, recordLookup } from "@/lib/fit";
 import { allowance, limitMessage, spend } from "@/lib/plans";
 import { newTasteId, readSizes, readTasteId, tasteCookie, writeSizes } from "@/lib/taste";
 import { hasSizes } from "@/lib/sizing";
+import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { webSearchConfigured } from "@/lib/websearch";
 
@@ -87,6 +88,18 @@ export async function PUT(req: Request) {
  * harder to explain.
  */
 export async function POST(req: Request) {
+  // Before anything else, and before the cookie is even read: the meter below
+  // counts against an id the caller can mint by dropping a cookie, so it tells
+  // an honest person they have used their three and does nothing whatsoever
+  // about somebody who simply never sends one. This counts against the address.
+  const burst = await rateLimit("fit", clientIp(req), LIMITS.fit);
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: "That's a lot of brands at once. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfter) } }
+    );
+  }
+
   const { id, plan, meterId, mint } = await identify(req);
 
   if (!webSearchConfigured()) {

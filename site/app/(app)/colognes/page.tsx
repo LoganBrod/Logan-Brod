@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
 /**
  * The one page here that recommends rather than sells.
  *
- * Every other part of this site finds real listings on secondhand markets.
- * Fragrance is the category where that would be irresponsible: it's among the
+ * Every other part of this site finds real listings - retail, the brands' own
+ * shops, and secondhand. Fragrance is the category where that last one would be
+ * irresponsible, and the first two don't help: it's among the
  * most counterfeited things sold online, a fake is indistinguishable in a
  * photograph, and the people using this have no particular reason to know that.
  * So this recommends from knowledge and points at sellers who can be held to

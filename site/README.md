@@ -12,6 +12,7 @@ One Next.js app serving both halves of the company:
 | `/accessories` | The small things, chosen against the style a Clozet read |
 | `/colognes` | Recommended rather than searched — see the page for why |
 | `/calibrate` | Fifteen swipes that sharpen the profile, with no model call |
+| `/feedback` | Bug reports and suggestions — no account, straight into Redis |
 | `/api/**` | The endpoints (Claude, eBay, Google Shopping, auth, taste, fit, social) |
 
 Clozet's three tabs are real routes, so each one is linkable, openable in a new
@@ -188,6 +189,15 @@ payload, which covers the parsing, the matching, the caching and what happens
 when a store is unreachable. The probe is the other half: only a machine that
 can reach a brand's website can tell you whether that brand answers.
 
+## What the free tier gets
+
+Three clozets a week, two of them keepable, three questions — reset every
+Monday, UTC. It was one clozet a month, which is the wrong unit for something
+people are meeting for the first time: a month means "come back in three
+weeks", which means don't. The cycle is per-meter in `lib/plans.ts`, and
+`/api/auth` reports both what's used and when it comes back, which is what the
+corner dock reads.
+
 ## Security
 
 What is enforced, and where, so a change to any of it is a visible change.
@@ -217,7 +227,14 @@ What is enforced, and where, so a change to any of it is a visible change.
   named in that file.
 - **Spend.** Every route that calls a model or a marketplace is limited per
   network address (`lib/ratelimit.ts`, last `X-Forwarded-For` hop, fails
-  closed if Redis errors). The image proxy is limited the same way.
+  closed if Redis errors). The image proxy is limited the same way, and so is
+  saving a closet — not a model call, but an unbounded way to allocate Redis
+  keys. `scripts/spend-guard.test.mjs` walks the route files and fails the
+  build if a route reaches a model or a marketplace without one; the two
+  exemptions are the cron and report endpoints, which are behind secrets.
+  A meter is not a limit: quotas count against a cookie, and the attacker's
+  move is to send no cookie. `/api/fit` was metered and unlimited for exactly
+  that reason, which is what the guard exists to stop happening again.
 - **Cron.** `/api/cron/sweep` requires `CRON_SECRET`, compared in constant
   time; unset means closed.
 - **Email.** Every field in a digest is HTML-escaped, including the listing
