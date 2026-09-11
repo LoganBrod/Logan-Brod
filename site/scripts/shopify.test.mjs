@@ -68,6 +68,7 @@ before(async () => {
 
 after(async () => {
   await fake.close();
+  store.closeAllConnections();
   await new Promise((r) => store.close(r));
 });
 
@@ -177,4 +178,64 @@ test("a store that cannot be reached is skipped, not fatal", async () => {
   process.env.SHOPIFY_STORES = `${origin},127.0.0.1:1`;
   const found = await shopify.search({ query: "shetland wool crewneck", range: { min: 50, max: 400 } });
   assert.equal(found.length, 1, "the live store still answered");
+});
+
+test("many stores are read a few at a time, not all at once", async () => {
+  // Twelve stores that report how many were being read simultaneously.
+  let live = 0;
+  let peak = 0;
+  const servers = await Promise.all(
+    Array.from({ length: 12 }, async (_, i) => {
+      const s = createServer((req, res) => {
+        live += 1;
+        peak = Math.max(peak, live);
+        // Page two is empty, the way a real store's second page is: without
+        // that the fetch pages to its limit and every garment arrives four times.
+        const first = !/page=[2-9]/.test(req.url ?? "");
+        setTimeout(() => {
+          live -= 1;
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ products: first ? [product({ id: i, title: `Waxed Jacket ${i}`, handle: `j${i}` })] : [] }));
+        }, 60);
+      });
+      await new Promise((r) => s.listen(0, "127.0.0.1", r));
+      return s;
+    })
+  );
+
+  try {
+    process.env.SHOPIFY_STORES = servers.map((s) => `127.0.0.1:${s.address().port}`).join(",");
+    const found = await shopify.search({ query: "waxed canvas field jacket", range: { min: 50, max: 400 } });
+
+    assert.equal(found.length, 12, "every store answered");
+    assert.ok(peak <= 6, `no more than six at once, saw ${peak}`);
+  } finally {
+    // In a finally because a listening server keeps the runner alive forever:
+    // a failed assertion above would hang the suite rather than fail it.
+    await Promise.all(
+      servers.map((s) => {
+        s.closeAllConnections();
+        return new Promise((r) => s.close(r));
+      })
+    );
+  }
+});
+
+test("warming reads every store and says what it got", async () => {
+  const server = createServer((req, res) => {
+    const first = !/page=[2-9]/.test(req.url ?? "");
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ products: first ? [product(), product({ id: 2, handle: "b", title: "Shetland Crewneck" })] : [] }));
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+
+  try {
+    process.env.SHOPIFY_STORES = `127.0.0.1:${server.address().port},127.0.0.1:1`;
+    const warmed = await shopify.warmShopifyCatalogues();
+    assert.equal(warmed.stores, 1, "the dead one is not counted, and did not throw");
+    assert.equal(warmed.garments, 2);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
 });

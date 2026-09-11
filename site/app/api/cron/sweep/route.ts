@@ -4,6 +4,7 @@ import { readUser } from "@/lib/accounts";
 import { sendDigest } from "@/lib/mail";
 import { planFor } from "@/lib/plans";
 import { warmCalibrationPool } from "@/lib/calibrationPool";
+import { warmShopifyCatalogues } from "@/lib/sources/shopify";
 import { recordSwept, sweepWatch } from "@/lib/sweep";
 import { listWatchers, readWatches } from "@/lib/watches";
 import { tasteIdFor } from "@/lib/viewer";
@@ -119,8 +120,21 @@ export async function GET(req: Request) {
     return 0;
   });
 
+  /*
+   * And the brands' own catalogues, for the same reason.
+   *
+   * Twenty-seven of them on a cold cache is a burst of requests and tens of
+   * seconds, and without this it lands on whoever happens to arrive first
+   * after a deploy or a day's expiry. Here it lands on a cron job that has
+   * five minutes and nobody waiting on it.
+   */
+  const shops = await warmShopifyCatalogues().catch((err) => {
+    summary.errors.push(`brand catalogues: ${err instanceof Error ? err.message : "failed"}`);
+    return { stores: 0, garments: 0 };
+  });
+
   return NextResponse.json(
-    { ...summary, deck, ms: Date.now() - started, rostered: roster.length },
+    { ...summary, deck, shops, ms: Date.now() - started, rostered: roster.length },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
