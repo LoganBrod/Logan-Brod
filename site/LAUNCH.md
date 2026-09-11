@@ -231,13 +231,20 @@ touches the URL.
   apple-touch-icon and no web manifest. iOS Safari ignores SVG icons.
 - [ ] **`robots.txt` and a sitemap.** Decide what is indexed. `/` yes;
   `/closet/[code]` probably not, since each is somebody's saved clozet.
-- [ ] **A privacy page.** Photos go to Anthropic for analysis and are not
-  stored; a random cookie identifier remembers taste; an email is stored only
-  on sign-in; clozets expire after ninety days; searches go to eBay and Google
-  Shopping; nothing is sold. Link it from the footer and the sign-in form.
-- [ ] **Terms**, even short: listings belong to their sellers, prices and
-  availability are theirs, LevoZ Labs sells nothing.
-- [ ] **A way to contact you**, and a way to delete an account on request.
+- [x] **A privacy page.** `/privacy`. Photographs are never written down; a
+  random cookie identifier remembers taste; an email is stored only on
+  sign-in; clozets expire after ninety days; the five services anything
+  reaches are named. The retention table imports the TTL constants rather
+  than restating them, so it cannot drift from what the code enforces.
+  Linked from the footer, the menu, and the account-creation form.
+- [x] **Terms.** `/terms`: listings belong to their sellers, LevoZ Labs sells
+  nothing and is paid by nobody, sizing is a guess rather than a promise,
+  13+, and what happens to a free tier that changes.
+  - [ ] **One line left**: `JURISDICTION` in `lib/legal.ts` is `null`, so the
+    governing-law clause does not render. Set it to a country and it appears.
+- [x] **A way to contact you**, and a way to delete an account on request.
+  Both are `levoz.labs@gmail.com`, said on both pages. Deletion is by email
+  within 30 days; a self-serve delete button is still worth building.
 - [ ] **Affiliate disclosure** the day any affiliate tracking is added. None
   today.
 

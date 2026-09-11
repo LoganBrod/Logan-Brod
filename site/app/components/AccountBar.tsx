@@ -244,6 +244,23 @@ export default function AccountBar() {
         </button>
       </div>
 
+      {/* Shown only while creating, because that is the moment somebody is
+          actually agreeing to something. On the sign-in form it would be a
+          notice about a decision already made. */}
+      {creating && (
+        <p className="max-w-sm text-right text-[11px] leading-relaxed text-room-faint">
+          Creating an account means agreeing to the{" "}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-room-ink">
+            terms
+          </Link>{" "}
+          and the{" "}
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-room-ink">
+            privacy page
+          </Link>
+          .
+        </p>
+      )}
+
       {error && <p className="max-w-sm text-right text-xs text-red-700">{error}</p>}
     </div>
   );
