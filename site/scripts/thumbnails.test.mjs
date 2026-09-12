@@ -143,3 +143,52 @@ test("loopback is refused by the guard when nothing bypasses it", async () => {
   // public address. This is the SSRF fix, observed from the outside.
   assert.equal(await fetchThumbnail(`${base}/ok.png`), null);
 });
+
+// ---------------------------------------------------------------- the size
+// the model is shown
+//
+// Added when the cost model showed that candidate photographs were about half
+// of what a generation costs, and that the brands' third of the pool cost more
+// than the other two thirds together: eBay rewrites its URLs down to 225px and
+// Shopify was serving its catalogue images at full size, 1200-2048px square.
+// Claude bills an image at (w x h) / 750, so that is 68 tokens against 2,613,
+// ninety-six times a run.
+
+import { MODEL_EDGE, modelRendition } from "../lib/sources/menswear.ts";
+
+test("a Shopify photo is asked for small", () => {
+  const out = modelRendition("https://cdn.shopify.com/s/files/1/0/products/jacket.jpg?v=1699");
+  assert.match(out, /width=225/);
+  // The cache-buster has to survive, or every request misses the CDN's cache.
+  assert.match(out, /v=1699/);
+});
+
+test("an existing width is replaced rather than appended twice", () => {
+  const out = modelRendition("https://cdn.shopify.com/s/files/1/0/products/x.jpg?width=2048");
+  assert.equal(out.match(/width=/g).length, 1);
+  assert.match(out, /width=225/);
+});
+
+test("eBay keeps using the size in its path", () => {
+  assert.equal(
+    modelRendition("https://i.ebayimg.com/images/g/abc/s-l1600.jpg"),
+    "https://i.ebayimg.com/images/g/abc/s-l225.jpg"
+  );
+});
+
+test("a host we do not know is left exactly as it is", () => {
+  // Guessing at a resize parameter a CDN does not implement is how you get a
+  // 404 instead of a garment, which costs a curation slot rather than saving one.
+  const url = "https://images.example.com/photo.jpg?size=large";
+  assert.equal(modelRendition(url), url);
+  assert.equal(modelRendition("not a url at all"), "not a url at all");
+  assert.equal(modelRendition(undefined), undefined);
+  assert.equal(modelRendition(""), undefined);
+});
+
+test("the edge is small enough to be worth it", () => {
+  // The whole point of the change. 225px is 68 tokens; anything much above
+  // 400 stops being a saving worth the round trip.
+  assert.ok(MODEL_EDGE <= 256, `${MODEL_EDGE} is not a thumbnail`);
+  assert.ok((MODEL_EDGE * MODEL_EDGE) / 750 < 100, "should cost under 100 tokens an image");
+});

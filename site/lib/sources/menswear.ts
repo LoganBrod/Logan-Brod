@@ -120,5 +120,54 @@ export function isMenswearListing(title: string): boolean {
  */
 export function thumbnailUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
-  return url.replace(/\/s-l\d+\.(jpg|jpeg|png|webp)/i, "/s-l225.$1");
+  return url.replace(/\/s-l\d+\.(jpg|jpeg|png|webp)/i, `/s-l${MODEL_EDGE}.$1`);
+}
+
+/**
+ * The long edge every candidate photo is asked for before a model sees it.
+ *
+ * 225 because that is what eBay's own thumbnail rendition is, and because the
+ * wearer's uploads reach the same call at 256. A candidate does not need to be
+ * read more closely than the thing it is being matched against.
+ *
+ * This is the single biggest number in the cost of a run. Claude bills an
+ * image at roughly (w x h) / 750 tokens, so 225px is 68 tokens and 1400px is
+ * 2,613 - and ninety-six candidates are judged every generation. Shopify
+ * serves its catalogue images at full size, which made the brands' third of
+ * the pool cost more than the other two thirds put together.
+ */
+export const MODEL_EDGE = 225;
+
+/**
+ * The same photo, asked for small, whoever is serving it.
+ *
+ * Applied on the way into the model and nowhere else. The rail on screen
+ * still renders `imageUrl`, so nothing a person looks at gets smaller - which
+ * is the distinction the eBay rewrite above gets wrong and is left alone
+ * because changing it is a visible change rather than a cost one.
+ *
+ * Unknown hosts are returned untouched. Guessing at a resize parameter that a
+ * CDN does not implement is how you get a 404 instead of a garment.
+ */
+export function modelRendition(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+
+  // eBay names the size in the path.
+  if (/\/s-l\d+\.(jpg|jpeg|png|webp)/i.test(url)) return thumbnailUrl(url);
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  // Shopify's image CDN takes width as a query parameter and honours it on
+  // every store, including the ones on their own domain.
+  if (/(^|\.)shopify\.com$/i.test(parsed.hostname) || /cdn\.shopify/i.test(parsed.hostname)) {
+    parsed.searchParams.set("width", String(MODEL_EDGE));
+    return parsed.toString();
+  }
+
+  return url;
 }

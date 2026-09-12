@@ -16,6 +16,7 @@
 // candidate*, never a lost batch.
 
 import { safeFetch } from "./safeFetch";
+import { modelRendition } from "./sources/menswear";
 import type { ProductListing } from "./sources/types";
 
 /** What the API will decode. Anything else is not worth the round trip. */
@@ -92,7 +93,9 @@ export async function withThumbnails(
   const fetched = await Promise.all(
     listings.map(async (listing) => {
       if (!listing.imageUrl) return null;
-      const image = await fetchThumbnail(listing.imageUrl, options);
+      // Asked for small here rather than at the source, so the rail on screen
+      // keeps the full-size photo and only the model's copy shrinks.
+      const image = await fetchThumbnail(modelRendition(listing.imageUrl)!, options);
       return image ? { listing, image } : null;
     })
   );
