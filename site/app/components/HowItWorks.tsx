@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import QuizPrompt from "./QuizPrompt";
 import Reveal from "./Reveal";
 
 /**
@@ -104,7 +103,7 @@ function PanelKeep() {
 const STEPS = [
   {
     title: "Take photos",
-    body: "Three or four pieces you like. Photos only. You never type a keyword.",
+    body: "Three or four pieces you like. Photos only. You never have to type a word.",
     panel: <PanelPhotograph />,
   },
   {
@@ -114,7 +113,7 @@ const STEPS = [
   },
   {
     title: "Save what you like",
-    body: "Real listings, still for sale. Save one and get a code to come back to.",
+    body: "Real listings, still for sale. Save one and get a code to come back to your Clozet later.",
     panel: <PanelKeep />,
   },
 ];
@@ -143,22 +142,7 @@ export default function HowItWorks({ placement = "top" }: { placement?: "top" | 
           results better, and it is also the thing a returning visitor has
           already dismissed - so it is an offer here rather than a gate. The
           number is real: fifteen swipes is what lib/calibration.ts asks for. */}
-      {top && (
-        <Link
-          href="/closet?quiz=1"
-          className="panel mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-4 transition-colors duration-200 ease-out hover:border-accent/30"
-        >
-          <span className="text-[14px] font-semibold text-room-ink">
-            Take the 15-swipe quiz first
-          </span>
-          <span className="text-[13px] text-room-muted">
-            One minute, and it makes everything it picks far more your taste.
-          </span>
-          <span aria-hidden className="ml-auto text-[13px] font-semibold text-accent">
-            Start &rarr;
-          </span>
-        </Link>
-      )}
+      {top && <QuizPrompt />}
 
       <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-room-ink">
         Three steps. About two minutes.
