@@ -70,6 +70,21 @@ export default function OnboardingQuiz({
     track("quiz_start");
   }, []);
 
+  /*
+   * While this is up it owns the screen: the page behind does not scroll and
+   * the site header and menu button are hidden rather than left showing
+   * blurred through the backdrop. See globals.css for the rule.
+   */
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   /**
    * Closing by any route marks the quiz seen. See the note at the top.
    *

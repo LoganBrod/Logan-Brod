@@ -28,18 +28,12 @@ export function LogoMark({ className = "" }: { className?: string }) {
     >
       {/* The frame, and the plate sitting inside it. Two rounded rects rather
           than a rect with a border, so the corners stay concentric at 16px. */}
-      <rect width="32" height="32" rx="8.5" fill="#46585B" />
-      <rect x="2.6" y="2.6" width="26.8" height="26.8" rx="6.4" fill="#16201E" />
-
-      {/* L in grey, Z in teal — the company's two letters, in the company's
-          two colours, in that order. */}
-      <path d="M8.4 8h3.2v8.3h4.6v3.2H8.4Z" fill="#A3ACAD" />
-      <path d="M17.3 8h7.3v2.8l-4.6 5.5h4.6v3.2h-7.5v-2.8l4.6-5.5h-4.4Z" fill="#33D6C3" />
-
-      {/* The rule under the letters. It is the one piece of the mark that is
-          pure signature rather than information, and it is what makes the tile
-          read as a considered object instead of two letters in a box. */}
-      <rect x="12.6" y="21.4" width="6.8" height="2.4" rx="1.2" fill="#33D6C3" />
+    <rect width="32" height="32" rx="7" fill="#4A5B5D" />
+    <rect x="2.9" y="2.9" width="26.2" height="26.2" rx="5" fill="#17211F" stroke="#3C4D4F" stroke-width="0.35" />
+      {/* L in grey, Z in teal. */}
+    <path d="M9.1 10.6h2.9v5.9h3.3v3H9.1Z" fill="#9BA5A5" />
+    <path d="M15.7 10.6h7.2v2.5l-4.3 4h4.3v2.4h-7.3v-2.5l4.3-4h-4.2Z" fill="#33D6C3" />
+    <rect x="12.2" y="22" width="7.4" height="1.8" rx="0.9" fill="#33D6C3" />
     </svg>
   );
 }

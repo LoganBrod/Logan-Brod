@@ -91,6 +91,7 @@ export default function SideNav() {
     <>
       <button
         ref={buttonRef}
+        data-site-chrome
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}

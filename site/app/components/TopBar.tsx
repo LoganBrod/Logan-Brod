@@ -40,7 +40,7 @@ export default function TopBar() {
   const compact = APP_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
   return (
-    <header className="w-full border-b border-room-line bg-room-panel">
+    <header data-site-chrome className="w-full border-b border-room-line bg-room-panel">
       {/* The left padding is a gutter for the menu button, which is fixed at
           the top-left corner of every page and would otherwise sit on top of
           the wordmark. */}
