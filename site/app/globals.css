@@ -235,6 +235,23 @@
    * to say where it stops. The radius is large enough that the corner is a
    * curve rather than a chamfer.
    */
+  /*
+   * While a modal owns the screen, the site's own chrome gets out of the way.
+   *
+   * The quiz is a full-screen overlay with a translucent, blurred backdrop.
+   * The header sits behind it in the document, so it was not covered so much
+   * as smeared - a half-legible strip of wordmark and menu button above a
+   * dialog, which reads as a rendering fault rather than as depth. Hiding it
+   * is both clearer and what a modal means.
+   *
+   * A body class rather than React state: the header lives in the root layout
+   * and the quiz lives four levels down inside the runner, and a class on the
+   * body is the one channel they already share.
+   */
+  body.modal-open [data-site-chrome] {
+    display: none;
+  }
+
   .panel {
     border-radius: 22px;
     background: rgb(var(--room-panel));

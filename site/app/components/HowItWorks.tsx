@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import Reveal from "./Reveal";
 
 /**
@@ -136,6 +138,28 @@ export default function HowItWorks({ placement = "top" }: { placement?: "top" | 
       aria-label="How to use Clozet"
       className={top ? "mb-10" : "mt-24 border-t border-room-line pt-16"}
     >
+      {/* Above the steps, and only above the form.
+          The quiz is the single biggest thing somebody can do to make their
+          results better, and it is also the thing a returning visitor has
+          already dismissed - so it is an offer here rather than a gate. The
+          number is real: fifteen swipes is what lib/calibration.ts asks for. */}
+      {top && (
+        <Link
+          href="/closet?quiz=1"
+          className="panel mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-4 transition-colors duration-200 ease-out hover:border-accent/30"
+        >
+          <span className="text-[14px] font-semibold text-room-ink">
+            Take the 15-swipe quiz first
+          </span>
+          <span className="text-[13px] text-room-muted">
+            One minute, and it makes everything it picks far more your taste.
+          </span>
+          <span aria-hidden className="ml-auto text-[13px] font-semibold text-accent">
+            Start &rarr;
+          </span>
+        </Link>
+      )}
+
       <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-room-ink">
         Three steps. About two minutes.
       </h2>

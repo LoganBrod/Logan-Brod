@@ -125,7 +125,7 @@ export const proof = {
   /** Labels under the figures. The figures themselves come from the constants that govern a run. */
   stats: {
     seen: "Pieces checked each run",
-    picks: "Pieces you get back",
+    picks: "Pieces returned",
     keywords: "Keywords to type",
   },
   cards: [
