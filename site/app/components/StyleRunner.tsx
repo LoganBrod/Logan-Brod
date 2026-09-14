@@ -210,6 +210,22 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
   }, []);
 
   /**
+   * Somebody pressed "take the quiz" further down the page.
+   *
+   * preventDefault is the acknowledgement: QuizPrompt reads it to know the
+   * runner was here and listening, and navigates instead when it was not.
+   */
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      event.preventDefault();
+      setPhase("form");
+      setQuiz(true);
+    };
+    window.addEventListener("clozet:quiz", onAsk);
+    return () => window.removeEventListener("clozet:quiz", onAsk);
+  }, []);
+
+  /**
    * Write sizes through on every change.
    *
    * Optimistic and unacknowledged on purpose — a size field that fought back
