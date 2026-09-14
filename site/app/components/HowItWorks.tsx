@@ -101,37 +101,58 @@ function PanelKeep() {
 
 const STEPS = [
   {
-    title: "Photograph what you like",
-    body: "Three or four pieces you own, or wish you did. Pictures, never keywords.",
+    title: "Take photos",
+    body: "Three or four pieces you like. Photos only. You never type a keyword.",
     panel: <PanelPhotograph />,
   },
   {
-    title: "Upload them, say what you'd spend",
-    body: "That is the whole form. It reads the photographs and writes its own searches.",
+    title: "Upload and set a budget",
+    body: "That is the whole form. Clozet reads your photos and does the searching.",
     panel: <PanelUpload />,
   },
   {
-    title: "Keep the clozet it builds",
-    body: "Real listings, still for sale. Save one and it gets a code you can come back to.",
+    title: "Save what you like",
+    body: "Real listings, still for sale. Save one and get a code to come back to.",
     panel: <PanelKeep />,
   },
 ];
 
-export default function HowItWorks() {
+/**
+ * Where on the page this is standing.
+ *
+ * It used to live only at the foot of the page, under the form, on the
+ * argument that somebody building their fourth clozet should not scroll past
+ * an explanation to reach the upload. That was right about the returning
+ * visitor and wrong about everybody else: almost all of the traffic is a
+ * stranger from a video who has never seen the form before, and they were
+ * being shown a file picker with no idea what it wanted. So it leads the
+ * page now, tighter and without the rule above it.
+ */
+export default function HowItWorks({ placement = "top" }: { placement?: "top" | "bottom" }) {
+  const top = placement === "top";
+
   return (
-    <section aria-label="How to use Clozet" className="mt-24 border-t border-room-line pt-16">
+    <section
+      aria-label="How to use Clozet"
+      className={top ? "mb-10" : "mt-24 border-t border-room-line pt-16"}
+    >
       <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-room-ink">
-        Three steps, about two minutes.
+        Three steps. About two minutes.
       </h2>
 
-      <ol className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-3">
+      <ol className={`grid gap-x-6 ${top ? "mt-5 gap-y-4 sm:mt-6 sm:gap-y-8" : "mt-8 gap-y-10"} sm:grid-cols-3`}>
         {STEPS.map((step, index) => (
           <li key={step.title}>
             <Reveal delay={index * 0.06}>
-              <div className="panel aspect-[4/3] overflow-hidden">
+              {/* The pictures are the whole point of this section on a wide
+                  screen and the reason the form is off the bottom of a phone:
+                  stacked, three 4:3 panels are most of a screen before anybody
+                  reaches the upload. So above the form they are desktop only,
+                  and a phone gets the three lines of text instead. */}
+              <div className={`panel aspect-[4/3] overflow-hidden ${top ? "hidden sm:block" : ""}`}>
                 {step.panel}
               </div>
-              <div className="mt-4 flex items-baseline gap-3">
+              <div className={`flex items-baseline gap-3 ${top ? "sm:mt-4" : "mt-4"}`}>
                 <span className="font-mono text-[12px] tabular-nums text-accent">
                   {String(index + 1).padStart(2, "0")}
                 </span>

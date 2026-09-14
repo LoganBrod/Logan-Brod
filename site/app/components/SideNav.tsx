@@ -82,10 +82,11 @@ export default function SideNav() {
    * sitting on top of the wordmark it duplicates. Every other page still gets
    * it: they carry no header, and this is how you leave them.
    *
-   * After every hook, so the order of hooks is the same on every route.
+   * The menu used to hide itself on the home page, on the grounds that the
+   * header carried the same links. Both are wanted now: the header names the
+   * sections, and the button is the one control that is in the same place on
+   * every page of the site.
    */
-  if (pathname === "/") return null;
-
   return (
     <>
       <button
