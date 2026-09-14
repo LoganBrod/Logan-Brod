@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { hero } from "@/lib/copy";
 import { Wordmark } from "./Logo";
@@ -25,10 +28,23 @@ const LINKS = [
   { href: "/colognes", label: "Colognes" },
 ] as const;
 
+/**
+ * Routes whose own header already carries sign-in and a primary action. On
+ * those, this bar drops its right-hand pair: two sign-in links and two calls
+ * to action on one screen is a person wondering which one is real.
+ */
+const APP_ROUTES = ["/closet", "/accessories", "/colognes", "/calibrate", "/feedback"];
+
 export default function TopBar() {
+  const pathname = usePathname() ?? "/";
+  const compact = APP_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
   return (
     <header className="w-full border-b border-room-line bg-room-panel">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5 sm:h-[4.5rem] sm:gap-6 sm:px-8">
+      {/* The left padding is a gutter for the menu button, which is fixed at
+          the top-left corner of every page and would otherwise sit on top of
+          the wordmark. */}
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 pl-[4.25rem] pr-5 sm:h-[4.5rem] sm:gap-6 sm:pl-[5.5rem] sm:pr-8">
         {/* The chip belongs to the name, so it sits in the name's group rather
             than as a third item in the bar's own spacing. Said on the front
             door rather than discovered halfway through a run: somebody
@@ -62,7 +78,7 @@ export default function TopBar() {
           ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5">
+        <div className={`ml-auto flex shrink-0 items-center gap-3 sm:gap-5 ${compact ? "hidden" : ""}`}>
           {/* Lands on the product with its sign-in form already open, rather
               than on a page where the way in is a button somebody has to find. */}
           <Link

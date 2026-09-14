@@ -1,8 +1,8 @@
 import StatusDock from "@/app/components/StatusDock";
 
 /**
- * The product's shell. It leaves room at the top for the floating menu button
- * and otherwise stays out of the way: the pages below carry their own headers,
+ * The product's shell. It carries the site header and otherwise stays out of
+ * the way: the pages below carry their own headers,
  * and this is a tool people came here to use rather than a page to be sold on.
  *
  * The one thing it does add is the corner dock — what's left of the week, and
@@ -15,9 +15,11 @@ import StatusDock from "@/app/components/StatusDock";
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pb-24 pt-20 sm:pt-24">
-      {children}
-      <StatusDock />
-    </div>
+    <>
+      <div className="pb-24 pt-8">
+        {children}
+        <StatusDock />
+      </div>
+    </>
   );
 }

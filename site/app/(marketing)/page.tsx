@@ -4,7 +4,6 @@ import Hero from "../components/Hero";
 import Proof from "../components/Proof";
 import SiteSection from "../components/SiteSection";
 import Sources from "../components/Sources";
-import TopBar from "../components/TopBar";
 
 /*
  * One page, in the order somebody actually needs it.
@@ -25,7 +24,6 @@ import TopBar from "../components/TopBar";
 export default function Page() {
   return (
     <>
-      <TopBar />
       <main>
         <Hero />
         <FloatingRail />

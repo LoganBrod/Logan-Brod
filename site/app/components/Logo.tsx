@@ -33,13 +33,13 @@ export function LogoMark({ className = "" }: { className?: string }) {
 
       {/* L in grey, Z in teal — the company's two letters, in the company's
           two colours, in that order. */}
-      <path d="M8.8 8.5h3.1v8h4.4v3H8.8Z" fill="#A3ACAD" />
-      <path d="M17.6 8.5h7v2.7l-4.4 5.3h4.4v3h-7.2v-2.7l4.4-5.3h-4.2Z" fill="#33D6C3" />
+      <path d="M8.4 8h3.2v8.3h4.6v3.2H8.4Z" fill="#A3ACAD" />
+      <path d="M17.3 8h7.3v2.8l-4.6 5.5h4.6v3.2h-7.5v-2.8l4.6-5.5h-4.4Z" fill="#33D6C3" />
 
       {/* The rule under the letters. It is the one piece of the mark that is
           pure signature rather than information, and it is what makes the tile
           read as a considered object instead of two letters in a box. */}
-      <rect x="13" y="21.6" width="6" height="2.3" rx="1.15" fill="#33D6C3" />
+      <rect x="12.6" y="21.4" width="6.8" height="2.4" rx="1.2" fill="#33D6C3" />
     </svg>
   );
 }

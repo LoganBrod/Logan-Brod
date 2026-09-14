@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 export default function AdminPage() {
   return (
-    <main className="mx-auto max-w-4xl px-6 pb-20 pt-24">
+    <main className="mx-auto max-w-4xl px-6 pb-20 pt-12">
       <header className="mb-8">
         <h1 className="display text-[2rem] text-room-ink sm:text-[2.4rem]">Traffic.</h1>
         <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-room-muted">

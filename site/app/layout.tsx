@@ -5,6 +5,7 @@ import { company } from "@/lib/copy";
 import { Suspense } from "react";
 import Beacon from "./components/Beacon";
 import SideNav from "./components/SideNav";
+import TopBar from "./components/TopBar";
 
 /**
  * Display, text, and figures.
@@ -81,6 +82,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <SideNav />
+        {/* One header on every page of the site, product and marketing alike. */}
+        <TopBar />
         {children}
         {/* Counts a pageview on every route, including soft navigations. See
             lib/analytics.ts for what is and is not recorded. */}

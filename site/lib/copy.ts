@@ -23,11 +23,11 @@ export const company = "LevoZ Labs";
  */
 export const hero = {
   line: "Create a personalized clozet in minutes.",
-  sub: "Show it a few pieces you like. It finds real ones that belong with them, new or secondhand, in your size and your budget.",
-  cta: "Get started",
+  sub: "Show our AI a few pieces you wear, and it finds clothes that belong with them. New or secondhand, in your size and your budget.",
+  cta: "Try Clozet",
   /** Straight to the two-minute quiz, whether or not this browser has seen it. */
   href: "/closet?quiz=1",
-  note: "Free to try. No account needed.",
+  note: "Free to use. No sign-up needed.",
 };
 
 /** The line on the first frame of the walk, now the second act. Under 8 words. */
@@ -52,15 +52,15 @@ export type Stop = {
 export const stops: Stop[] = [
   {
     label: "How it works",
-    heading: "Show it a few pieces you like.",
-    body: "Upload photos of clothes you own or want. It reads the style across them - palette, silhouette, fabric - then searches real listings and keeps only what fits the way you actually dress.",
+    heading: "Show it what you like.",
+    body: "Upload photos of clothes you own or want. Clozet reads the style across them, then searches real listings and keeps only what suits how you actually dress.",
     pieces: ["/garment-shirt.webp", "/garment-jacket.webp"],
     pieceNames: ["An olive shirt on the rail", "A chore jacket on the rail"],
   },
   {
     label: "What you get back",
     heading: "Only what actually fits.",
-    body: "Real pieces in your price range and your size, each with a line on why it suits you. Say yes or no to anything - the next run listens.",
+    body: "Real pieces in your size and your price range, each with one line on why it works. Say yes or no to anything and the next run listens.",
     pieces: ["/garment-pants.webp", "/garment-knit.webp"],
     pieceNames: ["Grey wool trousers on the rail", "An oatmeal sweater on the rail"],
   },
@@ -121,25 +121,25 @@ export const brandChoices = [
  */
 export const proof = {
   heading: "Picking the clothes for you.",
-  body: "You never type a keyword. It reads the photographs you upload, writes its own searches, and judges everything they turn up as a picture rather than as a title.",
+  body: "You never type a keyword. Clozet analyzes the photos you upload, writes its own searches, and judges what comes back by the picture rather than just the title.",
   /** Labels under the figures. The figures themselves come from the constants that govern a run. */
   stats: {
-    seen: "looked at, every run",
-    picks: "come back, at most",
-    keywords: "keywords you type",
+    seen: "Pieces checked each run",
+    picks: "Pieces you get back",
+    keywords: "Keywords to type",
   },
   cards: [
     {
       title: "Finding the size for you",
-      body: "Five measurements, given once, and anything you could not wear is gone before you see it. Unsure of a maker, ask: the tools read that brand's own size chart and what buyers report, then name the size to buy.",
+      body: "You give five measurements once, and anything that would not fit you never shows up. Not sure how a brand runs? Ask, and Clozet checks that brand's own size chart along with what buyers say about it, then tells you which size to order.",
     },
     {
       title: "Always learning",
-      body: "Every yes and no is remembered. The next run is weighed against what you kept and what you turned down, so it reads you better each time you use it.",
+      body: "Every yes and no sticks. Clozet weighs your next set against what you kept and what you passed on, so it gets closer to your taste every time you use it.",
     },
     {
       title: "We complete the fit",
-      body: "Once the clothes are right it finds the accessories and the cologne that sit at the same register, and the whole fit is kept together under one code.",
+      body: "When the clothes are right, Clozet adds the accessories and the cologne that go with them, then saves the whole outfit under one code so you can come back to it.",
     },
   ],
 } as const;
@@ -157,8 +157,8 @@ export const proof = {
  * did, and a homepage that names no brands implies no relationship to deny.
  */
 export const sources = {
-  heading: "Everything here is somebody else's listing.",
-  body: "Clozet holds no stock and sells nothing. It searches marketplaces and the brands' own shops, judges what comes back, and sends you to whoever is selling it - the same listing you would have found yourself, if you had the afternoon. Secondhand, new, or both, and that is your choice rather than ours.",
+  heading: "Every Clozet finding is someone else's listing.",
+  body: "Clozet holds no stock and sells nothing. It searches marketplaces and the brands' own shops, judges what comes back, and sends you to whoever is selling it. It is the same listing you would have found yourself, if you had the time to look for new clothes. New, secondhand, or both, and that is your choice.",
   markets: [
     { name: "eBay", note: "Live listings, worn and new, searched through their own API." },
     { name: "Google Shopping", note: "Mainstream retail, for the pieces that are still made." },

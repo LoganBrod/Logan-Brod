@@ -5,7 +5,7 @@ import Sources from "@/app/components/Sources";
 import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
 
-import PageHeader, { PageNote } from "@/app/components/PageHeader";
+import PageHeader from "@/app/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +56,7 @@ export default async function Home({
 
       <PageHeader
         title={<>Show me what you like.</>}
-        lede="A few photographs of clothes you like, and it finds real pieces that belong with them - new, secondhand, or both."
+        lede="Upload a few photos of clothes you like. Clozet finds real ones that go with them."
         /* The way out of a reopened clozet, at the top of the page rather than
            under the wardrobe, the accessories offer and the share card. There
            is a button down there too and it is better - it swaps the form in
@@ -64,7 +64,10 @@ export default async function Home({
         action={closet ? { href: "/closet?new=1", label: "Start another" } : undefined}
       />
 
-      <PageNote>In your size, in your budget, and still for sale.</PageNote>
+      {/* Above the form, not below it. See the note in HowItWorks: most
+          arrivals are strangers from a video, and they were being handed a
+          file picker with nothing telling them what it wanted. */}
+      <HowItWorks />
 
       {/*
         Keyed, so that "Start another" actually starts another.
@@ -78,12 +81,6 @@ export default async function Home({
         component owns.
       */}
       <StyleRunner key={closet?.code ?? "fresh"} initialCloset={closet} />
-
-      {/* Below the form: what to actually do, for anyone who arrived here
-          without reading the homepage. Kept under the tool rather than above
-          it - somebody returning to build their fourth clozet should not have
-          to scroll past an explanation to reach the upload. */}
-      <HowItWorks />
 
       <div className="mt-8">
         <Sources />
