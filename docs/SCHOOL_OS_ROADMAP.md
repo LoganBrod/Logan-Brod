@@ -543,6 +543,5 @@ replace this table.
 3. Install the three plugins and set the link format.
 4. Take all your notes in `00 Inbox/` for the rest of the week.
 5. Find the Schoology API page under your name and confirm it shows a key.
-   exist, note that now so Phase 3 uses the email fallback.
 6. Decide whether `school-os/` lives in this repo or its own. A separate repo
    keeps it apart from the sports card and clothing tools.
