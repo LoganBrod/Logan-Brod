@@ -284,35 +284,54 @@ event sent one more place; the JSON file is the record.
 
 ## 5. Phases
 
+**No iPad yet.** The plan below assumed an iPad for note-taking. Until there is
+one, the capture devices are a phone running Genius Scan for paper notes and
+the computer for everything else: typed notes in Obsidian, Google Docs, and
+files downloaded from Schoology. The vault lives in Google Drive so phone scans
+land in the inbox directly. Nothing else changes; the iPad slots back in as one
+more thing that writes to the inbox.
+
 Each phase has a "done when" you can check. Do not start the next phase until
 the current one is done and you have used it for real school work.
 
 ### Phase 0 · Vault and sync (week 1, no code)
 
 - Create the vault with the layout in section 3. Add one `_Course.md` per class.
-- Install Obsidian on iPad and computer. Set up Obsidian Sync or iCloud.
+- Install Obsidian on the computer, with the vault inside Google Drive so
+  phone scans can be saved straight into the inbox. (With an iPad later: add
+  Obsidian there and open the same vault.)
 - Install plugins: Templater, Dataview, Spaced Repetition. Set the link format
   setting above.
 - Make a note template that drops a new note in `00 Inbox/` with today's date
   in the filename.
 - Take every class note in Obsidian for a week.
 
-**Done when:** a note typed on the iPad shows up on the computer within a
-minute, and you have at least 15 real notes in the inbox.
+**Done when:** a Genius Scan PDF saved from the phone shows up in the inbox
+on the computer within a minute, and you have at least 15 real notes or scans
+in the inbox.
 
-### Phase 1 · Sort the inbox (weeks 2 to 3)
+### Phase 1 · Ingest the inbox (weeks 2 to 3) — built, in `school-os/`
 
-- Set up `school-os/` as a small TypeScript project: `@anthropic-ai/sdk`,
-  `gray-matter` for frontmatter, `zod` for the result schema.
-- Write `vault.ts`: list markdown files, read and write frontmatter, move a
-  file, append a line to `_Unit.md`.
-- Write `sort-inbox.ts` using `client.messages.parse()` with a Zod schema so the
-  result is typed.
-- Add a `--dry-run` flag that prints what it would do without touching files.
-  Use it on the 15 notes from Phase 0 before letting it move anything.
+The inbox sorter exists as `school-os/src/ingest.ts`. It handles four kinds of
+input in one pass:
 
-**Done when:** 20 real notes sorted with two or fewer manual corrections, and
-`Needs Review.md` catches the ambiguous ones rather than misfiling them.
+- **Scans** (PDF or image from Genius Scan): Claude reads the pages, writes a
+  markdown transcription, and files it. The original PDF is kept in a
+  `_sources/` folder next to the note.
+- **Documents** (PDF or Word downloaded from Schoology): converted to markdown
+  and filed the same way.
+- **Typed notes** in the inbox: frontmatter added, file moved. Body untouched.
+- **Google Docs** in one shared Drive folder: pulled into the inbox as
+  markdown first, then filed like typed notes. A doc edited later refreshes
+  its note in place.
+
+Anything below the confidence threshold stays in the inbox marked
+`needs-review` with the reason. You fix the frontmatter and rerun; that pass
+costs nothing. Setup and commands are in `school-os/README.md`.
+
+**Done when:** 20 real notes and scans filed with two or fewer manual
+corrections, and the transcriptions are good enough that you study from them
+instead of the paper.
 
 ### Phase 2 · Study material (weeks 4 to 5)
 

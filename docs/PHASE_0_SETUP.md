@@ -1,10 +1,14 @@
 # Phase 0 setup
 
-Goal: Obsidian on both devices, the vault laid out, three plugins working, and
-a week of real notes in the inbox. No code. About an hour of setup, then just
-take notes.
+Goal: Obsidian on the computer, the vault in Google Drive so your phone can
+drop scans into it, three plugins working, and a week of real notes and scans
+in the inbox. No code. About an hour of setup, then just take notes.
 
 The starter vault is in `school-os/vault-starter/` in this repo.
+
+> **No iPad yet?** Follow the **computer + phone** notes in each step and skip
+> Step 3. Paper notes get scanned with Genius Scan on your phone and saved to
+> the inbox as PDFs. When an iPad arrives, come back and do Step 3.
 
 ---
 
@@ -13,8 +17,13 @@ The starter vault is in `school-os/vault-starter/` in this repo.
 - Computer: download from obsidian.md and install.
 - iPad: install Obsidian from the App Store.
 
-On the computer, open Obsidian and choose **Create new vault**. Name it
-`School`. Put it somewhere you will remember:
+**Computer + phone (no iPad):** install **Google Drive for desktop** first and
+sign in with your personal Google account. Then in Obsidian choose **Create new
+vault**, name it `School`, and put it inside your Google Drive folder. That is
+what lets Genius Scan on your phone save straight into the inbox.
+
+**With an iPad:** choose **Create new vault**, name it `School`, and put it
+here instead:
 
 | If the computer is | Put the vault at | Sync method later |
 |---|---|---|
@@ -34,7 +43,7 @@ on. Do that first, then create the vault from the computer in the same folder.
 4. Back in Obsidian, the left sidebar should show `00 Inbox`, `01 Courses`,
    `02 Study`, `03 Calendar`, `04 System`, `_templates`.
 
-## Step 3 · Sync to the iPad (10 min)
+## Step 3 · Sync to the iPad (10 min, skip if no iPad)
 
 **Mac + iCloud.** On the iPad open Obsidian, tap **Open folder as vault**, and
 pick `School`. It is already there because the folder lives in iCloud. Give it
@@ -114,12 +123,22 @@ it into an `.env` file in Phase 3; for now it just needs to exist.
 If there is no export button, your district has turned it off. Write that in
 the same note instead. Phase 3 will use the email fallback.
 
+## Step 7b · Genius Scan on your phone (5 min, no iPad)
+
+Install Genius Scan. Scan a page. Tap Export → **PDF** → **Google Drive** →
+pick `School/00 Inbox`. Within a minute it appears in the inbox on the
+computer. That is your paper-notes pipeline. For Google Docs and Schoology
+downloads, see `school-os/README.md`.
+
 ## Step 8 · Take notes for a week
 
 Every class, every day, in Obsidian, in the inbox. The rules:
 
 - **One note per class per day.** Name it `YYYY-MM-DD Topic`, like
-  `2026-09-08 Cell membrane`. The date comes first so notes sort.
+  `2026-09-08 Cell membrane`. The date comes first so notes sort. Scans can
+  be named anything; the brain names the note it writes.
+- **Paper notes get scanned the same day**, one PDF per class, into the
+  inbox. Write the date at the top of the page and the brain will read it.
 - **Write however you write.** Headings, bullets, half sentences, whatever
   you would put on paper. Do not organize. Do not move notes out of the
   inbox. That is the brain's job and it needs raw material to learn from.
@@ -137,8 +156,8 @@ Tick the checklist in `04 System/Home.md` as you go.
 
 ## Done when
 
-- A note typed on the iPad shows on the computer within a minute, and the
-  other way around.
+- A Genius Scan PDF saved from the phone shows in the inbox on the computer
+  within a minute. (With an iPad: notes sync both ways within a minute.)
 - New notes land in `00 Inbox` with `status: raw` already in them.
 - One renamed `_Course.md` per class, units filled in.
 - The Schoology feed URL is written down, or its absence is.
