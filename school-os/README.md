@@ -17,6 +17,17 @@ What it never does: rewrite the body of a note you typed, or delete a file.
 
 ## Setup (once, about 30 minutes)
 
+**Short version.** Install Node.js LTS from nodejs.org, put the vault in Google
+Drive, then in Terminal:
+
+```
+cd <this school-os folder>
+bash setup.sh
+```
+
+It installs packages, asks for the vault folder and your keys, writes `.env`,
+and runs the first two checks. The long version of the same steps follows.
+
 ### 1. Node
 
 Install Node.js LTS from nodejs.org. Then in a terminal:
