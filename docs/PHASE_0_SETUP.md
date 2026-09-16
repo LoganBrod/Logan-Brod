@@ -113,15 +113,12 @@ Need more courses? Create a folder, then create a note named `_Course` inside
 it and apply the `Course` template (Templater: **Insert template** command).
 Delete any placeholder folder you did not use.
 
-## Step 7 · Find your Schoology calendar feed (5 min)
+## Step 7 · Schoology API key (3 min)
 
-In Schoology on a browser: **Calendar** → look for an **Export** or
-**Calendar feed** button, usually top-right. It shows a URL ending in `.ics`.
-Copy it into a note in `04 System/` called `Schoology feed.md`. You will move
-it into an `.env` file in Phase 3; for now it just needs to exist.
-
-If there is no export button, your district has turned it off. Write that in
-the same note instead. Phase 3 will use the email fallback.
+In Schoology on a browser: click your name, top right → **API**. It shows a
+consumer key and a consumer secret. You will paste them into `school-os/.env`
+when you set up the brain. Do not put them in a note, a screenshot, or a
+message; they act as your account.
 
 ## Step 7b · Genius Scan on your phone (5 min, no iPad)
 
@@ -160,7 +157,7 @@ Tick the checklist in `04 System/Home.md` as you go.
   within a minute. (With an iPad: notes sync both ways within a minute.)
 - New notes land in `00 Inbox` with `status: raw` already in them.
 - One renamed `_Course.md` per class, units filled in.
-- The Schoology feed URL is written down, or its absence is.
+- You know where the Schoology API page is.
 - At least 15 real notes in the inbox.
 
 Then Phase 1 starts: the sorter script, built against those 15 notes.

@@ -8,7 +8,10 @@
     "ingest": "tsx src/ingest.ts",
     "ingest:dry": "tsx src/ingest.ts --dry-run",
     "ingest:fake": "tsx src/ingest.ts --dry-run --fake",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "schoology": "tsx src/sync-schoology.ts",
+    "schoology:dry": "tsx src/sync-schoology.ts --dry-run",
+    "schoology:whoami": "tsx src/sync-schoology.ts --whoami"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

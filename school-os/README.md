@@ -94,6 +94,29 @@ Every doc in that folder is pulled into the inbox as markdown on the next
 `npm run ingest`. If you keep editing a doc after it was filed, the filed note's
 body is refreshed in place next run; its frontmatter and location stay.
 
+## Schoology (10 minutes)
+
+In Schoology, click your name → **API**. Copy the consumer key and secret into
+`.env` as `SCHOOLOGY_CONSUMER_KEY` and `SCHOOLOGY_CONSUMER_SECRET`. They act
+as your account, so they never go anywhere but `.env`. If they ever end up in
+a chat or a screenshot, click **Request NEW API Key** and update `.env`.
+
+Then:
+
+```
+npm run schoology:whoami   # prints your name and your classes; proves the keys work
+npm run schoology:dry      # lists every upcoming item and which ones are new
+npm run schoology          # writes 03 Calendar/Upcoming Tests.md
+```
+
+Every assignment and event with a due date from today on is pulled from all
+your sections. Tests, quizzes and projects are picked out by Schoology's own
+"assessment" type and by the words in the title. New or rescheduled ones are
+logged, and sent to Discord if `DISCORD_WEBHOOK_URL` is set (Discord: channel
+settings → Integrations → Webhooks → copy URL).
+
+Run it as often as you like; it only announces what it has not seen before.
+
 ## When the brain is unsure
 
 A note it filed below the confidence threshold stays in `00 Inbox` with
@@ -115,6 +138,9 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run ingest` | Pull Google Docs, then file everything in the inbox |
 | `npm run ingest:dry` | Same, but print the plan and change nothing |
 | `npm run ingest:fake` | Dry run with no Claude call, to test the wiring |
+| `npm run schoology:whoami` | Check Schoology credentials, list classes |
+| `npm run schoology:dry` | Show upcoming items and what is new, write nothing |
+| `npm run schoology` | Rewrite Upcoming Tests.md, ping Discord for new tests |
 | `npm run typecheck` | Compile check |
 
 ## Files
@@ -125,6 +151,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/reader.ts` | Turns a PDF, image, Word file or text into what Claude reads |
 | `src/classify.ts` | The Claude call and the JSON shape it must return |
 | `src/gdocs.ts` | Pulls Google Docs from the shared folder |
+| `src/schoology.ts` | Signs requests to the Schoology API with your key and secret |
+| `src/sync-schoology.ts` | Upcoming tests from every class, Discord pings |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
 

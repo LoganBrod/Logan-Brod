@@ -19,7 +19,7 @@ Obsidian is the note app and the database. Every note is a markdown file in a
 vault that syncs between iPad and computer. A set of small TypeScript scripts
 ("the brain") read that vault, call Claude, and write back: frontmatter, moved
 files, generated study material, and a notification feed. Two feeds come in
-from outside: Schoology's calendar (as an iCal URL) and your Google Calendar
+from outside: Schoology's API (your own key acts as you) and your Google Calendar
 (through the Calendar API). One feed goes out: study blocks written to a
 dedicated "Study" Google Calendar, plus a Discord ping when a test is posted.
 On top of all that sits the dashboard app, a Next.js site you open on the iPad
@@ -32,7 +32,7 @@ flowchart LR
     PC[Computer · Obsidian] <--> Sync
     Sync <--> Brain[The brain\nTypeScript scripts\nrun on a schedule]
     Brain <--> Claude[Claude API]
-    Schoology[Schoology\niCal feed] --> Brain
+    Schoology[Schoology\nREST API] --> Brain
     GCal[Google Calendar] <--> Brain
     Brain --> Discord[Discord ping]
     Sync <--> App[Dashboard app\nNext.js · iPad + computer]
@@ -60,7 +60,7 @@ Three layers, three jobs:
 | Where it runs | **Your computer** in Phases 1 to 4, **GitHub Actions cron** in Phase 6 | Start with `npm run sort` by hand. Move to always-on only when it hurts. |
 | Model | `claude-opus-5` with structured outputs | Sorting and generation both need reliable JSON. Structured outputs give you a typed result instead of parsing prose. |
 | Dashboard | **A Next.js app that reads the vault** | Obsidian is confusing to navigate, so studying happens somewhere else. The app shows notes by course and unit, a study page per test, upcoming assessments, the study schedule and a notification feed. Until it exists (Phase 5), `Home.md` in the vault is the stand-in. |
-| Schoology | **iCal feed URL** | Schoology exposes a calendar feed per user (Calendar → Export). No developer key, no admin approval. |
+| Schoology | **REST API with your user-level key** | Schoology gives every user a consumer key and secret (your name → API) that acts as you. It returns assignments with type, due date and description per class, which beats the calendar feed. Nothing to ask the school for. |
 | Google Calendar | **Service account** with your calendar shared to it | Avoids the OAuth consent screen and the seven-day token expiry that hits unverified personal apps. |
 | Notifications | **`notifications.json` in the vault, plus a Discord webhook** | The JSON file is the record the dashboard app shows with an unread badge. Discord is the ping; this repo's alerts tool already posts there. |
 
@@ -210,21 +210,24 @@ Grading a practice test is a second tag: `#grade-me` on a test where you typed
 your answers under each question. The brain scores it, writes feedback, and
 notes weak topics on the unit map.
 
-### `sync-schoology`
+### `sync-schoology` — built, in `school-os/`
 
 Runs every 30 minutes.
 
-1. Fetch the iCal feed. Parse it with the `ical.js` or `node-ical` package.
-2. Diff against `04 System/schoology-state.json` to find new or changed items.
-3. Ask Claude to classify each new item: test, quiz, project, homework, other.
-   Teachers name things inconsistently, so a keyword match is not enough.
-4. Rewrite `Upcoming Tests.md` sorted by date, with course and days remaining.
-5. Post a Discord message for any new test or quiz.
+1. Sign in with the user-level key and secret. List your sections.
+2. Pull every assignment and event per section. Keep the ones due today or
+   later.
+3. Pick out tests, quizzes and projects: Schoology's own "assessment" type
+   plus words in the title. Rules, not a model call; it is cheap and easy to
+   adjust.
+4. Diff against `04 System/schoology-state.json` to find new or rescheduled
+   items.
+5. Rewrite `Upcoming Tests.md` sorted by date, with course and days remaining.
+6. Post a Discord message for any new or moved test, quiz or project.
 
-The feed only contains what teachers actually post. That is a real limit and
-there is no way around it from the calendar side. If your school has turned the
-feed off, the fallback is Schoology's email notifications: forward them to a
-Gmail label and have the script read that label instead.
+Because it is the real API, the same credentials can later pull course
+materials and assignment attachments straight into the inbox, so Schoology
+documents stop needing a manual download.
 
 ### `plan-study`
 
@@ -344,12 +347,13 @@ instead of the paper.
 Repetition plugin, taken a generated practice test, and the grading feedback
 named at least one weak topic you agreed with.
 
-### Phase 3 · Schoology feed (week 6)
+### Phase 3 · Schoology (week 6) — built, in `school-os/`
 
-- Copy your Schoology calendar feed URL into `.env`.
-- Write `sync-schoology.ts` with the state file and Discord webhook.
-- Keep the classifier prompt short and give it three or four real examples of
-  how your teachers phrase things.
+- Put the Schoology key and secret in `.env`. Run `npm run schoology:whoami`.
+- Run `npm run schoology:dry`, check the tests it picked out against what
+  you know is coming. Adjust the title words in `sync-schoology.ts` if a
+  teacher's naming slips through.
+- Add a Discord webhook if you want the ping.
 
 **Done when:** a test a teacher posts appears in `Upcoming Tests.md` and on
 Discord within 30 minutes, and rerunning the script does not re-announce it.
@@ -479,7 +483,7 @@ dashboard from school wifi and see them.
 | Language | TypeScript on Node, same as this repo |
 | Claude | `@anthropic-ai/sdk`, model `claude-opus-5`, `client.messages.parse()` with Zod schemas, adaptive thinking on |
 | Frontmatter | `gray-matter` |
-| Schoology | `node-ical` reading the personal feed URL |
+| Schoology | REST API, two-legged OAuth with your user-level key, plain `fetch` |
 | Google Calendar | `googleapis` package with a service account |
 | Notifications | `notifications.json` in the vault, shown in the app; Discord webhook as the ping, web push in Phase 6 |
 | Dashboard app | Next.js and Tailwind like this repo, `react-markdown`, PWA manifest, Vercel in Phase 6 |
@@ -538,7 +542,7 @@ replace this table.
 2. Install Obsidian on both devices and pick a sync method.
 3. Install the three plugins and set the link format.
 4. Take all your notes in `00 Inbox/` for the rest of the week.
-5. Find your Schoology calendar feed URL and confirm it opens. If it does not
+5. Find the Schoology API page under your name and confirm it shows a key.
    exist, note that now so Phase 3 uses the email fallback.
 6. Decide whether `school-os/` lives in this repo or its own. A separate repo
    keeps it apart from the sports card and clothing tools.
