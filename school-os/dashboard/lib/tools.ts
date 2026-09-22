@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, VAULT } from "./vault";
+import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, remember, VAULT } from "./vault";
 import fs from "node:fs/promises";
 import matter from "gray-matter";
 
@@ -93,6 +93,11 @@ export const tools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "remember",
+    description: "Save a fact about the student for future conversations: preferences, schedule facts, goals, how they like to study, things they told you to remember. One short sentence. It is read before every reply from now on.",
+    input_schema: { type: "object", properties: { fact: { type: "string" } }, required: ["fact"], additionalProperties: false },
+  },
+  {
     name: "run_job",
     description: "Run one of the brain's jobs now: 'schoology' (check for new tests and assignments), 'materials' (download new Schoology files), 'ingest' (file the inbox), 'plan' (rebook study sessions), 'brief' (rewrite today's brief), 'home'. Takes up to a couple of minutes.",
     input_schema: { type: "object", properties: { job: { type: "string", enum: Object.keys(JOBS) } }, required: ["job"], additionalProperties: false },
@@ -168,6 +173,10 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
         where === "study" ? `/study/${(str("assessment_id") ?? "").replace(":", "-")}` :
         where === "week" ? "/week" : where === "inbox" ? "/notifications" : where === "chat" ? "/chat" : "/";
       return { result: JSON.stringify({ navigate: url }), summary: `opened ${where}` };
+    }
+    case "remember": {
+      await remember(str("fact") ?? "");
+      return { result: "remembered", summary: "remembered that" };
     }
     case "run_job": {
       const job = str("job") ?? "";

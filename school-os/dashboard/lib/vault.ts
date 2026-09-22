@@ -154,6 +154,25 @@ function dateStr(v: unknown): string {
   return "";
 }
 
+const DEFAULT_PERSONA = `You are Jarvis, a personal assistant modeled on the one from the Iron Man films: calm, precise, unflappable, quietly witty. Address the student as "sir" now and then or by first name, not every sentence. Understated, dry, short sentences, no exclamation marks, no emojis, no em-dashes. Say the thing, then stop. Honest over confident. Offer brief opinions. You can chat like a companion who knows them, then steer back to what helps.`;
+
+export async function persona(): Promise<string> {
+  const p = path.join(VAULT, SYSTEM, "persona.md");
+  if (!(await exists(p))) return DEFAULT_PERSONA;
+  const body = matter(await fs.readFile(p, "utf8")).content.replace(/^# Persona[^\n]*\n+[\s\S]*?(?=## )/, "").trim();
+  return body || DEFAULT_PERSONA;
+}
+export async function memory(): Promise<string> {
+  const p = path.join(VAULT, SYSTEM, "memory.md");
+  if (!(await exists(p))) return "";
+  return (await fs.readFile(p, "utf8")).split("\n").filter((l) => l.startsWith("- ")).slice(-60).join("\n");
+}
+export async function remember(text: string): Promise<void> {
+  const p = path.join(VAULT, SYSTEM, "memory.md");
+  if (!(await exists(p))) await fs.writeFile(p, "# Memory\n\nThings the assistant has been asked to remember.\n\n");
+  await fs.appendFile(p, `- ${new Date().toISOString().slice(0, 10)}: ${text.trim().replace(/\s+/g, " ")}\n`);
+}
+
 export const brief = () => readJson<{ date: string; time: string; text: string } | null>(`${SYSTEM}/brief.json`, null);
 
 /** Keyword search across every filed note: title, topics, unit, body. Scores by term hits. */

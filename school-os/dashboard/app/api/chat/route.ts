@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { config as loadEnv } from "dotenv";
 import { tools, runTool } from "@/lib/tools";
-import { courses, tests, brief, VAULT } from "@/lib/vault";
+import { courses, tests, brief, persona, memory, VAULT } from "@/lib/vault";
 
 loadEnv({ path: path.join(process.cwd(), "..", ".env") });
 export const maxDuration = 300;
@@ -15,11 +15,16 @@ export async function POST(req: Request) {
   const { messages, voice } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[]; voice?: boolean };
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set in school-os/.env" }, { status: 500 });
 
-  const [cs, ts, b] = await Promise.all([courses(), tests(), brief()]);
+  const [cs, ts, b, who, mem] = await Promise.all([courses(), tests(), brief(), persona(), memory()]);
+  const name = process.env.USER_NAME || "";
   const system: Anthropic.TextBlockParam[] = [
     {
       type: "text",
-      text: `You are the student's school assistant. You have their notes, teacher materials, Schoology deadlines, study plan and study material, through tools. Be direct and specific. Plain text, short paragraphs, no emojis, no em-dashes. Use markdown lists and headings only when they help.
+      text: `${who}
+
+The student's name is ${name || "not set"}. You have their notes, teacher materials, Schoology deadlines, study plan and study material, through tools. Be direct and specific. Plain text, short paragraphs. Use markdown lists and headings only when they help, never in voice mode.
+
+When the student tells you something worth keeping (a preference, a schedule fact, a goal, "remember that"), call remember once, quietly, and carry on.
 
 Ground everything in the notes: when asked for problems, examples or explanations, search and read the notes first and quote or reproduce what is actually there, naming the note it came from. Say plainly when the notes do not cover something, then help from general knowledge and label it as such.
 
@@ -42,7 +47,7 @@ VOICE MODE. The student is talking to you and cannot read a wall of text. Act fi
     },
     {
       type: "text",
-      text: `Courses: ${cs.map((c) => `${c.name} (${c.noteCount} notes${c.units.length ? `; units: ${c.units.join(", ")}` : ""})`).join(" | ")}\nNext assessments: ${ts.slice(0, 5).map((t) => `${t.course} ${t.title} ${t.kind} ${t.when}`).join(" | ") || "none"}\nToday's brief: ${b?.date === new Date().toISOString().slice(0, 10) ? b.text.slice(0, 600) : "not written yet"}`,
+      text: `${mem ? `Things you remember about the student:\n${mem}\n\n` : ""}Courses: ${cs.map((c) => `${c.name} (${c.noteCount} notes${c.units.length ? `; units: ${c.units.join(", ")}` : ""})`).join(" | ")}\nNext assessments: ${ts.slice(0, 5).map((t) => `${t.course} ${t.title} ${t.kind} ${t.when}`).join(" | ") || "none"}\nToday's brief: ${b?.date === new Date().toISOString().slice(0, 10) ? b.text.slice(0, 600) : "not written yet"}`,
     },
   ];
 

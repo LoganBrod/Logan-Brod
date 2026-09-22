@@ -12,7 +12,7 @@ const ACKS = ["On it.", "One moment.", "Let me look.", "Checking."];
  * assistant, speaks the reply, and follows any page the assistant opens. Browser speech
  * recognition only (Chrome, Safari); it runs while a tab of the app is open.
  */
-export function Jarvis({ wakeWord, name, voice }: { wakeWord: string; name: string; voice?: string }) {
+export function Jarvis({ wakeWord, name, voice, greeting }: { wakeWord: string; name: string; voice?: string; greeting?: string }) {
   const router = useRouter();
   const [on, setOn] = useState(false);
   const [supported, setSupported] = useState(false);
@@ -24,6 +24,7 @@ export function Jarvis({ wakeWord, name, voice }: { wakeWord: string; name: stri
   const onRef = useRef(false);
   const hide = useRef<ReturnType<typeof setTimeout> | null>(null);
   const followUp = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const history = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
 
   useEffect(() => {
     const SR = (window as unknown as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor }).SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: SRCtor }).webkitSpeechRecognition;
@@ -64,6 +65,17 @@ export function Jarvis({ wakeWord, name, voice }: { wakeWord: string; name: stri
     r.onerror = () => {};
     try { r.start(); } catch {}
     rec.current = r;
+    // First time on the app today with voice on: say hello, once.
+    const key = `jarvis-greeted-${new Date().toISOString().slice(0, 10)}`;
+    try {
+      if (greeting && !localStorage.getItem(key)) {
+        localStorage.setItem(key, "1");
+        setReply({ text: greeting, steps: [] }); setState("reply");
+        void speak(greeting, voice);
+        if (hide.current) clearTimeout(hide.current);
+        hide.current = setTimeout(() => { setState("idle"); setReply(null); }, 20_000);
+      }
+    } catch {}
     return () => { r.onend = () => {}; r.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [on, wakeWord]);
@@ -73,9 +85,11 @@ export function Jarvis({ wakeWord, name, voice }: { wakeWord: string; name: stri
     if (followUp.current) clearTimeout(followUp.current);
     void speak(ACKS[Math.floor(Math.random() * ACKS.length)], voice); // no dead air while it works
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: [{ role: "user", content: q }], voice: true }) });
+      history.current = [...history.current.slice(-8), { role: "user", content: q }];
+      const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history.current, voice: true }) });
       const data = await res.json();
       const text: string = data.error ? `Something went wrong: ${data.error}` : data.text;
+      history.current = [...history.current, { role: "assistant", content: text }];
       // The reply is "what to say" then optionally "---" and what to show.
       const [spoken, ...rest] = text.split(/\n-{3,}\n/);
       setReply({ text: rest.length ? `${spoken.trim()}\n\n${rest.join("\n---\n").trim()}` : text, steps: data.steps ?? [] }); setState("reply");
