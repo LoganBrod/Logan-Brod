@@ -39,17 +39,25 @@ async function main() {
 
   const client = fake ? null : new Anthropic();
   if (retry && !dryRun) {
-    // Throw away the brain's earlier guesses so the originals get a fresh look.
-    let reset = 0;
+    // First, the free pass: a held note whose course is real and reasonably sure just files
+    // under today's rules (course-wide if its unit is missing). Only the rest go back to Claude.
+    let freed = 0, reset = 0;
     for (const f of await listInbox()) {
       if (!f.endsWith(".md")) continue;
       const { data } = await readNote(f);
       if (data.status !== "needs-review" || data.sorted_by !== "agent") continue;
+      const course = courses.find((c) => c.name === data.course);
+      const unit = course && data.unit && course.units.includes(String(data.unit)) ? String(data.unit) : "";
+      if (course && Number(data.confidence ?? 0) >= 0.4) {
+        await updateFrontmatter(f, { unit, status: "organized", reason: `${data.reason ?? ""} (re-filed on retry)` });
+        freed++;
+        continue;
+      }
       if (data.source) await fs.unlink(f); // note generated from a scan or document: the original is still here
       else await updateFrontmatter(f, { status: "raw", course: undefined, unit: undefined });
       reset++;
     }
-    console.log(`Retry: ${reset} item(s) reset for a fresh look.\n`);
+    console.log(`Retry: ${freed} item(s) file without a Claude call, ${reset} get a fresh look.\n`);
   }
   const files = await listInbox();
   // Originals that already have a note waiting for review in the inbox: leave them alone.

@@ -31,7 +31,7 @@ const Base = z.object({
     .nullable()
     .describe("YYYY-MM-DD if a date is written on the material, otherwise null."),
   topics: z.array(z.string()).describe("3 to 8 specific topics covered."),
-  confidence: z.number().min(0).max(1).describe("How sure you are about course AND unit together."),
+  confidence: z.number().min(0).max(1).describe("How sure you are about the COURSE. A missing or uncertain unit does not lower this."),
   reason: z.string().describe("One sentence on why this course and unit."),
 });
 
@@ -59,7 +59,9 @@ Transcription rules (scans and images only):
 Filing rules:
 - course must be one of the listed names, spelled exactly.
 - unit must be one of that course's listed units, spelled exactly, or "" if none fits yet.
-- confidence is about the filing, not the transcription. Below 0.7 means a human should check.
+- confidence is about the course only. Material that clearly belongs to a course scores high
+  even when no listed unit fits; it will be filed course-wide or under a proposed unit.
+  Below 0.7 means the course itself is unclear and a human should check.
 - A worksheet the teacher handed out is a handout. Problems the student worked are homework.`;
 
 export async function classify(
