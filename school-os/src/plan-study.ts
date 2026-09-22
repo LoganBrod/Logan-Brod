@@ -9,6 +9,7 @@
 // deletes its own events for that assessment and places fresh ones, so rerunning is safe.
 import fs from "node:fs/promises";
 import { google, type calendar_v3 } from "googleapis";
+import ical, { type VEvent } from "node-ical";
 import matter from "gray-matter";
 import { DIRS, GOOGLE_SERVICE_ACCOUNT_KEY } from "./config.js";
 import { vaultPath, exists, readCourses, appendLog, notify, listCourseNotes, type Course } from "./vault.js";
@@ -22,6 +23,8 @@ function calendarId(raw: string | undefined): string {
   return m ? decodeURIComponent(m[1]) : v;
 }
 const MAIN_CAL = calendarId(process.env.GOOGLE_CALENDAR_ID);
+/** Fallback for calendars that cannot be shared (school accounts): the calendar's secret iCal address. */
+const BUSY_ICAL_URL = (process.env.BUSY_ICAL_URL ?? "").trim();
 const STUDY_CAL = calendarId(process.env.STUDY_CALENDAR_ID);
 
 type Assessment = { id: string; title: string; when: string; kind: "test" | "quiz" | "project"; course: string };
@@ -85,6 +88,10 @@ async function main() {
   }
 
   const busy: Slot[] = [];
+  if (BUSY_ICAL_URL) {
+    const n = busy.push(...(await icalBusy(BUSY_ICAL_URL, today, addDays(horizon, 1))));
+    console.log(`BUSY_ICAL_URL: ok (${n} busy block(s) in the window)`);
+  }
   const calendars = [MAIN_CAL, STUDY_CAL].filter(Boolean);
   const fb = await cal.freebusy.query({ requestBody: { timeMin, timeMax, items: calendars.map((id) => ({ id })) } });
   for (const id of calendars) for (const b of fb.data.calendars?.[id]?.busy ?? []) busy.push({ start: new Date(b.start!), end: new Date(b.end!) });
@@ -131,6 +138,27 @@ async function main() {
   await appendLog(`planner: ${placed.length} sessions booked (${deleted} old ones replaced) for ${upcoming.length} assessments`);
   await notify("study_generated", `Study plan: ${placed.length} sessions booked`, "03 Calendar/Study Plan.md");
   console.log(`\nBooked ${placed.length} sessions (replaced ${deleted}). See 03 Calendar/Study Plan.md.`);
+}
+
+/** Busy blocks from an iCal feed, recurring events expanded. */
+async function icalBusy(url: string, from: Date, to: Date): Promise<Slot[]> {
+  const data = await ical.async.fromURL(url);
+  const out: Slot[] = [];
+  for (const item of Object.values(data)) {
+    if (!item || item.type !== "VEVENT") continue;
+    const ev = item as VEvent;
+    if (!ev.start || !ev.end) continue;
+    if (ev.datetype === "date") continue; // all-day events do not block study time
+    const len = ev.end.getTime() - ev.start.getTime();
+    const starts: Date[] = ev.rrule ? ev.rrule.between(from, to, true) : [ev.start];
+    const skip = new Set(Object.keys(ev.exdate ?? {}));
+    for (const st of starts) {
+      if (skip.has(st.toISOString().slice(0, 10))) continue;
+      if (st < from || st > to) continue;
+      out.push({ start: st, end: new Date(st.getTime() + len) });
+    }
+  }
+  return out;
 }
 
 /** Pure placement: nearest assessment first, sessions walk back from the day before it. */
