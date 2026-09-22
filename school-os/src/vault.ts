@@ -132,6 +132,59 @@ export async function appendNeedsReview(noteTitle: string, reason: string): Prom
   await appendLine(vaultPath(DIRS.system, "Needs Review.md"), `- [[${noteTitle}]] — ${reason}`);
 }
 
+export type NotificationKind =
+  | "test_posted" | "assignment_posted" | "notes_sorted" | "needs_review" | "study_generated" | "files_pulled";
+
+/** Appends one entry to 04 System/notifications.json (newest first). The dashboard app reads this. */
+export async function notify(kind: NotificationKind, title: string, link?: string): Promise<void> {
+  const p = vaultPath(DIRS.system, "notifications.json");
+  const list: unknown[] = (await exists(p)) ? JSON.parse(await fs.readFile(p, "utf8")) : [];
+  list.unshift({
+    id: `n_${Date.now().toString(36)}`,
+    time: new Date().toISOString(),
+    kind,
+    title,
+    link: link ?? null,
+    read: false,
+  });
+  await fs.mkdir(path.dirname(p), { recursive: true });
+  await fs.writeFile(p, JSON.stringify(list.slice(0, 500), null, 2));
+}
+
+/** All markdown notes under a course (or one unit of it), excluding maps and sources. */
+export async function listCourseNotes(course: string, unit?: string): Promise<string[]> {
+  const root = unit ? vaultPath(DIRS.courses, course, unit) : vaultPath(DIRS.courses, course);
+  if (!(await exists(root))) return [];
+  const out: string[] = [];
+  for await (const p of walkMarkdown(root)) {
+    const base = path.basename(p);
+    if (base === "_Course.md" || base === "_Unit.md") continue;
+    if (p.split(path.sep).includes(DIRS.sources)) continue;
+    out.push(p);
+  }
+  return out.sort();
+}
+
+/** Every markdown note in the vault whose body contains the tag. */
+export async function findNotesWithTag(tag: string): Promise<string[]> {
+  const out: string[] = [];
+  for await (const p of walkMarkdown(VAULT_PATH)) {
+    const raw = await fs.readFile(p, "utf8");
+    if (raw.includes(tag)) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * Removes a trigger tag from a note. The one case where the brain touches a note
+ * body: the tag was an instruction to it, and leaving it would re-run every time.
+ */
+export async function removeTag(p: string, tag: string): Promise<void> {
+  const raw = await fs.readFile(p, "utf8");
+  const cleaned = raw.replace(new RegExp(`[ \\t]*${tag.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}(?![\\w/-])`, "g"), "");
+  await fs.writeFile(p, cleaned);
+}
+
 /** Finds the note whose frontmatter has the given key/value, anywhere in the vault. */
 export async function findNoteBy(key: string, value: string): Promise<string | null> {
   for await (const p of walkMarkdown(VAULT_PATH)) {

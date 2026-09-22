@@ -4,6 +4,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import mammoth from "mammoth";
+import JSZip from "jszip";
 import type Anthropic from "@anthropic-ai/sdk";
 import { readNote } from "./vault.js";
 
@@ -28,7 +29,26 @@ const IMAGE_TYPES: Record<string, "image/jpeg" | "image/png" | "image/webp" | "i
   ".gif": "image/gif",
 };
 
-export const SUPPORTED = [".pdf", ...Object.keys(IMAGE_TYPES), ".docx", ".md", ".txt"];
+export const SUPPORTED = [".pdf", ...Object.keys(IMAGE_TYPES), ".docx", ".pptx", ".md", ".txt"];
+
+/** Slide text out of a .pptx: one markdown section per slide, in order. */
+async function pptxToMarkdown(p: string): Promise<string> {
+  const zip = await JSZip.loadAsync(await fs.readFile(p));
+  const slides = Object.keys(zip.files)
+    .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]));
+  const out: string[] = [];
+  for (const [i, name] of slides.entries()) {
+    const xml = await zip.file(name)!.async("string");
+    // Each <a:p> is a paragraph; each <a:t> a text run inside it.
+    const paragraphs = [...xml.matchAll(/<a:p\b[\s\S]*?<\/a:p>/g)]
+      .map((m) => [...m[0].matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((t) => t[1]).join(""))
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (paragraphs.length) out.push(`## Slide ${i + 1}\n\n${paragraphs.join("\n")}`);
+  }
+  return out.join("\n\n");
+}
 
 export async function readSource(p: string): Promise<Source | null> {
   const ext = path.extname(p).toLowerCase();
@@ -55,6 +75,11 @@ export async function readSource(p: string): Promise<Source | null> {
     // convertToMarkdown exists at runtime but is missing from mammoth's types.
     const md = mammoth as unknown as { convertToMarkdown: typeof mammoth.convertToHtml };
     const { value } = await md.convertToMarkdown({ path: p });
+    return { path: p, kind: "document", block: { type: "text", text: value }, verbatimBody: value };
+  }
+
+  if (ext === ".pptx") {
+    const value = await pptxToMarkdown(p);
     return { path: p, kind: "document", block: { type: "text", text: value }, verbatimBody: value };
   }
 

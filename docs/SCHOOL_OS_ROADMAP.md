@@ -169,7 +169,7 @@ Runs every 15 minutes (or by hand). For each note in `00 Inbox/` with
 A note about the same lecture written on two days stays as two notes. The unit
 map links both. Merging is a later problem, if it ever becomes one.
 
-### `generate-study`
+### `generate-study` — built, in `school-os/`
 
 Triggered by a tag you put in any note or unit map, from either device:
 
@@ -262,7 +262,7 @@ assessment, the script deletes every event in the Study calendar tagged with
 that assessment's id, then places fresh ones. Only events with the tag are ever
 touched.
 
-### `build-home`
+### `build-home` — built, in `school-os/`
 
 Runs after every other job. Rewrites `Home.md`: next three assessments, today's
 study sessions, notes sorted in the last 24 hours, anything in Needs Review,
@@ -339,7 +339,7 @@ costs nothing. Setup and commands are in `school-os/README.md`.
 corrections, and the transcriptions are good enough that you study from them
 instead of the paper.
 
-### Phase 2 · Study material (weeks 4 to 5)
+### Phase 2 · Study material (weeks 4 to 5) — built, in `school-os/`
 
 - Write `generate-study.ts` handling the three tags.
 - Get one full unit to have a flashcard deck, a practice test, and a unit

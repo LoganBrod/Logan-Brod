@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { DIRS } from "./config.js";
-import { vaultPath, exists, appendLog, safeName } from "./vault.js";
+import { vaultPath, exists, appendLog, safeName, notify } from "./vault.js";
 import {
   me, mySections, sectionDocuments, sectionAssignments, assignmentDetail, filesOf,
   downloadAttachment, type Attachment,
@@ -91,7 +91,10 @@ async function main() {
 
   if (!dryRun) await fs.writeFile(statePath, JSON.stringify(state, null, 2));
   console.log(`\n${dryRun ? "would download" : "downloaded"} ${downloaded}, skipped ${skipped}.`);
-  if (!dryRun && downloaded > 0) console.log("Run `npm run ingest` to file them.");
+  if (!dryRun && downloaded > 0) {
+    await notify("files_pulled", `${downloaded} file${downloaded === 1 ? "" : "s"} pulled from Schoology`, "00 Inbox");
+    console.log("Run `npm run ingest` to file them.");
+  }
 }
 
 main().catch((err) => {

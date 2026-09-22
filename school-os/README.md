@@ -84,6 +84,17 @@ npm run ingest
 
 Files move. Open Obsidian and look under `01 Courses`.
 
+## Updating
+
+When there is a newer version on GitHub:
+
+```
+npm run update
+```
+
+Downloads the branch, replaces the code, keeps your `.env` and installed
+packages, and reinstalls anything new. No re-downloading ZIPs.
+
 ## Google Docs (optional, 15 minutes)
 
 1. In Google Cloud Console: new project → APIs & Services → enable
@@ -167,7 +178,10 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run schoology` | Rewrite Upcoming Tests.md, ping Discord for new tests |
 | `npm run materials:dry` | List Schoology files it would download |
 | `npm run materials` | Download new Schoology files into the inbox |
-| `npm run sync` | Schoology tests, then files, then ingest: the daily command |
+| `npm run study` | Act on `#make-*` and `#grade-me` tags |
+| `npm run home` | Rewrite `04 System/Home.md` |
+| `npm run sync` | Tests, files, ingest, study, home: the daily command |
+| `npm run update` | Pull the latest code from GitHub, keeping `.env` |
 | `npm run typecheck` | Compile check |
 
 ## Files
@@ -181,6 +195,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/schoology.ts` | Signs requests to the Schoology API with your key and secret |
 | `src/sync-schoology.ts` | Upcoming tests from every class, Discord pings |
 | `src/pull-materials.ts` | Downloads new Schoology files into the inbox |
+| `src/generate-study.ts` | Flashcards, practice tests, unit reviews, grading |
+| `src/build-home.ts` | The Home dashboard note |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
 

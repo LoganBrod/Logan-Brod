@@ -11,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CONFIDENCE_THRESHOLD, DIRS } from "./config.js";
 import {
   listInbox, readCourses, writeNote, updateFrontmatter, moveFile, addToUnitMap, addUnitsToCourse,
-  appendLog, appendNeedsReview, vaultPath, exists, readNote, type Course,
+  appendLog, appendNeedsReview, vaultPath, exists, readNote, notify, type Course,
 } from "./vault.js";
 import { readSource, SUPPORTED, type Source } from "./reader.js";
 import { classify, fakeClassify, type Classification } from "./classify.js";
@@ -56,6 +56,8 @@ async function main() {
     }
   }
   console.log(`\nfiled ${filed}, needs review ${review}, skipped ${skipped}, failed ${failed}`);
+  if (!dryRun && filed > 0) await notify("notes_sorted", `${filed} note${filed === 1 ? "" : "s"} filed`);
+  if (!dryRun && review > 0) await notify("needs_review", `${review} note${review === 1 ? "" : "s"} need${review === 1 ? "s" : ""} your review`, "04 System/Needs Review.md");
 }
 
 type Outcome = "filed" | "review" | "skipped";

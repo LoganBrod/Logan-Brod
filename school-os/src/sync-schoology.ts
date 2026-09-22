@@ -7,7 +7,7 @@
 //   npm run schoology:dry      show what would change, write nothing
 import fs from "node:fs/promises";
 import { DIRS } from "./config.js";
-import { vaultPath, exists, appendLog } from "./vault.js";
+import { vaultPath, exists, appendLog, notify } from "./vault.js";
 import { me, mySections, sectionAssignments, sectionEvents } from "./schoology.js";
 
 const args = new Set(process.argv.slice(2));
@@ -86,6 +86,7 @@ async function main() {
   for (const i of announce) {
     await appendLog(`schoology: ${state[i.id] && moved.includes(i) ? "rescheduled" : "new"} ${i.kind} "${i.title}" in ${i.course} on ${i.when}`);
   }
+  for (const i of announce) await notify("test_posted", `${i.course}: ${i.title} (${i.kind}) on ${i.when}`, "03 Calendar/Upcoming Tests.md");
   if (announce.length > 0) await discord(announce, today);
   console.log(`Wrote Upcoming Tests.md. Announced ${announce.length}.`);
 }

@@ -14,13 +14,17 @@
     "schoology:whoami": "tsx src/sync-schoology.ts --whoami",
     "materials": "tsx src/pull-materials.ts",
     "materials:dry": "tsx src/pull-materials.ts --dry-run",
-    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest"
+    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && npm run -s home",
+    "study": "tsx src/generate-study.ts",
+    "home": "tsx src/build-home.ts",
+    "update": "bash update.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
     "dotenv": "^17.4.2",
     "googleapis": "^181.0.0",
     "gray-matter": "^4.0.3",
+    "jszip": "^3.10.2",
     "mammoth": "^1.12.3",
     "zod": "^4.6.5"
   },
