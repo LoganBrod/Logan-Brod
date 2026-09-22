@@ -87,7 +87,9 @@ export async function writeNote(
 /** Rewrites only the frontmatter of an existing note; the body stays byte-identical. */
 export async function updateFrontmatter(p: string, patch: NoteFrontmatter): Promise<void> {
   const { data, content } = matter(await fs.readFile(p, "utf8"));
-  await fs.writeFile(p, matter.stringify(content, { ...data, ...patch }));
+  const merged: NoteFrontmatter = { ...data, ...patch };
+  for (const k of Object.keys(merged)) if (merged[k] === undefined) delete merged[k]; // undefined = remove the key
+  await fs.writeFile(p, matter.stringify(content, merged));
 }
 
 /** Replaces the body of a note we generated (e.g. a re-exported Google Doc). */

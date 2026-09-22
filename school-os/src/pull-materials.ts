@@ -6,7 +6,7 @@
 //   npm run materials:dry      list what would be downloaded
 import fs from "node:fs/promises";
 import path from "node:path";
-import { DIRS } from "./config.js";
+import { DIRS, isIgnoredCourse, normName } from "./config.js";
 import { vaultPath, exists, appendLog, safeName, notify, readCourses } from "./vault.js";
 import {
   me, mySections, sectionDocuments, sectionAssignments, assignmentDetail, filesOf,
@@ -30,9 +30,14 @@ async function main() {
 
   // A class on Schoology with no folder in the vault gets one, so its files have somewhere to go.
   const existing = (await readCourses()).map((c) => c.name);
-  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // "Chinese" in the vault and "Chinese IV" on Schoology are the same class.
+  const sameCourse = (a: string, b: string) => {
+    const x = normName(a), y = normName(b);
+    return x === y || x.startsWith(y) || y.startsWith(x);
+  };
   for (const s of sections) {
-    if (existing.some((e) => norm(e) === norm(s.course_title))) continue;
+    if (isIgnoredCourse(s.course_title)) continue;
+    if (existing.some((e) => sameCourse(e, s.course_title))) continue;
     const dir = vaultPath(DIRS.courses, safeName(s.course_title));
     console.log(`new course folder: ${safeName(s.course_title)}${dryRun ? " (dry run: not created)" : ""}`);
     if (dryRun) continue;
@@ -47,6 +52,7 @@ async function main() {
   let downloaded = 0, skipped = 0;
   for (const s of sections) {
     const course = s.course_title;
+    if (isIgnoredCourse(course)) { console.log(`\n${course}: ignored (IGNORE_COURSES)`); continue; }
     console.log(`\n${course}`);
 
     // Materials → Documents

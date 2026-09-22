@@ -6,7 +6,7 @@
 //   npm run schoology          sync
 //   npm run schoology:dry      show what would change, write nothing
 import fs from "node:fs/promises";
-import { DIRS } from "./config.js";
+import { DIRS, isIgnoredCourse } from "./config.js";
 import { vaultPath, exists, appendLog, notify } from "./vault.js";
 import { me, mySections, sectionAssignments, sectionEvents } from "./schoology.js";
 
@@ -54,6 +54,7 @@ async function main() {
   const items: Item[] = [];
   for (const s of sections) {
     const course = s.course_title;
+    if (isIgnoredCourse(course)) continue;
     for (const a of await sectionAssignments(s.id)) {
       const when = day(a.due);
       if (!when || when < today) continue;

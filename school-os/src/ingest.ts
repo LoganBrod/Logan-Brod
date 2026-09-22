@@ -4,15 +4,17 @@
 //   npm run ingest            file everything
 //   npm run ingest:dry        show what would happen, change nothing
 //   npm run ingest:fake       same, without calling Claude (tests the wiring)
+//   npm run ingest -- --retry re-sort everything waiting for review (after adding courses or units)
 //
 // What it never does: rewrite the body of a note you typed, or delete anything.
+import fs from "node:fs/promises";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { CONFIDENCE_THRESHOLD, DIRS, MAX_SPEND_PER_RUN, MODEL_SORT } from "./config.js";
 import { spentThisRun, money } from "./usage.js";
 import {
   listInbox, readCourses, writeNote, updateFrontmatter, moveFile, addToUnitMap, addUnitsToCourse,
-  appendLog, appendNeedsReview, vaultPath, exists, readNote, notify, type Course,
+  appendLog, vaultPath, exists, readNote, notify, type Course,
 } from "./vault.js";
 import { readSource, SUPPORTED, type Source } from "./reader.js";
 import { classify, fakeClassify, type Classification } from "./classify.js";
@@ -21,6 +23,7 @@ import { gdocsConfigured, pullGoogleDocs } from "./gdocs.js";
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const fake = args.has("--fake");
+const retry = args.has("--retry");
 
 async function main() {
   const courses = await readCourses();
@@ -35,6 +38,19 @@ async function main() {
   }
 
   const client = fake ? null : new Anthropic();
+  if (retry && !dryRun) {
+    // Throw away the brain's earlier guesses so the originals get a fresh look.
+    let reset = 0;
+    for (const f of await listInbox()) {
+      if (!f.endsWith(".md")) continue;
+      const { data } = await readNote(f);
+      if (data.status !== "needs-review" || data.sorted_by !== "agent") continue;
+      if (data.source) await fs.unlink(f); // note generated from a scan or document: the original is still here
+      else await updateFrontmatter(f, { status: "raw", course: undefined, unit: undefined });
+      reset++;
+    }
+    console.log(`Retry: ${reset} item(s) reset for a fresh look.\n`);
+  }
   const files = await listInbox();
   // Originals that already have a note waiting for review in the inbox: leave them alone.
   const waiting = new Set<string>();
@@ -68,6 +84,7 @@ async function main() {
       if (!dryRun) await appendLog(`FAILED ${name}: ${message}`);
     }
   }
+  if (!dryRun) await rebuildNeedsReview();
   console.log(`\nfiled ${filed}, needs review ${review}, skipped ${skipped}, failed ${failed}${fake ? "" : ` · spent ${money(spentThisRun())}`}`);
   if (!dryRun && filed > 0) await notify("notes_sorted", `${filed} note${filed === 1 ? "" : "s"} filed`);
   if (!dryRun && review > 0) await notify("needs_review", `${review} note${review === 1 ? "" : "s"} need${review === 1 ? "s" : ""} your review`, "04 System/Needs Review.md");
@@ -197,8 +214,26 @@ async function fileNote(notePath: string, course: string, unit: string, sourceNa
 
 async function flagForReview(notePath: string, result: Classification) {
   const why = `guessed ${result.course} / ${result.unit || "no unit"} at ${result.confidence.toFixed(2)}: ${result.reason}`;
-  await appendNeedsReview(path.basename(notePath, ".md"), why);
   await appendLog(`needs review "${path.basename(notePath)}": ${why}`);
+}
+
+/** Needs Review.md is derived from what is actually waiting in the inbox, so it never goes stale. */
+async function rebuildNeedsReview() {
+  const lines: string[] = [];
+  for (const f of await listInbox()) {
+    if (!f.endsWith(".md")) continue;
+    const { data } = await readNote(f);
+    if (data.status !== "needs-review") continue;
+    lines.push(`- [[${path.basename(f, ".md")}]] — guessed ${data.course ?? "?"} / ${data.unit || "no unit"} at ${data.confidence ?? "?"}: ${data.reason ?? ""}`);
+  }
+  const body = [
+    "# Needs review", "",
+    lines.length
+      ? `${lines.length} item(s). For each: open it, set \`course\` and \`unit\` (unit may be empty for course-wide material), change \`status\` to \`organized\`, then run the brain. Or add the missing course or unit and run \`npm run ingest -- --retry\` to let the brain re-sort everything here.`
+      : "Nothing waiting. Inbox is clean.",
+    "", ...lines, "",
+  ].join("\n");
+  await fs.writeFile(vaultPath(DIRS.system, "Needs Review.md"), body);
 }
 
 function unitDir(course: string, unit: string): string {

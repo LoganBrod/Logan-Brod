@@ -35,6 +35,11 @@ export const DIRS = {
   sources: "_sources", // inside each unit folder: the original scan or document
 } as const;
 
+/** Schoology sections to ignore entirely (clubs, gym, advisory). Comma-separated in .env. */
+export const IGNORE_COURSES = (process.env.IGNORE_COURSES ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+export const normName = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+export const isIgnoredCourse = (name: string) => IGNORE_COURSES.some((i) => normName(i) === normName(name));
+
 // Optional: Google Docs pull. Both must be set for it to run.
 export const GDOCS_FOLDER_ID = process.env.GDOCS_FOLDER_ID ?? "";
 export const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ?? "";
