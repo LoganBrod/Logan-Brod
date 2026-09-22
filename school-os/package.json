@@ -17,7 +17,8 @@
     "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && npm run -s home",
     "study": "tsx src/generate-study.ts",
     "home": "tsx src/build-home.ts",
-    "update": "bash update.sh"
+    "update": "bash update.sh",
+    "costs": "tsx src/costs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
@@ -26,6 +27,7 @@
     "gray-matter": "^4.0.3",
     "jszip": "^3.10.2",
     "mammoth": "^1.12.3",
+    "pdf-parse": "^2.4.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -15,7 +15,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import matter from "gray-matter";
-import { MODEL, DIRS } from "./config.js";
+import { MODEL_STUDY, DIRS } from "./config.js";
+import { recordUsage, spentThisRun, money } from "./usage.js";
 import {
   vaultPath, readNote, listCourseNotes, findNotesWithTag, removeTag, writeNote, appendLog,
   appendLine, notify, exists, safeName,
@@ -123,6 +124,7 @@ async function main() {
     did++;
   }
   if (did === 0) console.log("Nothing to do. Add #make-flashcards, #make-test, #make-review or #grade-me to a note.");
+  else if (!fake) console.log(`\nspent ${money(spentThisRun())} on ${MODEL_STUDY}`);
 }
 
 async function generate(client: Anthropic | null, kind: Kind, course: string, unit: string, trigger: string | null) {
@@ -177,8 +179,8 @@ async function grade(client: Anthropic | null, testPath: string) {
 
 async function ask(client: Anthropic, instructions: string, material: string): Promise<string> {
   const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 32000,
+    model: MODEL_STUDY,
+    max_tokens: 12000,
     system: "You write study material for a high-school student from their own notes. Output only the material, in the exact format asked. No preamble, no closing remarks.",
     messages: [{ role: "user", content: [
       { type: "text", text: `Notes:\n\n${material}`, cache_control: { type: "ephemeral" } },
@@ -186,6 +188,8 @@ async function ask(client: Anthropic, instructions: string, material: string): P
     ] }],
   });
   const response = await stream.finalMessage();
+  const cost = await recordUsage("study", MODEL_STUDY, instructions.slice(0, 40), response.usage);
+  console.log(`  cost ${money(cost)}`);
   if (response.stop_reason === "refusal") throw new Error("Claude declined to generate this material");
   return response.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim() + "\n";
 }

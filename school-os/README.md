@@ -202,7 +202,30 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 
 ## Costs
 
-Estimated. A one-page scan is a few cents. A ten-page PDF is around 20 to 30
-cents. Typed notes and Word files are cheaper because there are no images.
-The `ingest:dry` run costs the same as a real run; it is the file moves that
-are skipped, not the Claude call.
+Every Claude call is logged to `04 System/costs.jsonl`. See where the money
+goes with:
+
+```
+npm run costs
+```
+
+What keeps it cheap:
+
+- **Typed PDFs never go through vision.** Anything with a text layer (Word
+  exports, slides, textbook pages, most of what Schoology serves) is read
+  locally for free and only classified, a few hundred output tokens. Only
+  true scans, meaning photos of paper, are sent as images and transcribed.
+- **Two models.** `MODEL_SORT` (default `claude-sonnet-5`) does sorting and
+  transcription. `MODEL_STUDY` (default `claude-opus-5`) writes flashcards,
+  tests and reviews, where quality matters. Change either in `.env`.
+  `claude-haiku-4-5` is the cheapest option for sorting.
+- **A budget per run.** Ingest stops calling Claude once a run has spent
+  `MAX_SPEND_PER_RUN` (default $2). The rest of the inbox waits.
+- **A page cap on scans.** Scanned PDFs over `MAX_SCAN_PAGES` (default 12)
+  are held for you to split rather than sent whole.
+- **Dry runs cost the same as real runs.** They call Claude and only skip
+  the file moves. Use `--fake` to test wiring for free.
+
+Rough numbers with the defaults: sorting a typed handout is under a cent;
+a 3-page handwritten scan is a few cents; a flashcard deck, test or review
+for a unit is around 10 to 25 cents.

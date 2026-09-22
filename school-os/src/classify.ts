@@ -4,7 +4,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { MODEL } from "./config.js";
+import { MODEL_SORT } from "./config.js";
+import { recordUsage } from "./usage.js";
 import type { Course } from "./vault.js";
 import type { Source } from "./reader.js";
 
@@ -69,13 +70,20 @@ export async function classify(
   const fileName = source.path.split(/[\\/]/).pop();
   const instructions = `Courses and their units:\n${courseList}\n\nFile name: ${fileName}\nSource kind: ${source.kind}\n\nFile this material.`;
 
+  // Text sources only need the small JSON back; scans also carry the transcription.
+  const isScan = source.kind === "scan";
+  const supportsEffort = !MODEL_SORT.includes("haiku");
   const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 16000,
+    model: MODEL_SORT,
+    max_tokens: isScan ? 16000 : 1500,
     system: SYSTEM,
-    output_config: { effort: "medium", format: zodOutputFormat(ResultSchema) },
+    output_config: {
+      ...(supportsEffort ? { effort: isScan ? "medium" : "low" } : {}),
+      format: zodOutputFormat(ResultSchema),
+    },
     messages: [{ role: "user", content: [source.block, { type: "text", text: instructions }] }],
   });
+  await recordUsage("ingest", MODEL_SORT, `${source.kind}: ${fileName}`, response.usage);
 
   if (response.stop_reason === "refusal") {
     throw new Error(`Claude declined to process ${fileName}: ${response.stop_details?.explanation ?? "no reason given"}`);

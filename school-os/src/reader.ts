@@ -5,6 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import mammoth from "mammoth";
 import JSZip from "jszip";
+import { PDFParse } from "pdf-parse";
+import { MAX_SCAN_PAGES } from "./config.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { readNote } from "./vault.js";
 
@@ -13,6 +15,10 @@ export type SourceKind = "scan" | "document" | "text";
 export type Source = {
   path: string;
   kind: SourceKind;
+  /** Page count for PDFs. */
+  pages?: number;
+  /** Set when the file should not be sent to Claude at all, with the reason. */
+  refuse?: string;
   /** What we send to Claude. */
   block: Anthropic.ContentBlockParam;
   /** For text sources, the body we keep verbatim instead of Claude's transcription. */
@@ -30,6 +36,22 @@ const IMAGE_TYPES: Record<string, "image/jpeg" | "image/png" | "image/webp" | "i
 };
 
 export const SUPPORTED = [".pdf", ...Object.keys(IMAGE_TYPES), ".docx", ".pptx", ".md", ".txt"];
+
+async function pdfTextLayer(bytes: Buffer): Promise<{ markdown: string; chars: number; pages: number } | null> {
+  try {
+    const parser = new PDFParse({ data: bytes });
+    const result = await parser.getText();
+    await parser.destroy?.();
+    // pdf-parse separates pages with "-- N of M --" lines; turn them into headings.
+    const markdown = result.text
+      .replace(/^-- (\d+) of \d+ --$/gm, (_m, n) => `\n## Page ${n}\n`)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    return { markdown, chars: markdown.replace(/\s+/g, "").length, pages: result.total || 1 };
+  } catch {
+    return null;
+  }
+}
 
 /** Slide text out of a .pptx: one markdown section per slide, in order. */
 async function pptxToMarkdown(p: string): Promise<string> {
@@ -54,11 +76,34 @@ export async function readSource(p: string): Promise<Source | null> {
   const ext = path.extname(p).toLowerCase();
 
   if (ext === ".pdf") {
-    const data = (await fs.readFile(p)).toString("base64");
+    const bytes = await fs.readFile(p);
+    // Typed PDFs (anything a teacher exported from Word, Slides, a textbook) carry a text
+    // layer. Reading it locally is free; sending pages as images and asking Claude to
+    // type them back out is the single most expensive thing this system can do.
+    const text = await pdfTextLayer(bytes);
+    if (text && text.chars / text.pages >= 60) {
+      return {
+        path: p,
+        kind: "document",
+        pages: text.pages,
+        block: { type: "text", text: text.markdown },
+        verbatimBody: text.markdown,
+      };
+    }
+    // No usable text layer: a scan. Vision is worth it, but not for a 40-page one.
+    const pages = text?.pages ?? 0;
+    if (pages > MAX_SCAN_PAGES) {
+      return {
+        path: p, kind: "scan", pages,
+        block: { type: "text", text: "" },
+        refuse: `${pages} scanned pages; over MAX_SCAN_PAGES (${MAX_SCAN_PAGES}). Split it, or raise the limit in .env.`,
+      };
+    }
     return {
       path: p,
       kind: "scan",
-      block: { type: "document", source: { type: "base64", media_type: "application/pdf", data } },
+      pages,
+      block: { type: "document", source: { type: "base64", media_type: "application/pdf", data: bytes.toString("base64") } },
     };
   }
 

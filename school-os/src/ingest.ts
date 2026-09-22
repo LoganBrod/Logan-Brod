@@ -8,7 +8,8 @@
 // What it never does: rewrite the body of a note you typed, or delete anything.
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
-import { CONFIDENCE_THRESHOLD, DIRS } from "./config.js";
+import { CONFIDENCE_THRESHOLD, DIRS, MAX_SPEND_PER_RUN, MODEL_SORT } from "./config.js";
+import { spentThisRun, money } from "./usage.js";
 import {
   listInbox, readCourses, writeNote, updateFrontmatter, moveFile, addToUnitMap, addUnitsToCourse,
   appendLog, appendNeedsReview, vaultPath, exists, readNote, notify, type Course,
@@ -24,7 +25,8 @@ const fake = args.has("--fake");
 async function main() {
   const courses = await readCourses();
   console.log(`Courses: ${courses.map((c) => c.name).join(", ")}`);
-  if (dryRun) console.log("Dry run: nothing will be written or moved.\n");
+  if (dryRun) console.log("Dry run: nothing will be written or moved. (It still calls Claude and costs the same as a real run; --fake is free.)\n");
+  if (!fake) console.log(`Sorting with ${MODEL_SORT}; stopping this run at ${money(MAX_SPEND_PER_RUN)}.\n`);
 
   if (gdocsConfigured()) {
     console.log("Pulling Google Docs...");
@@ -42,6 +44,10 @@ async function main() {
   let filed = 0, review = 0, skipped = 0, failed = 0;
   for (const file of files) {
     const name = path.basename(file);
+    if (!fake && spentThisRun() >= MAX_SPEND_PER_RUN) {
+      console.log(`\nBudget for this run (${money(MAX_SPEND_PER_RUN)}) reached. The rest of the inbox waits for the next run.`);
+      break;
+    }
     try {
       const outcome = await handle(file, courses, client);
       if (outcome === "filed") filed++;
@@ -55,7 +61,7 @@ async function main() {
       if (!dryRun) await appendLog(`FAILED ${name}: ${message}`);
     }
   }
-  console.log(`\nfiled ${filed}, needs review ${review}, skipped ${skipped}, failed ${failed}`);
+  console.log(`\nfiled ${filed}, needs review ${review}, skipped ${skipped}, failed ${failed}${fake ? "" : ` · spent ${money(spentThisRun())}`}`);
   if (!dryRun && filed > 0) await notify("notes_sorted", `${filed} note${filed === 1 ? "" : "s"} filed`);
   if (!dryRun && review > 0) await notify("needs_review", `${review} note${review === 1 ? "" : "s"} need${review === 1 ? "s" : ""} your review`, "04 System/Needs Review.md");
 }
@@ -83,6 +89,12 @@ async function handle(file: string, courses: Course[], client: Anthropic | null)
 
   const source = await readSource(file);
   if (!source) return "skipped";
+  if (source.refuse) {
+    console.log(`        ${source.refuse}`);
+    if (!dryRun) await appendLog(`held "${path.basename(file)}": ${source.refuse}`);
+    return "skipped";
+  }
+  if (source.kind === "document" && source.pages) console.log(`        text layer found, ${source.pages} page(s): no vision needed`);
 
   const result = client ? await classify(client, source, courses) : fakeClassify(source, courses);
   const course = courses.find((c) => c.name === result.course);
