@@ -21,7 +21,7 @@ export async function gatherState() {
   const inDays = (n: number) => iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + n));
   const readJson = async <T,>(rel: string, fb: T): Promise<T> => (await exists(vaultPath(rel))) ? JSON.parse(await fs.readFile(vaultPath(rel), "utf8")) : fb;
 
-  const state = await readJson<Record<string, { title: string; when: string; kind: string; course?: string }>>(`${DIRS.system}/schoology-state.json`, {});
+  const state = await readJson<Record<string, { title: string; when: string; kind: string; course?: string; description?: string }>>(`${DIRS.system}/schoology-state.json`, {});
   const upcoming = Object.values(state).filter((a) => a.when >= todayStr).sort((a, b) => a.when.localeCompare(b.when));
   const plan = await readJson<{ start: string; end: string; course: string; title: string; kind: string; when: string }[]>(`${DIRS.system}/study-plan.json`, []);
   const notifications = await readJson<{ time: string; kind: string; title: string }[]>(`${DIRS.system}/notifications.json`, []);
@@ -68,7 +68,7 @@ async function main() {
 
   const facts = [
     `Today: ${s.weekday} ${s.todayStr}.`,
-    `Tests/quizzes/projects in the next 10 days: ${s.testsSoon.map((a) => `${a.course ?? "?"} "${a.title}" (${a.kind}) on ${a.when}`).join("; ") || "none"}.`,
+    `Tests/quizzes/projects in the next 10 days: ${s.testsSoon.map((a) => `${a.course ?? "?"} "${a.title}" (${a.kind}) on ${a.when}${a.description ? ` — teacher says: ${a.description.replace(/\s+/g, " ").slice(0, 240)}` : ""}`).join("; ") || "none"}.`,
     `Assignments due today or tomorrow: ${s.dueSoon.map((a) => `${a.course ?? "?"} "${a.title}" due ${a.when}`).join("; ") || "none"}.`,
     `Study sessions booked today: ${s.sessionsToday.map((x) => `${fmt(x.start)}-${fmt(x.end)} ${x.course} for "${x.title}"`).join("; ") || "none"}.`,
     `Tomorrow: ${s.sessionsTomorrow.map((x) => `${fmt(x.start)} ${x.course}`).join("; ") || "none"}.`,

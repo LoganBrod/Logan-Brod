@@ -16,7 +16,7 @@ export type Note = {
   topics: string[]; excerpt: string; sourceKind: string; status: string; mtime: number;
 };
 export type Course = { name: string; units: string[]; hue: number; noteCount: number };
-export type Assessment = { id: string; title: string; when: string; kind: string; course: string };
+export type Assessment = { id: string; title: string; when: string; kind: string; course: string; description?: string; url?: string };
 export type Session = { start: string; end: string; label: string; course: string; title: string; kind: string; when: string; id: string };
 export type Notification = { id: string; time: string; kind: string; title: string; link: string | null; read: boolean };
 
@@ -158,7 +158,14 @@ export const brief = () => readJson<{ date: string; time: string; text: string }
 
 /** Keyword search across every filed note: title, topics, unit, body. Scores by term hits. */
 export async function searchNotes(query: string, course?: string, limit = 8): Promise<(Note & { snippet: string; score: number })[]> {
-  const terms = query.toLowerCase().split(/[^a-z0-9+\-/]+/).filter((t) => t.length > 1);
+  // Letters and numbers in any script. Chinese has no spaces, so also index 2-character pieces of any CJK run.
+  const raw = query.toLowerCase().split(/[^\p{L}\p{N}+\-/]+/u).filter(Boolean);
+  const terms = raw.flatMap((t) => {
+    if (!/[\u3400-\u9fff]/.test(t)) return t.length > 1 ? [t] : [];
+    const parts = [t];
+    for (let i = 0; i + 2 <= t.length; i++) parts.push(t.slice(i, i + 2));
+    return parts;
+  });
   const cs = course ? [course] : (await courses()).map((c) => c.name);
   const hits: (Note & { snippet: string; score: number })[] = [];
   for (const c of cs) {
@@ -180,6 +187,27 @@ export async function searchNotes(query: string, course?: string, limit = 8): Pr
     }
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+/** The notes that a test most plausibly covers: same course, dated in the stretch since the previous
+ *  assessment in that course (at least 14, at most 45 days before), plus anything in a unit the test names. */
+export async function notesForAssessment(a: Assessment): Promise<{ notes: Note[]; from: string; unit: string | null }> {
+  const all = await assessments();
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const cs = await courses();
+  const c = cs.find((x) => norm(x.name) === norm(a.course) || norm(x.name).startsWith(norm(a.course)) || norm(a.course).startsWith(norm(x.name)));
+  if (!c) return { notes: [], from: "", unit: null };
+  const prev = all.filter((x) => x.course === a.course && ["test", "quiz", "project"].includes(x.kind) && x.when < a.when).map((x) => x.when).sort().pop();
+  const when = new Date(a.when + "T12:00:00");
+  const floor = new Date(when); floor.setDate(floor.getDate() - 45);
+  const cap = new Date(when); cap.setDate(cap.getDate() - 14);
+  let from = prev ? new Date(prev + "T12:00:00") : cap;
+  if (from > cap) from = cap; if (from < floor) from = floor;
+  const fromStr = from.toISOString().slice(0, 10);
+  const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
+  const unit = c.units.find((u) => text.includes(u.toLowerCase()) || text.includes(u.toLowerCase().replace(/^unit \d+\s*-\s*/, ""))) ?? null;
+  const notes = (await notesOf(c.name)).filter((n) => (n.date && n.date >= fromStr && n.date <= a.when) || (unit && n.unit === unit));
+  return { notes, from: fromStr, unit };
 }
 
 /** Every note of a course (or unit), concatenated, capped. For "pull up all the problems on X". */

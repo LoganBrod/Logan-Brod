@@ -23,13 +23,28 @@ type Item = {
   kind: Kind;
   when: string; // YYYY-MM-DD
   url?: string;
+  description?: string;
 };
 
-type State = Record<string, { title: string; when: string; kind: Kind; course: string; seen: string }>;
+type State = Record<string, { title: string; when: string; kind: Kind; course: string; seen: string; url?: string; description?: string }>;
+
+/** Schoology descriptions are HTML. Keep the words, drop the tags, cap the length. */
+function plain(html: string | undefined): string {
+  if (!html) return "";
+  return html
+    .replace(/<br\s*\/?>|<\/p>|<\/div>|<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").trim()
+    .slice(0, 2000);
+}
 
 /** Teachers name things inconsistently. Schoology's own "assessment" type plus a few words cover most of it. */
 function classify(title: string, type: string | undefined, description = ""): Kind {
   const text = `${title} ${description}`.toLowerCase();
+  // Non-English teachers name things in their language: 小考/测验 quiz, 考试/期中/期末 test, examen/prueba, contrôle/interro.
+  if (/小考|测验|測驗|\bprueba\b|\binterro(gation)?\b|\bcontrôle\b/.test(text)) return "quiz";
+  if (/考试|考試|期中|期末|\bexamen\b|\bklausur\b/.test(text)) return "test";
   if (/\b(final|midterm|exam|test|unit assessment)\b/.test(text)) return "test";
   if (/\bquiz(zes)?\b/.test(text)) return "quiz";
   if (type === "assessment") return "test";
@@ -58,13 +73,13 @@ async function main() {
     for (const a of await sectionAssignments(s.id)) {
       const when = day(a.due);
       if (!when || when < today) continue;
-      items.push({ id: `a:${a.id}`, course, title: a.title, kind: classify(a.title, a.type, a.description), when, url: a.web_url });
+      items.push({ id: `a:${a.id}`, course, title: a.title, kind: classify(a.title, a.type, a.description), when, url: a.web_url, description: plain(a.description) });
     }
     for (const e of await sectionEvents(s.id)) {
       const when = day(e.start);
       if (!when || when < today) continue;
       if (e.type === "assignment") continue; // already covered above
-      items.push({ id: `e:${e.id}`, course, title: e.title, kind: classify(e.title, "event", e.description), when, url: e.web_url });
+      items.push({ id: `e:${e.id}`, course, title: e.title, kind: classify(e.title, "event", e.description), when, url: e.web_url, description: plain(e.description) });
     }
   }
   items.sort((x, y) => x.when.localeCompare(y.when) || x.course.localeCompare(y.course));
@@ -80,7 +95,7 @@ async function main() {
   if (dryRun) return;
 
   await fs.writeFile(vaultPath("03 Calendar", "Upcoming Tests.md"), renderUpcoming(items, today));
-  for (const i of items) state[i.id] = { title: i.title, when: i.when, kind: i.kind, course: i.course, seen: state[i.id]?.seen ?? today };
+  for (const i of items) state[i.id] = { title: i.title, when: i.when, kind: i.kind, course: i.course, url: i.url, description: i.description, seen: state[i.id]?.seen ?? today };
   await fs.writeFile(statePath, JSON.stringify(state, null, 2));
 
   const announce = [...fresh, ...moved].filter((i) => i.kind === "test" || i.kind === "quiz" || i.kind === "project");

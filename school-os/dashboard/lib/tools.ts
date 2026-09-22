@@ -5,7 +5,9 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial } from "./vault";
+import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, VAULT } from "./vault";
+import fs from "node:fs/promises";
+import matter from "gray-matter";
 
 const run = promisify(execFile);
 const BRAIN_DIR = path.join(process.cwd(), "..");
@@ -57,6 +59,11 @@ export const tools: Anthropic.Tool[] = [
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
+    name: "test_scope",
+    description: "What a specific upcoming test, quiz or project covers: the teacher's full description from Schoology, and the notes from that course in the stretch leading up to it (since the previous assessment), in full. ALWAYS call this first when the student asks what to know, what to study, or what is on a test. Pass the assessment id from upcoming, or a title fragment.",
+    input_schema: { type: "object", properties: { id: { type: "string", description: "Assessment id from upcoming, e.g. a:12345" }, title: { type: "string", description: "Part of the title, if the id is unknown" } }, additionalProperties: false },
+  },
+  {
     name: "study_material",
     description: "Existing flashcard decks, practice tests, reviews and graded tests, optionally for one course. Returns paths readable with read_note.",
     input_schema: { type: "object", properties: { course: { type: "string" } }, additionalProperties: false },
@@ -105,7 +112,26 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
     }
     case "upcoming": {
       const [as, plan] = await Promise.all([assessments(), studyPlan()]);
-      return { result: JSON.stringify({ assessments: as, sessions: plan.slice(0, 30) }), summary: "checked what's coming up" };
+      return {
+        result: JSON.stringify({ assessments: as.map((a) => ({ ...a, description: a.description?.slice(0, 300) })), sessions: plan.slice(0, 30) }),
+        summary: "checked what's coming up",
+      };
+    }
+    case "test_scope": {
+      const as = await assessments();
+      const id = str("id"), title = (str("title") ?? "").toLowerCase();
+      const a = as.find((x) => x.id === id) ?? as.find((x) => title && x.title.toLowerCase().includes(title));
+      if (!a) return { result: "no such upcoming assessment; call upcoming to see them", summary: "assessment not found" };
+      const { notes, from, unit } = await notesForAssessment(a);
+      let text = "", n = 0;
+      for (const note of notes) {
+        const body = matter(await fs.readFile(path.join(VAULT, note.rel), "utf8")).content.trim();
+        const chunk = `\n\n<note title="${note.name}" date="${note.date}" unit="${note.unit}" type="${note.type}" path="${note.rel}">\n${body}\n</note>`;
+        if (text.length + chunk.length > 70_000) break;
+        text += chunk; n++;
+      }
+      const head = `ASSESSMENT: ${a.course} — ${a.title} (${a.kind}) on ${a.when}\nTEACHER'S DESCRIPTION:\n${a.description || "(none posted)"}\n\nNOTES IN SCOPE: ${n} of ${notes.length} (course notes dated ${from} to ${a.when}${unit ? `, plus unit "${unit}"` : ""}). Notes outside this window are NOT in scope unless the description points to them.`;
+      return { result: head + (text || "\n\n(no notes filed in that window yet)"), summary: `scoped "${a.title}" · ${n} notes` };
     }
     case "study_material": {
       const ms = await materials(str("course"));

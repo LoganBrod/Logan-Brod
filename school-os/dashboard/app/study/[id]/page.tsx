@@ -35,6 +35,13 @@ export default async function StudyPage({ params, searchParams }: { params: Prom
         <div className="flex items-baseline gap-2"><span className="mono text-5xl font-semibold tracking-tighter">{d}</span><span style={{ color: "var(--muted)" }}>days</span></div>
       </header>
 
+      {a.description && (
+        <section className="card p-4 md:p-5 max-w-3xl">
+          <div className="mono text-[11px] mb-2" style={{ color: "var(--faint)" }}>From the teacher{a.url ? <> · <a href={a.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">open on Schoology</a></> : null}</div>
+          <div className="text-sm whitespace-pre-wrap leading-relaxed">{a.description}</div>
+        </section>
+      )}
+
       <div className="flex gap-1.5">
         {TABS.map((t) => <Link key={t} href={`/study/${slug}?tab=${t}`} className={`px-3 py-1.5 rounded-full text-xs capitalize ${tab === t ? "accent-bg" : "card-2"}`}>{t}</Link>)}
       </div>

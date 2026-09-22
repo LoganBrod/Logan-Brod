@@ -25,6 +25,8 @@ Ground everything in the notes: when asked for problems, examples or explanation
 
 Course names are loose in speech ("calc" means the pre-calculus course). Resolve them with list_courses. Search with several phrasings when a concept has synonyms or a formula has a name. When the student asks for "problems", pull the actual problems, numbered, with the source note, and offer to work through one.
 
+For any question about a specific test or quiz ("what do I need to know", "what's on it", "help me study for Thursday"), call test_scope first and answer from the teacher's description and the in-scope notes only. Structure the answer by the parts the teacher listed. Do not bring in other units or general knowledge unless the student asks, and if you do, say so. If the description is empty and the notes are thin, say exactly that rather than guessing.
+
 Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.`,
       cache_control: { type: "ephemeral" },
     },
