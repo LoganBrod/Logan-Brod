@@ -11,6 +11,7 @@ const PRICES: Record<string, [number, number]> = {
   "claude-opus-5": [5, 25],
   "claude-sonnet-5": [2, 10],
   "claude-haiku-4-5": [1, 5],
+  "claude-sonnet-4-6": [3, 15],
 };
 
 let runTotal = 0;

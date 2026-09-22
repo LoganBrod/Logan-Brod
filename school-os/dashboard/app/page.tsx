@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { courses, tests, studyPlan, notifications, needsReview, notesOf, daysUntil, materials, idToSlug } from "@/lib/vault";
+import { courses, tests, studyPlan, notifications, needsReview, notesOf, daysUntil, materials, idToSlug, brief } from "@/lib/vault";
+import { Markdown } from "@/components/Markdown";
 
 export default async function Home() {
-  const [cs, ts, plan, notes, review, mats] = await Promise.all([courses(), tests(), studyPlan(), notifications(), needsReview(), materials()]);
+  const [cs, ts, plan, notes, review, mats, b] = await Promise.all([courses(), tests(), studyPlan(), notifications(), needsReview(), materials(), brief()]);
+  const briefToday = b && b.date === new Date().toISOString().slice(0, 10) ? b : null;
   const todayStr = new Date().toDateString();
   const todaySessions = plan.filter((s) => new Date(s.start).toDateString() === todayStr);
   const unread = notes.filter((n) => !n.read).slice(0, 5);
@@ -18,6 +20,14 @@ export default async function Home() {
           {review ? <Link href="/notifications" className="underline underline-offset-4">{review} note{review === 1 ? "" : "s"} need{review === 1 ? "s" : ""} you.</Link> : "Inbox is clean."}
         </p>
       </header>
+
+      {briefToday && (
+        <section className="card p-5 md:p-6 max-w-3xl">
+          <div className="mono text-[11px] mb-2" style={{ color: "var(--faint)" }}>Brief · {new Date(briefToday.time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</div>
+          <div className="text-[15px]"><Markdown body={briefToday.text} /></div>
+          <Link href="/chat" className="inline-block mt-4 text-sm accent-text underline underline-offset-4">Ask about it</Link>
+        </section>
+      )}
 
       <section className="grid gap-3 md:grid-cols-3">
         {ts.slice(0, 3).map((t) => {

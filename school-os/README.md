@@ -193,6 +193,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run study` | Act on `#make-*` and `#grade-me` tags |
 | `npm run plan:dry` | Show the study sessions it would book |
 | `npm run plan` | Book study sessions into the Study calendar |
+| `npm run brief` | Write today's morning brief |
 | `npm run home` | Rewrite `04 System/Home.md` |
 | `npm run sync` | Tests, files, ingest, study, home: the daily command |
 | `npm run dashboard` | Start the dashboard app at localhost:3210 |
@@ -215,6 +216,9 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/generate-study.ts` | Flashcards, practice tests, unit reviews, grading |
 | `src/build-home.ts` | The Home dashboard note |
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
+| `src/brief.ts` | The morning brief |
+| `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, make material, run jobs |
+| `dashboard/app/api/chat/route.ts` | The assistant's tool loop |
 | `dashboard/` | The Next.js dashboard app (reads the vault via `dashboard/lib/vault.ts`) |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |

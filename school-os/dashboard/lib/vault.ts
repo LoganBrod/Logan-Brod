@@ -154,6 +154,47 @@ function dateStr(v: unknown): string {
   return "";
 }
 
+export const brief = () => readJson<{ date: string; time: string; text: string } | null>(`${SYSTEM}/brief.json`, null);
+
+/** Keyword search across every filed note: title, topics, unit, body. Scores by term hits. */
+export async function searchNotes(query: string, course?: string, limit = 8): Promise<(Note & { snippet: string; score: number })[]> {
+  const terms = query.toLowerCase().split(/[^a-z0-9+\-/]+/).filter((t) => t.length > 1);
+  const cs = course ? [course] : (await courses()).map((c) => c.name);
+  const hits: (Note & { snippet: string; score: number })[] = [];
+  for (const c of cs) {
+    for (const n of await notesOf(c)) {
+      const full = await fs.readFile(path.join(VAULT, n.rel), "utf8");
+      const body = matter(full).content;
+      const lower = `${n.name} ${n.topics.join(" ")} ${n.unit} ${body}`.toLowerCase();
+      let score = 0;
+      for (const t of terms) {
+        const inTitle = n.name.toLowerCase().includes(t) || n.topics.some((x) => x.toLowerCase().includes(t));
+        const count = lower.split(t).length - 1;
+        score += (inTitle ? 5 : 0) + Math.min(count, 10);
+      }
+      if (score === 0) continue;
+      const idx = terms.map((t) => lower.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
+      const at = Math.max(0, body.toLowerCase().indexOf(terms.find((t) => body.toLowerCase().includes(t)) ?? "", 0));
+      hits.push({ ...n, score, snippet: body.slice(Math.max(0, at - 150), at + 350).replace(/\s+/g, " ").trim() || body.slice(0, 400) });
+      void idx;
+    }
+  }
+  return hits.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+/** Every note of a course (or unit), concatenated, capped. For "pull up all the problems on X". */
+export async function readMany(course: string, unit?: string, maxChars = 60_000): Promise<{ text: string; included: number; total: number }> {
+  const notes = await notesOf(course, unit);
+  let text = "", included = 0;
+  for (const n of notes) {
+    const body = matter(await fs.readFile(path.join(VAULT, n.rel), "utf8")).content.trim();
+    const chunk = `\n\n<note title="${n.name}" unit="${n.unit}" type="${n.type}" path="${n.rel}">\n${body}\n</note>`;
+    if (text.length + chunk.length > maxChars) break;
+    text += chunk; included++;
+  }
+  return { text, included, total: notes.length };
+}
+
 // ---- writes (the only two the app does) ----
 export async function requestMaterial(course: string, unit: string, kind: "flashcards" | "test" | "review"): Promise<void> {
   const target = unit ? path.join(VAULT, COURSES, course, unit, "_Unit.md") : path.join(VAULT, COURSES, course, "_Course.md");

@@ -135,7 +135,7 @@ export async function appendNeedsReview(noteTitle: string, reason: string): Prom
 }
 
 export type NotificationKind =
-  | "test_posted" | "assignment_posted" | "notes_sorted" | "needs_review" | "study_generated" | "files_pulled";
+  | "test_posted" | "assignment_posted" | "notes_sorted" | "needs_review" | "study_generated" | "files_pulled" | "brief";
 
 /** Appends one entry to 04 System/notifications.json (newest first). The dashboard app reads this. */
 export async function notify(kind: NotificationKind, title: string, link?: string): Promise<void> {

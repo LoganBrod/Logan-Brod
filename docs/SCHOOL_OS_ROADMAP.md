@@ -540,10 +540,13 @@ replace this table.
 
 ---
 
-## 8. Beyond the dashboard: the assistant
+## 8. Beyond the dashboard: the assistant — first version built
 
-The long-term shape is an assistant you talk to, not a set of scripts you
-run. Everything so far is built to make that cheap to add later:
+The **Ask** tab is a chat (and voice, via the browser's speech recognition)
+with tools over the vault: search and read notes, list what is coming up,
+make study material now, run any of the brain's jobs. The **morning brief**
+is one call a day that reads the same state and says what today looks like.
+Everything below still applies to where it goes next:
 
 - **The vault is the memory.** Notes, tests, plans, notifications, costs and
   the agent log are plain files. An assistant reads the same files the jobs

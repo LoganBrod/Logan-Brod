@@ -19,6 +19,8 @@ export const CONFIDENCE_THRESHOLD = Number(process.env.CONFIDENCE_THRESHOLD ?? "
 //   claude-haiku-4-5 $1 in / $5 out
 export const MODEL_SORT = process.env.MODEL_SORT || "claude-sonnet-5";
 export const MODEL_STUDY = process.env.MODEL_STUDY || "claude-opus-5";
+export const MODEL_BRIEF = process.env.MODEL_BRIEF || "claude-sonnet-5";
+export const MODEL_CHAT = process.env.MODEL_CHAT || "claude-sonnet-5";
 /** Kept for anything that still imports MODEL. */
 export const MODEL = MODEL_STUDY;
 

@@ -14,7 +14,7 @@
     "schoology:whoami": "tsx src/sync-schoology.ts --whoami",
     "materials": "tsx src/pull-materials.ts",
     "materials:dry": "tsx src/pull-materials.ts --dry-run",
-    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && tsx src/plan-study.ts --if-configured && npm run -s home",
+    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && tsx src/plan-study.ts --if-configured && tsx src/brief.ts --if-due && npm run -s home",
     "study": "tsx src/generate-study.ts",
     "home": "tsx src/build-home.ts",
     "update": "bash update.sh",
@@ -25,7 +25,8 @@
     "plan:dry": "tsx src/plan-study.ts --dry-run",
     "dashboard": "next dev dashboard -p 3210",
     "dashboard:build": "next build dashboard",
-    "dashboard:start": "next start dashboard -p 3210"
+    "dashboard:start": "next start dashboard -p 3210",
+    "brief": "tsx src/brief.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
