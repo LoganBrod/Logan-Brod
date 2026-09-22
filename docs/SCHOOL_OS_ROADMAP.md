@@ -225,9 +225,12 @@ Runs every 30 minutes.
 5. Rewrite `Upcoming Tests.md` sorted by date, with course and days remaining.
 6. Post a Discord message for any new or moved test, quiz or project.
 
-Because it is the real API, the same credentials can later pull course
-materials and assignment attachments straight into the inbox, so Schoology
-documents stop needing a manual download.
+### `pull-materials` — built, in `school-os/`
+
+Same credentials. Walks every class's Materials and every assignment's
+attachments, downloads each new file once into `00 Inbox` named
+`<Course> - <file>`, and the ingest files it. Schoology documents never need
+a manual download. `npm run sync` runs tests, materials and ingest in one go.
 
 ### `plan-study`
 

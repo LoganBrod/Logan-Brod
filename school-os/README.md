@@ -9,7 +9,7 @@ What goes in:
 | You have | Do this | It becomes |
 |---|---|---|
 | Paper notes | Scan with Genius Scan, export as **PDF** into the inbox | A transcribed markdown note, with the PDF kept in `_sources/` |
-| A handout or reading from Schoology | Download it (PDF or Word) into the inbox | A markdown copy, original kept in `_sources/` |
+| A handout or reading on Schoology | Nothing, `npm run materials` pulls it | A markdown copy, original kept in `_sources/` |
 | Notes you typed in Obsidian | Nothing, they are already in the inbox | The same note, with frontmatter added, moved to its unit |
 | Notes in Google Docs | Put the doc in your shared Drive folder | Pulled into the inbox as markdown, then filed like a typed note |
 
@@ -165,6 +165,9 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run schoology:whoami` | Check Schoology credentials, list classes |
 | `npm run schoology:dry` | Show upcoming items and what is new, write nothing |
 | `npm run schoology` | Rewrite Upcoming Tests.md, ping Discord for new tests |
+| `npm run materials:dry` | List Schoology files it would download |
+| `npm run materials` | Download new Schoology files into the inbox |
+| `npm run sync` | Schoology tests, then files, then ingest: the daily command |
 | `npm run typecheck` | Compile check |
 
 ## Files
@@ -177,6 +180,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/gdocs.ts` | Pulls Google Docs from the shared folder |
 | `src/schoology.ts` | Signs requests to the Schoology API with your key and secret |
 | `src/sync-schoology.ts` | Upcoming tests from every class, Discord pings |
+| `src/pull-materials.ts` | Downloads new Schoology files into the inbox |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
 

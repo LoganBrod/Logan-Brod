@@ -92,3 +92,50 @@ export async function sectionEvents(sectionId: string): Promise<Event[]> {
   const data = await sget<{ event: Event[] }>(`sections/${sectionId}/events?start=0&limit=200`);
   return data.event ?? [];
 }
+
+// ---- Materials and attachments ----
+
+export type Attachment = {
+  id: string;
+  title?: string;
+  filename?: string;
+  filesize?: number;
+  download_path?: string;
+  timestamp?: number;
+};
+
+type Attachments = { files?: { file?: Attachment[] } };
+
+export type Doc = { id: string; title: string; attachments?: Attachments };
+export type AssignmentDetail = Assignment & { attachments?: Attachments };
+
+/** Files posted under a section's Materials → Documents. */
+export async function sectionDocuments(sectionId: string): Promise<Doc[]> {
+  const data = await sget<{ document: Doc[] }>(`sections/${sectionId}/documents?start=0&limit=200`);
+  return data.document ?? [];
+}
+
+/** One assignment with its attachments. The list endpoint often leaves attachments out. */
+export async function assignmentDetail(sectionId: string, assignmentId: string): Promise<AssignmentDetail> {
+  return sget<AssignmentDetail>(`sections/${sectionId}/assignments/${assignmentId}`);
+}
+
+export function filesOf(item: { attachments?: Attachments }): Attachment[] {
+  return item.attachments?.files?.file ?? [];
+}
+
+/**
+ * Downloads an attachment. Schoology answers the signed request with a redirect to
+ * plain file storage, which must be fetched WITHOUT the OAuth header.
+ */
+export async function downloadAttachment(downloadPath: string): Promise<Buffer> {
+  const first = await fetch(downloadPath, { headers: { Authorization: authHeader() }, redirect: "manual" });
+  let res = first;
+  if (first.status >= 300 && first.status < 400) {
+    const next = first.headers.get("location");
+    if (!next) throw new Error(`download of ${downloadPath} redirected with no Location`);
+    res = await fetch(next);
+  }
+  if (!res.ok) throw new Error(`download ${res.status} for ${downloadPath}`);
+  return Buffer.from(await res.arrayBuffer());
+}
