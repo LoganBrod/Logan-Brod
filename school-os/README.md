@@ -84,6 +84,18 @@ npm run ingest
 
 Files move. Open Obsidian and look under `01 Courses`.
 
+## Running on its own
+
+```
+npm run schedule
+```
+
+Installs a background job on this Mac that runs `npm run sync` every 30
+minutes while the computer is awake. Output goes to `logs/sync.log`. The
+per-run budget still applies, so a big batch spreads across runs.
+`npm run unschedule` removes it. Rerun `npm run schedule` after moving the
+folder or reinstalling Node.
+
 ## Updating
 
 When there is a newer version on GitHub:
@@ -181,6 +193,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run study` | Act on `#make-*` and `#grade-me` tags |
 | `npm run home` | Rewrite `04 System/Home.md` |
 | `npm run sync` | Tests, files, ingest, study, home: the daily command |
+| `npm run schedule` | Run `sync` every 30 minutes in the background (Mac) |
+| `npm run unschedule` | Stop the background job |
 | `npm run update` | Pull the latest code from GitHub, keeping `.env` |
 | `npm run typecheck` | Compile check |
 

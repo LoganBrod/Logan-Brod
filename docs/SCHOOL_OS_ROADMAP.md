@@ -433,8 +433,9 @@ view all came from the same screen.
 
 ### Phase 6 · Always on and deployed (week 13 onward)
 
-Until now the brain only runs when your computer runs it, and the dashboard
-only works at home. Pick one for the brain:
+**Interim, built:** `npm run schedule` installs a launchd job on the Mac that
+runs `sync` every 30 minutes while it is awake. Good enough until the
+dashboard needs a server. For a machine that is never asleep, pick one:
 
 - **Option A, a spare machine.** An old laptop or Mac mini left on, with the
   vault synced to it and the scripts on a `cron` or Task Scheduler entry every

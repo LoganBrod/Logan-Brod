@@ -18,7 +18,9 @@
     "study": "tsx src/generate-study.ts",
     "home": "tsx src/build-home.ts",
     "update": "bash update.sh",
-    "costs": "tsx src/costs.ts"
+    "costs": "tsx src/costs.ts",
+    "schedule": "bash schedule.sh",
+    "unschedule": "bash schedule.sh remove"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
