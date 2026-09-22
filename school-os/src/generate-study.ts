@@ -6,6 +6,10 @@
 //   #make-review       → 02 Study/Unit Reviews/<Course> - <Unit>.md
 //   #grade-me          → on a practice test you typed answers into: writes "<test> - Graded.md"
 //
+// Scope: a tag in a note that belongs to a unit uses every note in that unit. A tag in a
+// course-wide note (no unit, e.g. a slide deck filed under the course itself) uses that
+// note alone, so a syllabus never ends up in a flashcard deck.
+//
 // Or from the terminal, no tag needed:
 //   npm run study -- flashcards "Macro Economics" "Unit 01 - Basics"
 //   npm run study -- test "Macro Economics"            (whole course)
@@ -113,7 +117,7 @@ async function main() {
         console.log(`skip  ${path.basename(notePath)}: ${tag} but the note has no course in its frontmatter`);
         continue;
       }
-      await generate(client, kind, String(data.course), String(data.unit ?? ""), notePath);
+      await generate(client, kind, String(data.course), String(data.unit ?? ""), notePath, !data.unit);
       await removeTag(notePath, tag);
       did++;
     }
@@ -127,10 +131,12 @@ async function main() {
   else if (!fake) console.log(`\nspent ${money(spentThisRun())} on ${MODEL_STUDY}`);
 }
 
-async function generate(client: Anthropic | null, kind: Kind, course: string, unit: string, trigger: string | null) {
-  const notes = await listCourseNotes(course, unit || undefined);
+async function generate(client: Anthropic | null, kind: Kind, course: string, unit: string, trigger: string | null, single = false) {
+  const notes = single && trigger ? [trigger] : await listCourseNotes(course, unit || undefined);
   if (notes.length === 0) throw new Error(`No notes found for ${course}${unit ? " / " + unit : ""}`);
-  const label = unit ? `${course} - ${unit}` : `${course} - Whole course`;
+  const label = single && trigger
+    ? `${course} - ${path.basename(trigger, ".md")}`
+    : unit ? `${course} - ${unit}` : `${course} - Whole course`;
   console.log(`${kind}: ${label} from ${notes.length} note(s)`);
 
   const material = (await Promise.all(notes.map(async (p) => {
