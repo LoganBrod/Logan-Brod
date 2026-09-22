@@ -72,8 +72,8 @@ async function handle(file: string, courses: Course[], client: Anthropic | null)
   // course and unit filled in and status flipped to organized. File it, no API call.
   if (ext === ".md") {
     const { data } = await readNote(file);
-    if (data.sorted_by === "agent" && data.status === "organized" && data.course && data.unit) {
-      if (!dryRun) await fileNote(file, String(data.course), String(data.unit), data.source ? String(data.source) : null);
+    if (data.sorted_by === "agent" && data.status === "organized" && data.course) {
+      if (!dryRun) await fileNote(file, String(data.course), String(data.unit ?? ""), data.source ? String(data.source) : null);
       return "filed";
     }
     if (data.status === "needs-review") return "skipped"; // still waiting on the student
@@ -84,8 +84,10 @@ async function handle(file: string, courses: Course[], client: Anthropic | null)
 
   const result = client ? await classify(client, source, courses) : fakeClassify(source, courses);
   const course = courses.find((c) => c.name === result.course);
-  const unitKnown = Boolean(course && result.unit && course.units.includes(result.unit));
-  const confident = result.confidence >= CONFIDENCE_THRESHOLD && unitKnown;
+  // No unit is fine for course-wide material (a syllabus, a policy sheet): it files
+  // into the course folder itself. A unit that is not on the course's list is not fine.
+  const unitOk = Boolean(course && (result.unit === "" || course.units.includes(result.unit)));
+  const confident = result.confidence >= CONFIDENCE_THRESHOLD && unitOk;
 
   const date = result.date ?? asDateString(source.existingFrontmatter?.date) ?? today();
   const title = `${date} ${result.title}`;
@@ -128,8 +130,8 @@ async function handle(file: string, courses: Course[], client: Anthropic | null)
   const notePath = await writeNote(noteDir, title, { ...frontmatter, source: path.basename(movedSource) }, noteBody);
 
   if (confident) {
-    await addToUnitMap(result.course, result.unit, path.basename(notePath, ".md"));
-    await appendLog(`filed "${path.basename(notePath)}" → ${result.course} / ${result.unit}`);
+    if (result.unit) await addToUnitMap(result.course, result.unit, path.basename(notePath, ".md"));
+    await appendLog(`filed "${path.basename(notePath)}" → ${result.course} / ${result.unit || "(course-wide)"}`);
     return "filed";
   }
   await flagForReview(notePath, result);
@@ -144,8 +146,8 @@ async function fileNote(notePath: string, course: string, unit: string, sourceNa
     const src = path.join(path.dirname(notePath), sourceName);
     if (await exists(src)) await moveFile(src, path.join(dir, DIRS.sources));
   }
-  await addToUnitMap(course, unit, path.basename(moved, ".md"));
-  await appendLog(`filed "${path.basename(moved)}" → ${course} / ${unit}`);
+  if (unit) await addToUnitMap(course, unit, path.basename(moved, ".md"));
+  await appendLog(`filed "${path.basename(moved)}" → ${course} / ${unit || "(course-wide)"}`);
 }
 
 async function flagForReview(notePath: string, result: Classification) {
@@ -155,7 +157,7 @@ async function flagForReview(notePath: string, result: Classification) {
 }
 
 function unitDir(course: string, unit: string): string {
-  return vaultPath(DIRS.courses, course, unit);
+  return unit ? vaultPath(DIRS.courses, course, unit) : vaultPath(DIRS.courses, course);
 }
 
 /** Frontmatter dates come back from the YAML parser as Date objects; we want YYYY-MM-DD. */
