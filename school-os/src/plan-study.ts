@@ -15,8 +15,14 @@ import { vaultPath, exists, readCourses, appendLog, notify, listCourseNotes, typ
 
 const dryRun = process.argv.includes("--dry-run");
 const ifConfigured = process.argv.includes("--if-configured");
-const MAIN_CAL = process.env.GOOGLE_CALENDAR_ID ?? "";
-const STUDY_CAL = process.env.STUDY_CALENDAR_ID ?? "";
+/** Accepts a bare calendar ID or the embed link Google shows next to it (pulls the src= out). */
+function calendarId(raw: string | undefined): string {
+  const v = (raw ?? "").trim();
+  const m = v.match(/[?&]src=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : v;
+}
+const MAIN_CAL = calendarId(process.env.GOOGLE_CALENDAR_ID);
+const STUDY_CAL = calendarId(process.env.STUDY_CALENDAR_ID);
 
 type Assessment = { id: string; title: string; when: string; kind: "test" | "quiz" | "project"; course: string };
 type Rules = {
