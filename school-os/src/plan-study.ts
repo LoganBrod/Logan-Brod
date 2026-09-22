@@ -63,7 +63,7 @@ async function main() {
   const statePath = vaultPath(DIRS.system, "schoology-state.json");
   const state: Record<string, Assessment> = (await exists(statePath)) ? JSON.parse(await fs.readFile(statePath, "utf8")) : {};
   const upcoming = Object.entries(state)
-    .map(([id, a]) => ({ ...a, id }))
+    .map(([id, a]) => ({ ...a, id, course: a.course ?? "" }))
     .filter((a) => ["test", "quiz", "project"].includes(a.kind) && a.when > isoDate(today) && a.when <= isoDate(horizon))
     .sort((x, y) => x.when.localeCompare(y.when));
   if (upcoming.length === 0) { console.log("Nothing to plan for in the next " + rules.days_ahead + " days."); await writePlan([], rules); return; }
@@ -169,7 +169,7 @@ export function placeSessions(
 ): Session[] {
   const placed: Session[] = [];
   const minutesOnDay = (d: Date) => placed.filter((s) => sameDay(s.start, d)).reduce((m, s) => m + (s.end.getTime() - s.start.getTime()) / 60000, 0);
-  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const norm = (x: string) => (x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
   for (const a of upcoming) {
     const course = courses.find((c) => norm(c.name) === norm(a.course) || norm(c.name).startsWith(norm(a.course)) || norm(a.course).startsWith(norm(c.name)));
     const hours = Number(course?.study_hours?.[a.kind === "project" ? "test" : a.kind] ?? (a.kind === "quiz" ? 1.5 : 4));

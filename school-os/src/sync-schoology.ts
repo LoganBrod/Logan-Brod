@@ -25,7 +25,7 @@ type Item = {
   url?: string;
 };
 
-type State = Record<string, { title: string; when: string; kind: Kind; seen: string }>;
+type State = Record<string, { title: string; when: string; kind: Kind; course: string; seen: string }>;
 
 /** Teachers name things inconsistently. Schoology's own "assessment" type plus a few words cover most of it. */
 function classify(title: string, type: string | undefined, description = ""): Kind {
@@ -80,7 +80,7 @@ async function main() {
   if (dryRun) return;
 
   await fs.writeFile(vaultPath("03 Calendar", "Upcoming Tests.md"), renderUpcoming(items, today));
-  for (const i of items) state[i.id] = { title: i.title, when: i.when, kind: i.kind, seen: state[i.id]?.seen ?? today };
+  for (const i of items) state[i.id] = { title: i.title, when: i.when, kind: i.kind, course: i.course, seen: state[i.id]?.seen ?? today };
   await fs.writeFile(statePath, JSON.stringify(state, null, 2));
 
   const announce = [...fresh, ...moved].filter((i) => i.kind === "test" || i.kind === "quiz" || i.kind === "project");
