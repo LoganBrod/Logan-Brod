@@ -55,6 +55,17 @@ export async function readCourses(): Promise<Course[]> {
   return courses;
 }
 
+/** Adds units to a course card, keeping existing ones. Returns the units actually added. */
+export async function addUnitsToCourse(course: string, units: string[]): Promise<string[]> {
+  const cardPath = vaultPath(DIRS.courses, course, "_Course.md");
+  const { data, content } = matter(await fs.readFile(cardPath, "utf8"));
+  const existing = Array.isArray(data.units) ? data.units.map((u: unknown) => String(u).trim()).filter(Boolean) : [];
+  const added = units.map((u) => u.trim()).filter((u) => u && !existing.includes(u));
+  if (added.length === 0) return [];
+  await fs.writeFile(cardPath, matter.stringify(content, { ...data, units: [...existing, ...added] }));
+  return added;
+}
+
 export async function readNote(p: string): Promise<{ data: NoteFrontmatter; body: string }> {
   const { data, content } = matter(await fs.readFile(p, "utf8"));
   return { data, body: content };

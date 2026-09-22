@@ -13,7 +13,17 @@ export const NOTE_TYPES = ["lecture", "reading", "homework", "lab", "handout", "
 const ResultSchema = z.object({
   title: z.string().describe("Short title for the note, 3 to 8 words, no date."),
   course: z.string().describe("Exactly one of the course names given."),
-  unit: z.string().describe("Exactly one of that course's units, or empty string if none fits."),
+  unit: z.string().describe("Exactly one of that course's listed units, or empty string if none fits."),
+  proposed_unit: z
+    .string()
+    .describe(
+      "Only when unit is empty and the material clearly belongs to a unit that is not listed yet: a name in the form 'Unit NN - Name'. Otherwise empty string.",
+    ),
+  syllabus_units: z
+    .array(z.string())
+    .describe(
+      "Only when this document is a syllabus or course outline that lists the course's units or major topics in order: every unit as 'Unit NN - Name'. Otherwise an empty list.",
+    ),
   type: z.enum(NOTE_TYPES),
   date: z
     .string()
@@ -83,6 +93,8 @@ export function fakeClassify(source: Source, courses: Course[]): Classification 
     title: "Fake classification",
     course: course.name,
     unit: course.units[0] ?? "",
+    proposed_unit: course.units[0] ? "" : "Unit 01 - Fake Proposed Unit",
+    syllabus_units: [],
     type: "lecture",
     date: null,
     topics: ["fake"],

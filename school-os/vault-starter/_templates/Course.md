@@ -2,8 +2,7 @@
 course: <% tp.file.folder() %>
 teacher: 
 period: 
-units:
-  - Unit 01 - 
+units: []
 study_hours:
   quiz: 1.5
   test: 4

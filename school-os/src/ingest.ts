@@ -10,7 +10,7 @@ import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { CONFIDENCE_THRESHOLD, DIRS } from "./config.js";
 import {
-  listInbox, readCourses, writeNote, updateFrontmatter, moveFile, addToUnitMap,
+  listInbox, readCourses, writeNote, updateFrontmatter, moveFile, addToUnitMap, addUnitsToCourse,
   appendLog, appendNeedsReview, vaultPath, exists, readNote, type Course,
 } from "./vault.js";
 import { readSource, SUPPORTED, type Source } from "./reader.js";
@@ -84,6 +84,30 @@ async function handle(file: string, courses: Course[], client: Anthropic | null)
 
   const result = client ? await classify(client, source, courses) : fakeClassify(source, courses);
   const course = courses.find((c) => c.name === result.course);
+
+  // A syllabus teaches the course its units. Only when the course has none yet, so a
+  // hand-edited list is never overwritten.
+  if (course && course.units.length === 0 && result.syllabus_units.length > 0) {
+    console.log(`        syllabus lists ${result.syllabus_units.length} units for ${course.name}: ${result.syllabus_units.join(", ")}`);
+    if (!dryRun) {
+      const added = await addUnitsToCourse(course.name, result.syllabus_units);
+      course.units.push(...added);
+      await appendLog(`learned ${added.length} units for ${course.name} from "${path.basename(file)}"`);
+    }
+  }
+
+  // Nothing listed fits but the brain has a clear name for it: create the unit.
+  if (course && result.unit === "" && result.proposed_unit && result.confidence >= CONFIDENCE_THRESHOLD) {
+    console.log(`        new unit for ${course.name}: ${result.proposed_unit}`);
+    if (!dryRun) {
+      const added = await addUnitsToCourse(course.name, [result.proposed_unit]);
+      course.units.push(...added);
+      await appendLog(`created unit "${result.proposed_unit}" in ${course.name} for "${path.basename(file)}"`);
+    }
+    result.unit = result.proposed_unit;
+    if (dryRun) course.units.push(result.proposed_unit); // so the dry run reports "filed", as the real run would
+  }
+
   // No unit is fine for course-wide material (a syllabus, a policy sheet): it files
   // into the course folder itself. A unit that is not on the course's list is not fine.
   const unitOk = Boolean(course && (result.unit === "" || course.units.includes(result.unit)));

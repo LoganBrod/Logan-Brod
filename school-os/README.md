@@ -128,6 +128,19 @@ settings → Integrations → Webhooks → copy URL).
 
 Run it as often as you like; it only announces what it has not seen before.
 
+## Units
+
+You do not have to know a course's units up front. Leave `units: []` in its
+`_Course.md` and the brain fills it in two ways:
+
+- A **syllabus** or course outline dropped in the inbox writes the unit list
+  into `_Course.md`, as long as the list was empty.
+- A note that **fits no listed unit** creates one, named `Unit NN - Name`,
+  and files itself there. The agent log records every unit it creates.
+
+If it invents a name you dislike, rename the folder, then update the `unit:`
+line in `_Course.md`, in that folder's `_Unit.md`, and in the notes inside.
+
 ## When the brain is unsure
 
 A note it filed below the confidence threshold stays in `00 Inbox` with
