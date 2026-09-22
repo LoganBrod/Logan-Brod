@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Microphone, PaperPlaneRight, SpeakerHigh, SpeakerSlash, Trash } from "@phosphor-icons/react";
 import { Markdown } from "./Markdown";
+import { speak } from "@/lib/speak";
 
 type Msg = { role: "user" | "assistant"; content: string; steps?: string[] };
 const KEY = "school-os-chat";
@@ -12,7 +13,7 @@ export function Chat() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
-  const [speak, setSpeak] = useState(false);
+  const [speakOn, setSpeak] = useState(false);
   const [canListen, setCanListen] = useState(false);
   const rec = useRef<SpeechRecognitionLike | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -45,7 +46,7 @@ export function Chat() {
       const reply = data.error ? `Error: ${data.error}` : data.text;
       setMsgs([...next, { role: "assistant", content: reply, steps: data.steps }]);
       if (data.navigate) router.push(data.navigate);
-      if (speak && "speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(reply.replace(/[#*_`>]/g, "").slice(0, 1200)); window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
+      if (speakOn) void speak(reply.split(/\n-{3,}\n/)[0]);
     } catch (e) {
       setMsgs([...next, { role: "assistant", content: `Could not reach the assistant: ${e instanceof Error ? e.message : String(e)}` }]);
     } finally { setBusy(false); }
@@ -86,7 +87,7 @@ export function Chat() {
       <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="card p-2 flex items-end gap-2 sticky bottom-20 md:bottom-4">
         <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} rows={1} placeholder={listening ? "Listening…" : "Ask, or press the mic and talk"} className="flex-1 bg-transparent outline-none resize-none px-2 py-2 text-[15px] placeholder:text-[var(--faint)] max-h-40" />
         {canListen && <button type="button" onClick={toggleListen} className={`pressable p-2.5 rounded-xl ${listening ? "accent-bg" : "card-2"}`} aria-label="Talk"><Microphone size={18} /></button>}
-        <button type="button" onClick={() => setSpeak(!speak)} className={`pressable p-2.5 rounded-xl ${speak ? "accent-bg" : "card-2"}`} aria-label="Read replies aloud">{speak ? <SpeakerHigh size={18} /> : <SpeakerSlash size={18} />}</button>
+        <button type="button" onClick={() => setSpeak(!speakOn)} className={`pressable p-2.5 rounded-xl ${speakOn ? "accent-bg" : "card-2"}`} aria-label="Read replies aloud">{speakOn ? <SpeakerHigh size={18} /> : <SpeakerSlash size={18} />}</button>
         <button type="button" onClick={() => { setMsgs([]); try { localStorage.removeItem(KEY); } catch {} }} className="pressable p-2.5 rounded-xl card-2" aria-label="Clear"><Trash size={18} /></button>
         <button type="submit" disabled={busy || !input.trim()} className="pressable p-2.5 rounded-xl accent-bg disabled:opacity-40" aria-label="Send"><PaperPlaneRight size={18} /></button>
       </form>

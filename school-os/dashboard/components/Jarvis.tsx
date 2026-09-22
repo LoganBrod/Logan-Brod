@@ -3,13 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Waveform } from "@phosphor-icons/react";
 import { Markdown } from "./Markdown";
+import { speak, stopSpeaking, warmVoices } from "@/lib/speak";
+
+const ACKS = ["On it.", "One moment.", "Let me look.", "Checking."];
 
 /**
  * Always-on voice: listens for the wake word on every page, sends what follows to the
  * assistant, speaks the reply, and follows any page the assistant opens. Browser speech
  * recognition only (Chrome, Safari); it runs while a tab of the app is open.
  */
-export function Jarvis({ wakeWord, name }: { wakeWord: string; name: string }) {
+export function Jarvis({ wakeWord, name, voice }: { wakeWord: string; name: string; voice?: string }) {
   const router = useRouter();
   const [on, setOn] = useState(false);
   const [supported, setSupported] = useState(false);
@@ -20,10 +23,12 @@ export function Jarvis({ wakeWord, name }: { wakeWord: string; name: string }) {
   const awake = useRef(false);
   const onRef = useRef(false);
   const hide = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const followUp = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const SR = (window as unknown as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor }).SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: SRCtor }).webkitSpeechRecognition;
     setSupported(Boolean(SR));
+    warmVoices();
     try { setOn(localStorage.getItem("jarvis") === "on"); } catch {}
   }, []);
 
@@ -44,7 +49,7 @@ export function Jarvis({ wakeWord, name }: { wakeWord: string; name: string }) {
         const i = lower.indexOf(wake);
         if (i < 0) return;
         awake.current = true; setState("awake"); setReply(null);
-        window.speechSynthesis?.cancel();
+        stopSpeaking();
         const rest = text.slice(i + wake.length).replace(/^[,.\s]+/, "");
         setHeard(rest);
         if (last.isFinal && rest.split(/\s+/).filter(Boolean).length >= 2) ask(rest);
@@ -65,16 +70,20 @@ export function Jarvis({ wakeWord, name }: { wakeWord: string; name: string }) {
 
   async function ask(q: string) {
     awake.current = false; setState("thinking");
+    if (followUp.current) clearTimeout(followUp.current);
+    void speak(ACKS[Math.floor(Math.random() * ACKS.length)], voice); // no dead air while it works
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: [{ role: "user", content: q }], voice: true }) });
       const data = await res.json();
       const text: string = data.error ? `Something went wrong: ${data.error}` : data.text;
-      setReply({ text, steps: data.steps ?? [] }); setState("reply");
+      // The reply is "what to say" then optionally "---" and what to show.
+      const [spoken, ...rest] = text.split(/\n-{3,}\n/);
+      setReply({ text: rest.length ? `${spoken.trim()}\n\n${rest.join("\n---\n").trim()}` : text, steps: data.steps ?? [] }); setState("reply");
       if (data.navigate) router.push(data.navigate);
-      if ("speechSynthesis" in window) {
-        const u = new SpeechSynthesisUtterance(text.replace(/[#*_`>\[\]]/g, "").slice(0, 900));
-        u.rate = 1.02; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-      }
+      await speak(spoken, voice);
+      // Stay awake briefly so a follow-up needs no wake word.
+      awake.current = true; setState("awake"); setHeard("");
+      followUp.current = setTimeout(() => { awake.current = false; setState("reply"); }, 8_000);
     } catch (e) {
       setReply({ text: `Could not reach the assistant: ${e instanceof Error ? e.message : String(e)}`, steps: [] }); setState("reply");
     }

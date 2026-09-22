@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-[100dvh]">
         <Nav />
         <main className="px-4 pt-6 pb-24 md:pb-10 md:pl-64 md:pr-8 max-w-[1400px]">{children}</main>
-        <Jarvis wakeWord={process.env.WAKE_WORD || "jarvis"} name={process.env.USER_NAME || ""} />
+        <Jarvis wakeWord={process.env.WAKE_WORD || "jarvis"} name={process.env.USER_NAME || ""} voice={process.env.VOICE_NAME} />
       </body>
     </html>
   );
