@@ -36,6 +36,13 @@ async function main() {
 
   const client = fake ? null : new Anthropic();
   const files = await listInbox();
+  // Originals that already have a note waiting for review in the inbox: leave them alone.
+  const waiting = new Set<string>();
+  for (const f of files) {
+    if (!f.endsWith(".md")) continue;
+    const { data } = await readNote(f);
+    if (data.status === "needs-review" && data.source) waiting.add(String(data.source));
+  }
   if (files.length === 0) {
     console.log("Inbox is empty.");
     return;
@@ -49,7 +56,7 @@ async function main() {
       break;
     }
     try {
-      const outcome = await handle(file, courses, client);
+      const outcome = waiting.has(name) ? "skipped" as const : await handle(file, courses, client);
       if (outcome === "filed") filed++;
       else if (outcome === "review") review++;
       else skipped++;

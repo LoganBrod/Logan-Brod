@@ -11,7 +11,7 @@ import type { Source } from "./reader.js";
 
 export const NOTE_TYPES = ["lecture", "reading", "homework", "lab", "handout", "review", "other"] as const;
 
-const ResultSchema = z.object({
+const Base = z.object({
   title: z.string().describe("Short title for the note, 3 to 8 words, no date."),
   course: z.string().describe("Exactly one of the course names given."),
   unit: z.string().describe("Exactly one of that course's listed units, or empty string if none fits."),
@@ -31,14 +31,18 @@ const ResultSchema = z.object({
     .nullable()
     .describe("YYYY-MM-DD if a date is written on the material, otherwise null."),
   topics: z.array(z.string()).describe("3 to 8 specific topics covered."),
-  transcription: z
-    .string()
-    .describe("For scans: the full content as markdown. For text sources: empty string."),
   confidence: z.number().min(0).max(1).describe("How sure you are about course AND unit together."),
   reason: z.string().describe("One sentence on why this course and unit."),
 });
 
-export type Classification = z.infer<typeof ResultSchema>;
+// Scans get a transcription field; text sources do not even have one, so the model
+// cannot echo a five-page reading back at output-token prices.
+const ScanSchema = Base.extend({
+  transcription: z.string().describe("The full content of the pages as markdown."),
+});
+const TextSchema = Base;
+
+export type Classification = z.infer<typeof Base> & { transcription: string };
 
 const SYSTEM = `You file a high-school student's notes into their study system.
 
@@ -50,7 +54,7 @@ Transcription rules (scans and images only):
 - Use headings for sections the student marked, bullets for lists, tables for tables.
 - Math goes in LaTeX between $ signs. Diagrams get a one-line italic description.
 - Mark a word you cannot read as [?]. Never guess silently.
-- For typed or document sources, leave transcription empty; the original text is kept as-is.
+- Typed or document sources have no transcription field; the original text is kept as-is.
 
 Filing rules:
 - course must be one of the listed names, spelled exactly.
@@ -73,16 +77,24 @@ export async function classify(
   // Text sources only need the small JSON back; scans also carry the transcription.
   const isScan = source.kind === "scan";
   const supportsEffort = !MODEL_SORT.includes("haiku");
-  const response = await client.messages.parse({
+  const common = {
     model: MODEL_SORT,
-    max_tokens: isScan ? 16000 : 1500,
     system: SYSTEM,
-    output_config: {
-      ...(supportsEffort ? { effort: isScan ? "medium" : "low" } : {}),
-      format: zodOutputFormat(ResultSchema),
-    },
-    messages: [{ role: "user", content: [source.block, { type: "text", text: instructions }] }],
-  });
+    messages: [{ role: "user" as const, content: [source.block, { type: "text" as const, text: instructions }] }],
+  };
+  const response = isScan
+    ? await client.messages.parse({
+        ...common,
+        max_tokens: 16000,
+        output_config: { ...(supportsEffort ? { effort: "medium" } : {}), format: zodOutputFormat(ScanSchema) },
+      })
+    : await client.messages.parse({
+        ...common,
+        max_tokens: 800,
+        // Classification of typed text is easy; thinking tokens are billed as output.
+        ...(supportsEffort ? { thinking: { type: "disabled" as const } } : {}),
+        output_config: { ...(supportsEffort ? { effort: "low" } : {}), format: zodOutputFormat(TextSchema) },
+      });
   await recordUsage("ingest", MODEL_SORT, `${source.kind}: ${fileName}`, response.usage);
 
   if (response.stop_reason === "refusal") {
@@ -91,7 +103,8 @@ export async function classify(
   if (!response.parsed_output) {
     throw new Error(`Claude returned something that was not the expected JSON for ${fileName}`);
   }
-  return response.parsed_output;
+  const out = response.parsed_output as z.infer<typeof Base> & { transcription?: string };
+  return { ...out, transcription: out.transcription ?? "" };
 }
 
 /** Stand-in for classify() so the file handling can be tested without an API key. */

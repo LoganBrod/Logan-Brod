@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { DIRS } from "./config.js";
-import { vaultPath, exists, appendLog, safeName, notify } from "./vault.js";
+import { vaultPath, exists, appendLog, safeName, notify, readCourses } from "./vault.js";
 import {
   me, mySections, sectionDocuments, sectionAssignments, assignmentDetail, filesOf,
   downloadAttachment, type Attachment,
@@ -27,6 +27,22 @@ async function main() {
   const statePath = vaultPath(DIRS.system, "schoology-materials-state.json");
   const state: State = (await exists(statePath)) ? JSON.parse(await fs.readFile(statePath, "utf8")) : {};
   const today = new Date().toISOString().slice(0, 10);
+
+  // A class on Schoology with no folder in the vault gets one, so its files have somewhere to go.
+  const existing = (await readCourses()).map((c) => c.name);
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const s of sections) {
+    if (existing.some((e) => norm(e) === norm(s.course_title))) continue;
+    const dir = vaultPath(DIRS.courses, safeName(s.course_title));
+    console.log(`new course folder: ${safeName(s.course_title)}${dryRun ? " (dry run: not created)" : ""}`);
+    if (dryRun) continue;
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "_Course.md"),
+      `---\ncourse: ${safeName(s.course_title)}\nteacher: \nperiod: \nunits: []\nstudy_hours:\n  quiz: 1.5\n  test: 4\n  final: 8\n---\n\n# ${safeName(s.course_title)}\n\nCreated from Schoology. Units fill in as notes arrive; edit freely.\n`,
+    );
+    await appendLog(`created course folder "${safeName(s.course_title)}" from Schoology`);
+  }
 
   let downloaded = 0, skipped = 0;
   for (const s of sections) {
