@@ -64,6 +64,20 @@ async function main() {
   const cal = google.calendar({ version: "v3", auth });
   const timeMin = today.toISOString(), timeMax = addDays(horizon, 1).toISOString();
 
+  // Check access to each calendar first, so a bad ID or missing share says which one.
+  for (const [label, id, need] of [["STUDY_CALENDAR_ID", STUDY_CAL, "Make changes to events"], ["GOOGLE_CALENDAR_ID", MAIN_CAL, "See all event details"]] as const) {
+    if (!id) continue;
+    try {
+      const c = await cal.calendarList.get({ calendarId: id }).catch(() => cal.calendars.get({ calendarId: id }));
+      console.log(`${label}: ok (${c.data.summary ?? id})`);
+    } catch {
+      throw new Error(
+        `${label} (${id}) is not reachable by the service account.\n` +
+        `  Check: the ID is the one under Settings → Integrate calendar, and the calendar is shared with the service account email with "${need}".`,
+      );
+    }
+  }
+
   const busy: Slot[] = [];
   const calendars = [MAIN_CAL, STUDY_CAL].filter(Boolean);
   const fb = await cal.freebusy.query({ requestBody: { timeMin, timeMax, items: calendars.map((id) => ({ id })) } });
