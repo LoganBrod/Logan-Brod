@@ -232,7 +232,7 @@ attachments, downloads each new file once into `00 Inbox` named
 `<Course> - <file>`, and the ingest files it. Schoology documents never need
 a manual download. `npm run sync` runs tests, materials and ingest in one go.
 
-### `plan-study`
+### `plan-study` — built, in `school-os/`
 
 Runs nightly and after every `sync-schoology` that found a new assessment.
 
@@ -361,7 +361,7 @@ named at least one weak topic you agreed with.
 **Done when:** a test a teacher posts appears in `Upcoming Tests.md` and on
 Discord within 30 minutes, and rerunning the script does not re-announce it.
 
-### Phase 4 · Study planner (weeks 7 to 8)
+### Phase 4 · Study planner (weeks 7 to 8) — built, in `school-os/`
 
 - In Google Cloud Console: create a project, enable the Calendar API, create a
   service account, download its key. In Google Calendar: create a "Study"
@@ -540,7 +540,25 @@ replace this table.
 
 ---
 
-## 8. This week
+## 8. Beyond the dashboard: the assistant
+
+The long-term shape is an assistant you talk to, not a set of scripts you
+run. Everything so far is built to make that cheap to add later:
+
+- **The vault is the memory.** Notes, tests, plans, notifications, costs and
+  the agent log are plain files. An assistant reads the same files the jobs
+  write. No migration.
+- **Each job is a tool.** Ingest, plan, study, materials, home are already
+  separate scripts with clear inputs. Exposing them to an agent as tools is a
+  thin wrapper, not a rewrite.
+- **The dashboard is the face.** A chat panel in the dashboard that can call
+  those tools, read the vault, and answer "what should I do tonight" is the
+  first assistant feature. Voice comes after, and is only an input method.
+- **Always-on comes from Phase 6.** An assistant that acts on its own (a test
+  posted at 9pm gets sessions booked by 9:05) needs the brain running
+  somewhere other than a laptop lid.
+
+## 9. This week
 
 1. Create the vault and folders. Add `_Course.md` for each class.
 2. Install Obsidian on both devices and pick a sync method.

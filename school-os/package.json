@@ -14,13 +14,15 @@
     "schoology:whoami": "tsx src/sync-schoology.ts --whoami",
     "materials": "tsx src/pull-materials.ts",
     "materials:dry": "tsx src/pull-materials.ts --dry-run",
-    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && npm run -s home",
+    "sync": "npm run -s schoology && npm run -s materials && npm run -s ingest && npm run -s study && tsx src/plan-study.ts --if-configured && npm run -s home",
     "study": "tsx src/generate-study.ts",
     "home": "tsx src/build-home.ts",
     "update": "bash update.sh",
     "costs": "tsx src/costs.ts",
     "schedule": "bash schedule.sh",
-    "unschedule": "bash schedule.sh remove"
+    "unschedule": "bash schedule.sh remove",
+    "plan": "tsx src/plan-study.ts",
+    "plan:dry": "tsx src/plan-study.ts --dry-run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

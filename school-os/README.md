@@ -191,6 +191,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run materials:dry` | List Schoology files it would download |
 | `npm run materials` | Download new Schoology files into the inbox |
 | `npm run study` | Act on `#make-*` and `#grade-me` tags |
+| `npm run plan:dry` | Show the study sessions it would book |
+| `npm run plan` | Book study sessions into the Study calendar |
 | `npm run home` | Rewrite `04 System/Home.md` |
 | `npm run sync` | Tests, files, ingest, study, home: the daily command |
 | `npm run schedule` | Run `sync` every 30 minutes in the background (Mac) |
@@ -211,6 +213,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/pull-materials.ts` | Downloads new Schoology files into the inbox |
 | `src/generate-study.ts` | Flashcards, practice tests, unit reviews, grading |
 | `src/build-home.ts` | The Home dashboard note |
+| `src/plan-study.ts` | Books study sessions into Google Calendar |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
 

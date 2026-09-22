@@ -6,7 +6,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { VAULT_PATH, DIRS } from "./config.js";
 
-export type Course = { name: string; units: string[] };
+export type Course = { name: string; units: string[]; study_hours?: Record<string, number> };
 
 export type NoteFrontmatter = Record<string, unknown>;
 
@@ -47,7 +47,7 @@ export async function readCourses(): Promise<Course[]> {
       ? data.units.map((u: unknown) => String(u).trim()).filter(Boolean)
       : [];
     // The folder name is the source of truth; the card's course: line should match it.
-    courses.push({ name: entry.name, units });
+    courses.push({ name: entry.name, units, study_hours: data.study_hours ?? undefined });
   }
   if (courses.length === 0) {
     throw new Error(`No courses found. Add 01 Courses/<name>/_Course.md for each class.`);
