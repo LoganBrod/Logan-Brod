@@ -12,7 +12,7 @@ export const maxDuration = 300;
 const MODEL = process.env.MODEL_CHAT || "claude-sonnet-5";
 
 export async function POST(req: Request) {
-  const { messages } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[] };
+  const { messages, voice } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[]; voice?: boolean };
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set in school-os/.env" }, { status: 500 });
 
   const [cs, ts, b] = await Promise.all([courses(), tests(), brief()]);
@@ -27,7 +27,9 @@ Course names are loose in speech ("calc" means the pre-calculus course). Resolve
 
 For any question about a specific test or quiz ("what do I need to know", "what's on it", "help me study for Thursday"), call test_scope first and answer from the teacher's description and the in-scope notes only. Structure the answer by the parts the teacher listed. Do not bring in other units or general knowledge unless the student asks, and if you do, say so. If the description is empty and the notes are thin, say exactly that rather than guessing.
 
-Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.`,
+When the student says "pull up", "show me" or "open", use open_page and then answer in one short sentence; the screen does the rest.
+
+Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.${voice ? "\n\nThis message came by voice and the reply will be read aloud: answer in two to four spoken sentences, no markdown, no lists, unless the student asked for a list of problems." : ""}`,
       cache_control: { type: "ephemeral" },
     },
     {
@@ -39,6 +41,7 @@ Making material or running jobs costs money and time; do it when asked, and say 
   const client = new Anthropic();
   const history: Anthropic.MessageParam[] = messages.slice(-30).map((m) => ({ role: m.role, content: m.content }));
   const steps: string[] = [];
+  let navigate: string | null = null;
   let usage = { input: 0, output: 0 };
 
   for (let turn = 0; turn < 12; turn++) {
@@ -48,7 +51,7 @@ Making material or running jobs costs money and time; do it when asked, and say 
     if (res.stop_reason !== "tool_use") {
       const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
       await log(messages.at(-1)?.content ?? "", text, steps, usage);
-      return NextResponse.json({ text, steps, usage });
+      return NextResponse.json({ text, steps, usage, navigate });
     }
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const block of res.content) {
@@ -56,6 +59,7 @@ Making material or running jobs costs money and time; do it when asked, and say 
       try {
         const { result, summary } = await runTool(block.name, block.input as Record<string, unknown>);
         steps.push(summary);
+        if (block.name === "open_page") navigate = JSON.parse(result).navigate;
         results.push({ type: "tool_result", tool_use_id: block.id, content: result });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -65,7 +69,7 @@ Making material or running jobs costs money and time; do it when asked, and say 
     }
     history.push({ role: "user", content: results });
   }
-  return NextResponse.json({ text: "I got stuck in a loop of tool calls. Try asking in a smaller step.", steps, usage });
+  return NextResponse.json({ text: "I got stuck in a loop of tool calls. Try asking in a smaller step.", steps, usage, navigate });
 }
 
 async function log(q: string, a: string, steps: string[], usage: { input: number; output: number }) {

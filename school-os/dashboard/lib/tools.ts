@@ -78,6 +78,21 @@ export const tools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "open_page",
+    description: "Open a screen in the app for the student ('pull up my physics notes', 'show me the week', 'open the study page for Thursday's quiz'). Returns the URL; the app navigates there. Use exact course names from list_courses and assessment ids from upcoming.",
+    input_schema: {
+      type: "object",
+      properties: {
+        where: { type: "string", enum: ["home", "notes", "course", "note", "study", "week", "inbox", "chat"] },
+        course: { type: "string", description: "For where=course" },
+        unit: { type: "string", description: "Optional unit filter for where=course" },
+        path: { type: "string", description: "Vault path for where=note (from search_notes or study_material)" },
+        assessment_id: { type: "string", description: "For where=study" },
+      },
+      required: ["where"], additionalProperties: false,
+    },
+  },
+  {
     name: "run_job",
     description: "Run one of the brain's jobs now: 'schoology' (check for new tests and assignments), 'materials' (download new Schoology files), 'ingest' (file the inbox), 'plan' (rebook study sessions), 'brief' (rewrite today's brief), 'home'. Takes up to a couple of minutes.",
     input_schema: { type: "object", properties: { job: { type: "string", enum: Object.keys(JOBS) } }, required: ["job"], additionalProperties: false },
@@ -142,6 +157,17 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       const { stdout } = await run("npx", ["tsx", "src/generate-study.ts", kind, course, ...(unit ? [unit] : [])], { cwd: BRAIN_DIR, timeout: 240_000, env: process.env });
       const wrote = stdout.match(/wrote (.+)/)?.[1]?.trim();
       return { result: wrote ? `created ${wrote}` : stdout.slice(-800), summary: `made ${kind} for ${course}${unit ? " / " + unit : ""}` };
+    }
+    case "open_page": {
+      const where = str("where");
+      const url =
+        where === "home" ? "/" :
+        where === "notes" ? "/courses" :
+        where === "course" ? `/courses/${encodeURIComponent(str("course") ?? "")}${str("unit") ? `?unit=${encodeURIComponent(str("unit")!)}` : ""}` :
+        where === "note" ? `/note/${encodeURI(str("path") ?? "")}` :
+        where === "study" ? `/study/${(str("assessment_id") ?? "").replace(":", "-")}` :
+        where === "week" ? "/week" : where === "inbox" ? "/notifications" : where === "chat" ? "/chat" : "/";
+      return { result: JSON.stringify({ navigate: url }), summary: `opened ${where}` };
     }
     case "run_job": {
       const job = str("job") ?? "";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { courses, tests, studyPlan, notifications, needsReview, notesOf, daysUntil, materials, idToSlug, brief } from "@/lib/vault";
 import { Markdown } from "@/components/Markdown";
+import { Greeting } from "@/components/Greeting";
 
 export default async function Home() {
   const [cs, ts, plan, notes, review, mats, b] = await Promise.all([courses(), tests(), studyPlan(), notifications(), needsReview(), materials(), brief()]);
@@ -13,30 +14,24 @@ export default async function Home() {
 
   return (
     <div className="grid gap-8">
-      <header>
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{greeting()}</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-          {ts.length ? `${ts.length} assessment${ts.length === 1 ? "" : "s"} coming up.` : "Nothing posted yet."}{" "}
-          {review ? <Link href="/notifications" className="underline underline-offset-4">{review} note{review === 1 ? "" : "s"} need{review === 1 ? "s" : ""} you.</Link> : "Inbox is clean."}
-        </p>
-      </header>
+      <Greeting name={process.env.USER_NAME || ""} hasBrief={Boolean(briefToday)} subtitle={ts.length ? `${ts.length} assessment${ts.length === 1 ? "" : "s"} coming up. ${review ? `${review} note${review === 1 ? "" : "s"} need${review === 1 ? "s" : ""} you.` : "Inbox is clean."}` : "Nothing posted yet."} />
 
       {briefToday && (
-        <section className="card p-5 md:p-6 max-w-3xl">
+        <section className="card p-5 md:p-7 max-w-3xl rise" style={{ ["--i" as string]: 2 }}>
           <div className="mono text-[11px] mb-2" style={{ color: "var(--faint)" }}>Brief · {new Date(briefToday.time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</div>
           <div className="text-[15px]"><Markdown body={briefToday.text} /></div>
           <Link href="/chat" className="inline-block mt-4 text-sm accent-text underline underline-offset-4">Ask about it</Link>
         </section>
       )}
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3 rise" style={{ ["--i" as string]: 3 }}>
         {ts.slice(0, 3).map((t) => {
           const d = daysUntil(t.when);
           return (
             <Link key={t.id} href={`/study/${idToSlug(t.id)}`} className="card pressable p-5 hover:bg-[var(--surface-2)]" style={{ ["--accent" as string]: hue(t.course) }}>
               <div className="mono text-xs accent-text">{t.course}</div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="mono text-5xl font-semibold tracking-tighter">{d}</span>
+                <span className="mono text-5xl font-light tracking-tighter">{d}</span>
                 <span style={{ color: "var(--muted)" }}>day{d === 1 ? "" : "s"}</span>
               </div>
               <div className="mt-2 font-medium leading-snug">{t.title}</div>
@@ -47,7 +42,7 @@ export default async function Home() {
         {ts.length === 0 && <div className="card p-5 md:col-span-3 text-sm" style={{ color: "var(--muted)" }}>No tests, quizzes or projects on Schoology yet. They show up here the moment a teacher posts one.</div>}
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px] rise" style={{ ["--i" as string]: 4 }}>
         <div className="grid gap-8">
           <section>
             <h2 className="text-sm font-medium mb-3" style={{ color: "var(--muted)" }}>Today</h2>
@@ -116,6 +111,5 @@ export default async function Home() {
   );
 }
 
-function greeting() { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; }
 function time(iso: string) { return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
 function ago(iso: string) { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; }

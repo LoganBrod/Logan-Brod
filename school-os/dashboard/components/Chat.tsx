@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Microphone, PaperPlaneRight, SpeakerHigh, SpeakerSlash, Trash } from "@phosphor-icons/react";
 import { Markdown } from "./Markdown";
 
@@ -15,6 +16,7 @@ export function Chat() {
   const [canListen, setCanListen] = useState(false);
   const rec = useRef<SpeechRecognitionLike | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     try { const saved = localStorage.getItem(KEY); if (saved) setMsgs(JSON.parse(saved)); } catch {}
@@ -42,6 +44,7 @@ export function Chat() {
       const data = await res.json();
       const reply = data.error ? `Error: ${data.error}` : data.text;
       setMsgs([...next, { role: "assistant", content: reply, steps: data.steps }]);
+      if (data.navigate) router.push(data.navigate);
       if (speak && "speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(reply.replace(/[#*_`>]/g, "").slice(0, 1200)); window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
     } catch (e) {
       setMsgs([...next, { role: "assistant", content: `Could not reach the assistant: ${e instanceof Error ? e.message : String(e)}` }]);
