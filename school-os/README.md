@@ -195,6 +195,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run plan` | Book study sessions into the Study calendar |
 | `npm run home` | Rewrite `04 System/Home.md` |
 | `npm run sync` | Tests, files, ingest, study, home: the daily command |
+| `npm run dashboard` | Start the dashboard app at localhost:3210 |
 | `npm run schedule` | Run `sync` every 30 minutes in the background (Mac) |
 | `npm run unschedule` | Stop the background job |
 | `npm run update` | Pull the latest code from GitHub, keeping `.env` |
@@ -214,6 +215,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/generate-study.ts` | Flashcards, practice tests, unit reviews, grading |
 | `src/build-home.ts` | The Home dashboard note |
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
+| `dashboard/` | The Next.js dashboard app (reads the vault via `dashboard/lib/vault.ts`) |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
 

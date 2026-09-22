@@ -376,7 +376,7 @@ Discord within 30 minutes, and rerunning the script does not re-announce it.
 on your phone, they respect `study-rules.md`, and running the planner twice in
 a row changes nothing.
 
-### Phase 5 · Dashboard app (weeks 9 to 12)
+### Phase 5 · Dashboard app (weeks 9 to 12) — first version built, in `school-os/dashboard/`
 
 This is the part you will open every day. It is a Next.js app, the same stack
 and Tailwind setup as this repo, that reads the vault and presents it in a way

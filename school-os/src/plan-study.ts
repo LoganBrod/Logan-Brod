@@ -187,6 +187,10 @@ async function writePlan(placed: Session[], rules: Rules) {
     lines.push("");
   }
   await fs.writeFile(vaultPath("03 Calendar", "Study Plan.md"), matter.stringify(lines.join("\n"), { generated_by: "agent" }));
+  await fs.writeFile(
+    vaultPath(DIRS.system, "study-plan.json"),
+    JSON.stringify(placed.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString(), label: s.label, course: s.a.course, title: s.a.title, kind: s.a.kind, when: s.a.when, id: s.a.id })), null, 2),
+  );
 }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
