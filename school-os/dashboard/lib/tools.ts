@@ -61,7 +61,7 @@ export const tools: Anthropic.Tool[] = [
   {
     name: "test_scope",
     description: "What a specific upcoming test, quiz or project covers: the teacher's full description from Schoology, and the notes from that course in the stretch leading up to it (since the previous assessment), in full. ALWAYS call this first when the student asks what to know, what to study, or what is on a test. Pass the assessment id from upcoming, or a title fragment.",
-    input_schema: { type: "object", properties: { id: { type: "string", description: "Assessment id from upcoming, e.g. a:12345" }, title: { type: "string", description: "Part of the title, if the id is unknown" } }, additionalProperties: false },
+    input_schema: { type: "object", properties: { id: { type: "string", description: "Assessment id from upcoming, e.g. a:12345" }, title: { type: "string", description: "Part of the title, if the id is unknown" }, depth: { type: "string", enum: ["summary", "full"], description: "summary: description plus each in-scope note's title, topics and first lines (fast). full: every in-scope note in full (slow; for detailed study help in chat)." } }, additionalProperties: false },
   },
   {
     name: "study_material",
@@ -143,11 +143,14 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       const a = as.find((x) => x.id === id) ?? as.find((x) => title && x.title.toLowerCase().includes(title));
       if (!a) return { result: "no such upcoming assessment; call upcoming to see them", summary: "assessment not found" };
       const { notes, from, unit } = await notesForAssessment(a);
+      const summary = str("depth") !== "full";
       let text = "", n = 0;
       for (const note of notes) {
-        const body = matter(await fs.readFile(path.join(VAULT, note.rel), "utf8")).content.trim();
-        const chunk = `\n\n<note title="${note.name}" date="${note.date}" unit="${note.unit}" type="${note.type}" path="${note.rel}">\n${body}\n</note>`;
-        if (text.length + chunk.length > 70_000) break;
+        const body = summary ? note.excerpt : matter(await fs.readFile(path.join(VAULT, note.rel), "utf8")).content.trim();
+        const chunk = summary
+          ? `\n- "${note.name}" (${note.date}${note.unit ? `, ${note.unit}` : ""}, ${note.type}; topics: ${note.topics.join(", ") || "none"}; path: ${note.rel}): ${body}`
+          : `\n\n<note title="${note.name}" date="${note.date}" unit="${note.unit}" type="${note.type}" path="${note.rel}">\n${body}\n</note>`;
+        if (text.length + chunk.length > (summary ? 12_000 : 70_000)) break;
         text += chunk; n++;
       }
       const head = `ASSESSMENT: ${a.course} — ${a.title} (${a.kind}) on ${a.when}\nTEACHER'S DESCRIPTION:\n${a.description || "(none posted)"}\n\nNOTES IN SCOPE: ${n} of ${notes.length} (course notes dated ${from} to ${a.when}${unit ? `, plus unit "${unit}"` : ""}). Notes outside this window are NOT in scope unless the description points to them.`;

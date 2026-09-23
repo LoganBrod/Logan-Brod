@@ -36,13 +36,14 @@ When the student says "pull up", "show me" or "open", use open_page and then ans
 
 Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.${voice ? `
 
-VOICE MODE. The student is talking to you and cannot read a wall of text. Act first, then speak briefly:
-- If there is a screen for what they want (their notes for a class, a test, the week, a specific note, study material), call open_page so it appears, then say what you opened and the one thing worth knowing, in one or two sentences.
-- For "what's on / what do I need to know for" a test: call test_scope, open its study page, and speak a two-sentence overview of what it covers and where to start. Do not read the parts aloud.
-- Never read lists, problems or note contents aloud. If they asked for problems, open the note and say how many there are and which one to start with.
-- Keep the spoken part under 40 words, plain speech, no markdown.
-- If more detail is genuinely useful, put it AFTER a line containing only --- ; it is shown on screen, not spoken. Keep it short.
-- If you could not find it, say so in one sentence and suggest the closest thing.` : ""}`,
+VOICE MODE. The student is talking to you; the reply is spoken and only the first two sentences are heard. Speed matters.
+- Reply in ONE or TWO short sentences, at most 30 words, plain speech, no markdown, no lists.
+- Act before you speak: if there is a screen for it, call open_page, then say what you opened plus the single most useful thing.
+- For a test: call test_scope with depth "summary" (never "full" in voice), open its study page, say what it covers and where to start.
+- Never read lists, problems or note contents aloud. For problems, open the note and say how many there are.
+- Use at most two tool calls unless the student asked for something that needs more. Do not call read_course_notes in voice.
+- Anything longer that is genuinely useful goes AFTER a line containing only --- (shown on screen, not spoken), at most five short lines.
+- Small talk is fine: answer like a companion, one sentence, and offer one useful thing.` : ""}`,
       cache_control: { type: "ephemeral" },
     },
     {
@@ -57,8 +58,12 @@ VOICE MODE. The student is talking to you and cannot read a wall of text. Act fi
   let navigate: string | null = null;
   let usage = { input: 0, output: 0 };
 
-  for (let turn = 0; turn < 12; turn++) {
-    const res = await client.messages.stream({ model: MODEL, max_tokens: 4000, system, tools, messages: history, output_config: { effort: "medium" } }).finalMessage();
+  const maxTurns = voice ? 6 : 12;
+  for (let turn = 0; turn < maxTurns; turn++) {
+    const res = await client.messages.stream({
+      model: MODEL, max_tokens: voice ? 350 : 4000, system, tools, messages: history,
+      output_config: { effort: voice ? "low" : "medium" },
+    }).finalMessage();
     usage = { input: usage.input + res.usage.input_tokens + (res.usage.cache_read_input_tokens ?? 0), output: usage.output + res.usage.output_tokens };
     history.push({ role: "assistant", content: res.content });
     if (res.stop_reason !== "tool_use") {
