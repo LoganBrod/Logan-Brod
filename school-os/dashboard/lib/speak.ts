@@ -13,6 +13,13 @@ export function stopSpeaking() {
 export async function speak(text: string, preferredVoice?: string): Promise<void> {
   const clean = text.replace(/[#*_`>\[\]]/g, "").replace(/\s+/g, " ").trim();
   if (!clean) return;
+  // Whatever happens below, resolve within a sane time so the caller can carry on.
+  const budget = 4000 + clean.length * 90;
+  await Promise.race([speakInner(clean, preferredVoice), new Promise<void>((r) => setTimeout(r, budget))]);
+  stopSpeaking();
+}
+
+async function speakInner(clean: string, preferredVoice?: string): Promise<void> {
   stopSpeaking();
   try {
     const res = await fetch("/api/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: clean }) });
