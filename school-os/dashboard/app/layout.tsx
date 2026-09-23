@@ -5,6 +5,8 @@ import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { Jarvis } from "@/components/Jarvis";
 import { brief, tests, daysUntil } from "@/lib/vault";
+import { cookies } from "next/headers";
+import { COOKIE, isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "School OS", description: "Notes, tests and study plan in one place.", manifest: "/manifest.webmanifest" };
 export const viewport: Viewport = { themeColor: "#1a1b20", width: "device-width", initialScale: 1, viewportFit: "cover" };
@@ -12,6 +14,14 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const name = process.env.USER_NAME || "";
+  // Logged out (only possible with DASHBOARD_PASSWORD set): a bare page, nothing about the schoolwork in it.
+  if (!(await isAuthed((await cookies()).get(COOKIE)?.value))) {
+    return (
+      <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+        <body className="min-h-[100dvh]">{children}</body>
+      </html>
+    );
+  }
   const [b, ts] = await Promise.all([brief(), tests()]);
   const h = new Date().getHours();
   const hello = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";

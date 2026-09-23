@@ -5,8 +5,8 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, remember, VAULT } from "./vault";
-import fs from "node:fs/promises";
+import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, remember, MODE } from "./vault";
+import { store } from "./store";
 import matter from "gray-matter";
 
 const run = promisify(execFile);
@@ -20,7 +20,7 @@ const JOBS: Record<string, string[]> = {
   home: ["src/build-home.ts"],
 };
 
-export const tools: Anthropic.Tool[] = [
+const allTools: Anthropic.Tool[] = [
   {
     name: "list_courses",
     description: "The student's courses with their units and note counts. Call first when a request names a class loosely (e.g. 'calc' → 'Pre-calc').",
@@ -104,6 +104,10 @@ export const tools: Anthropic.Tool[] = [
   },
 ];
 
+// On Vercel the brain is not here, so nothing can be run on the spot. make_material still works:
+// it leaves the tag for the Mac to act on.
+export const tools = MODE === "cloud" ? allTools.filter((t) => t.name !== "run_job") : allTools;
+
 export async function runTool(name: string, input: Record<string, unknown>): Promise<{ result: string; summary: string }> {
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : undefined);
   switch (name) {
@@ -146,7 +150,7 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       const summary = str("depth") !== "full";
       let text = "", n = 0;
       for (const note of notes) {
-        const body = summary ? note.excerpt : matter(await fs.readFile(path.join(VAULT, note.rel), "utf8")).content.trim();
+        const body = summary ? note.excerpt : matter(await store.readFile(note.rel)).content.trim();
         const chunk = summary
           ? `\n- "${note.name}" (${note.date}${note.unit ? `, ${note.unit}` : ""}, ${note.type}; topics: ${note.topics.join(", ") || "none"}; path: ${note.rel}): ${body}`
           : `\n\n<note title="${note.name}" date="${note.date}" unit="${note.unit}" type="${note.type}" path="${note.rel}">\n${body}\n</note>`;
@@ -162,6 +166,10 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
     }
     case "make_material": {
       const kind = str("kind") ?? "flashcards", course = str("course") ?? "", unit = str("unit") ?? "";
+      if (MODE === "cloud") {
+        await requestMaterial(course, unit, kind === "test" || kind === "review" ? kind : "flashcards");
+        return { result: `queued: the computer at home makes the ${kind} on its next sync, within about 30 minutes, and it will show up under Study`, summary: `queued ${kind} for ${course}` };
+      }
       const { stdout } = await run("npx", ["tsx", "src/generate-study.ts", kind, course, ...(unit ? [unit] : [])], { cwd: BRAIN_DIR, timeout: 240_000, env: process.env });
       const wrote = stdout.match(/wrote (.+)/)?.[1]?.trim();
       return { result: wrote ? `created ${wrote}` : stdout.slice(-800), summary: `made ${kind} for ${course}${unit ? " / " + unit : ""}` };
@@ -184,6 +192,7 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
     case "run_job": {
       const job = str("job") ?? "";
       if (!JOBS[job]) return { result: "unknown job", summary: "unknown job" };
+      if (MODE === "cloud") return { result: "jobs run on the computer at home on their 30-minute schedule; they cannot be started from here", summary: "job not available here" };
       const { stdout } = await run("npx", ["tsx", ...JOBS[job]], { cwd: BRAIN_DIR, timeout: 300_000, env: process.env });
       return { result: stdout.slice(-3000), summary: `ran ${job}` };
     }

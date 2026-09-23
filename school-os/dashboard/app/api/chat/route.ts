@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import path from "node:path";
-import fs from "node:fs/promises";
-import { config as loadEnv } from "dotenv";
 import { tools, runTool } from "@/lib/tools";
-import { courses, tests, brief, persona, memory, VAULT } from "@/lib/vault";
-
-loadEnv({ path: path.join(process.cwd(), "..", ".env") });
+import { courses, tests, brief, persona, memory } from "@/lib/vault";
+import { store } from "@/lib/store";
 export const maxDuration = 300;
 
 const MODEL = process.env.MODEL_CHAT || "claude-sonnet-5";
 
 export async function POST(req: Request) {
   const { messages, voice } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[]; voice?: boolean };
-  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set in school-os/.env" }, { status: 500 });
+  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set (school-os/.env on the computer, Environment Variables on Vercel)" }, { status: 500 });
 
   const [cs, ts, b, who, mem] = await Promise.all([courses(), tests(), brief(), persona(), memory()]);
   const name = process.env.USER_NAME || "";
@@ -92,8 +88,6 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
 
 async function log(q: string, a: string, steps: string[], usage: { input: number; output: number }) {
   try {
-    const dir = path.join(VAULT, "04 System", "chat");
-    await fs.mkdir(dir, { recursive: true });
-    await fs.appendFile(path.join(dir, `${new Date().toISOString().slice(0, 10)}.md`), `\n### ${new Date().toLocaleTimeString()}\n**You:** ${q}\n\n${steps.length ? `_${steps.join(" · ")}_\n\n` : ""}${a}\n`);
+    await store.appendFile(`04 System/chat/${new Date().toISOString().slice(0, 10)}.md`, `\n### ${new Date().toLocaleTimeString()}\n**You:** ${q}\n\n${steps.length ? `_${steps.join(" · ")}_\n\n` : ""}${a}\n`);
   } catch { /* the log is a nicety */ }
 }

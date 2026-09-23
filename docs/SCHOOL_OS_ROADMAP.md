@@ -451,7 +451,15 @@ dashboard needs a server. For a machine that is never asleep, pick one:
   agent loop hosted by Anthropic; worth looking at once B is working and you
   want the brain to do open-ended tasks rather than fixed scripts.
 
-Then deploy the dashboard. With Option B the vault is already a GitHub repo,
+**Built: the dashboard on Vercel and the brief on your phone.** Rather than
+moving the vault into git, the Mac publishes a private copy of it to a Vercel
+Blob store after every sync (`npm run publish`), and the same dashboard, with
+a password in front, reads that copy when it runs on Vercel. Writes from the
+phone go back through a small outbox. The morning brief is texted by the Mac
+itself over iMessage, or by Twilio or ntfy. See the README sections "On your
+phone anywhere" and "The brief on your phone".
+
+The other route, kept here for reference: with Option B the vault is already a GitHub repo,
 so the app on Vercel reads notes through the GitHub API with a token in its
 environment, caching the index for a minute. The app's two writes (tags and
 read flags) become commits. Add web push so a new test posted on Schoology

@@ -194,8 +194,11 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run plan:dry` | Show the study sessions it would book |
 | `npm run plan` | Book study sessions into the Study calendar |
 | `npm run brief` | Write today's morning brief |
+| `npm run brief:ping` | Send today's brief to your phone again, to test delivery |
+| `npm run publish` | Upload a copy of the vault to Vercel, apply what the phone wrote |
+| `npm run publish:dry` | Say what `publish` would do |
 | `npm run home` | Rewrite `04 System/Home.md` |
-| `npm run sync` | Tests, files, ingest, study, home: the daily command |
+| `npm run sync` | Tests, files, ingest, study, plan, brief, home, publish: the daily command |
 | `npm run dashboard` | Start the dashboard app at localhost:3210 |
 | `npm run schedule` | Run `sync` every 30 minutes in the background (Mac) |
 | `npm run unschedule` | Stop the background job |
@@ -217,11 +220,121 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/build-home.ts` | The Home dashboard note |
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
 | `src/brief.ts` | The morning brief |
+| `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
+| `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |
 | `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, make material, run jobs |
 | `dashboard/app/api/chat/route.ts` | The assistant's tool loop |
 | `dashboard/` | The Next.js dashboard app (reads the vault via `dashboard/lib/vault.ts`) |
+| `dashboard/lib/store.ts` | Where the dashboard's files come from: the folder on the Mac, or the copy on Vercel |
+| `dashboard/lib/auth.ts`, `dashboard/proxy.ts` | The password login, only when `DASHBOARD_PASSWORD` is set |
 | `src/vault.ts` | Every read, write and move on the vault |
 | `src/config.ts` | `.env` and folder names |
+
+## The brief on your phone
+
+The morning brief is texted to you as soon as the background job writes it,
+the first run after 6 am. Pick one way and put it in `.env`:
+
+**iMessage, free.** The brain runs on your Mac, so it can ask the Messages
+app to send the text, the same as if you typed it.
+
+```
+PHONE_NUMBER=+15551234567
+```
+
+Messages on the Mac has to be signed in with your Apple ID. A message you
+send to your own number shows up on the phone as a chat with yourself.
+
+**Twilio, real SMS, about $2 a month.** Sign up at console.twilio.com, verify
+your phone number, take the trial number they give you, and copy the Account
+SID, Auth Token and that number:
+
+```
+PHONE_NUMBER=+15551234567
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_FROM=+1...
+```
+
+A trial account is enough for one text a day to your own verified number.
+Trial texts start with a "Sent from your Twilio trial account" line.
+
+**ntfy, free push notification.** Install the ntfy app on your phone,
+subscribe to a topic with a long random name (it is the only thing keeping
+strangers out), and put the name in `.env`:
+
+```
+NTFY_TOPIC=logan-brief-8f3k2j9x
+```
+
+Then test it without spending a Claude call:
+
+```
+npm run brief:ping
+```
+
+It sends today's brief again and says which way it went. The first iMessage
+send makes macOS ask whether Terminal may control Messages: click OK. If
+texts arrive when you run that by hand but not from the background job, open
+System Settings → Privacy & Security → Automation and switch on whatever it
+lists under Messages. Twilio wins when its keys are set, otherwise iMessage;
+ntfy goes out as well whenever it is set. `PHONE_CHANNEL=none` turns texts
+off without deleting the keys.
+
+## On your phone anywhere (Vercel)
+
+The dashboard, the assistant and Jarvis, from school wifi or anywhere else.
+It runs on Vercel's free plan.
+
+How it works: the vault lives on your Mac, and Vercel cannot see your Mac. So
+after every sync the brain uploads a private copy of the vault (every note
+and system file, no PDFs) to a Vercel Blob store, and the app on Vercel reads
+that copy. Anything you do from the phone that writes, like "remember that",
+asking for flashcards, or marking the inbox read, lands in a small outbox
+that the Mac applies to the real vault on its next sync, then deletes. A
+password in front, since it is your schoolwork on a public URL.
+
+**Set up, about 20 minutes, once.**
+
+1. Go to vercel.com and sign up with your GitHub account. Add New → Project
+   → Import `Logan-Brod`.
+2. Before you deploy, open the project's Settings:
+   - **General → Root Directory**: `school-os/dashboard`.
+   - **Git → Production Branch**: `claude/agentic-school-os-notes-1wr7w3`
+     (the branch this code lives on).
+   - **Environment Variables**, add these:
+     `ANTHROPIC_API_KEY`, `DASHBOARD_PASSWORD` (make one up, this is the
+     site's login), `USER_NAME`, `TZ` (your time zone, e.g.
+     `America/New_York`, so "today" is your today), and if you use them
+     `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `WAKE_WORD`, `VOICE_NAME`,
+     `MODEL_CHAT`. Do not add `VAULT_PATH`. Without it the app knows it is on
+     Vercel and reads the copy instead of a folder.
+3. **Storage → Create Database → Blob**, name it `school-os`, connect it to
+   the project. Vercel adds `BLOB_READ_WRITE_TOKEN` to the project by itself.
+   Open the store, find that token (the `.env.local` tab shows it) and copy
+   it.
+4. On the Mac: `npm run update`, then add to `school-os/.env`:
+
+   ```
+   BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+   ```
+
+   and run `npm run publish` once. It says how many files went up. From then
+   on `sync` publishes on its own, so the copy is at most 30 minutes behind.
+5. Back on Vercel, Deployments → deploy the branch (or ask for a small push).
+   Open the URL it gives you, log in with the password, and on the phone use
+   Share → Add to Home Screen so it opens like an app.
+
+**What is different on the phone.** Reading, searching, the study pages, the
+brief, the assistant and the voice pill all work. Making flashcards from the
+phone queues the request; the Mac makes them within 30 minutes. The
+assistant cannot run the brain's jobs from there, since they only exist on
+the Mac. The wake word works in Chrome on Android; iPhone Safari needs the
+pill tapped. Changing the password logs every phone out.
+
+**Costs.** Vercel's Hobby plan is free for personal use and the Blob store's
+free allowance is far more than a text vault needs. Claude calls from the
+phone cost the same as at home and are logged the same way.
 
 ## Costs
 

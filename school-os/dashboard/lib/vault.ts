@@ -1,14 +1,10 @@
-// Server-only reads of the vault. Same folder layout the brain writes to.
+// Server-only reads of the vault. Same folder layout the brain writes to. Every path is
+// vault-relative and goes through `store`, which is the local folder or the copy on Vercel.
 import "server-only";
-import fs from "node:fs/promises";
-import path from "node:path";
 import matter from "gray-matter";
-import { config as loadEnv } from "dotenv";
+import { store, join, MODE, VAULT } from "./store";
 
-loadEnv({ path: path.join(process.cwd(), "..", ".env") });
-loadEnv({ path: path.join(process.cwd(), ".env") });
-
-export const VAULT = path.resolve(process.env.VAULT_PATH ?? "");
+export { MODE, VAULT };
 const COURSES = "01 Courses", STUDY = "02 Study", SYSTEM = "04 System", INBOX = "00 Inbox";
 
 export type Note = {
@@ -27,21 +23,18 @@ export const hueOf = (name: string) => [250, 150, 30, 330, 200, 80, 300][[...nam
 export const today = () => new Date().toISOString().slice(0, 10);
 export const daysUntil = (d: string) => Math.round((Date.parse(d) - Date.parse(today())) / 86_400_000);
 
-async function exists(p: string) { try { await fs.access(p); return true; } catch { return false; } }
+const exists = (rel: string) => store.exists(rel);
 async function readJson<T>(rel: string, fallback: T): Promise<T> {
-  const p = path.join(VAULT, rel);
-  return (await exists(p)) ? JSON.parse(await fs.readFile(p, "utf8")) : fallback;
+  try { return JSON.parse(await store.readFile(rel)); } catch { return fallback; }
 }
 
 export async function courses(): Promise<Course[]> {
-  const dir = path.join(VAULT, COURSES);
-  if (!(await exists(dir))) return [];
   const out: Course[] = [];
-  for (const e of await fs.readdir(dir, { withFileTypes: true })) {
-    if (!e.isDirectory()) continue;
-    const card = path.join(dir, e.name, "_Course.md");
+  for (const e of await store.readdir(COURSES)) {
+    if (!e.dir) continue;
+    const card = join(COURSES, e.name, "_Course.md");
     if (!(await exists(card))) continue;
-    const { data } = matter(await fs.readFile(card, "utf8"));
+    const { data } = matter(await store.readFile(card));
     const units = Array.isArray(data.units) ? data.units.map(String).filter(Boolean) : [];
     out.push({ name: e.name, units, hue: hueOf(e.name), noteCount: (await notesOf(e.name)).length });
   }
@@ -49,23 +42,23 @@ export async function courses(): Promise<Course[]> {
 }
 
 export async function notesOf(course: string, unit?: string): Promise<Note[]> {
-  const root = unit ? path.join(VAULT, COURSES, course, unit) : path.join(VAULT, COURSES, course);
+  if (!course) return [];
+  const root = unit ? join(COURSES, course, unit) : join(COURSES, course);
   if (!(await exists(root))) return [];
   const out: Note[] = [];
   async function walk(dir: string) {
-    for (const e of await fs.readdir(dir, { withFileTypes: true })) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) { if (!e.name.startsWith("_") && !e.name.startsWith(".")) await walk(full); continue; }
+    for (const e of await store.readdir(dir)) {
+      const full = join(dir, e.name);
+      if (e.dir) { if (!e.name.startsWith("_") && !e.name.startsWith(".")) await walk(full); continue; }
       if (!e.name.endsWith(".md") || e.name.startsWith("_")) continue;
-      const raw = await fs.readFile(full, "utf8");
+      const raw = await store.readFile(full);
       const { data, content } = matter(raw);
-      const st = await fs.stat(full);
       out.push({
-        rel: path.relative(VAULT, full), name: e.name.slice(0, -3), course,
+        rel: full, name: e.name.slice(0, -3), course,
         unit: String(data.unit ?? ""), type: String(data.type ?? ""), date: dateStr(data.date),
         topics: Array.isArray(data.topics) ? data.topics.map(String) : [],
         excerpt: content.replace(/^#.*$/gm, "").replace(/[*_`>#\[\]]/g, "").replace(/\s+/g, " ").trim().slice(0, 220),
-        sourceKind: String(data.source_kind ?? ""), status: String(data.status ?? ""), mtime: st.mtimeMs,
+        sourceKind: String(data.source_kind ?? ""), status: String(data.status ?? ""), mtime: await store.mtime(full),
       });
     }
   }
@@ -74,26 +67,26 @@ export async function notesOf(course: string, unit?: string): Promise<Note[]> {
 }
 
 export async function readNote(rel: string): Promise<{ data: Record<string, unknown>; body: string; rel: string } | null> {
-  const full = path.join(VAULT, rel);
-  if (!full.startsWith(VAULT) || !(await exists(full))) return null;
-  const { data, content } = matter(await fs.readFile(full, "utf8"));
-  return { data, body: content, rel };
+  const full = join(rel);
+  if (!full || full.startsWith("..") || !(await exists(full))) return null;
+  const { data, content } = matter(await store.readFile(full));
+  return { data, body: content, rel: full };
 }
 
 /** Resolve an Obsidian [[wikilink]] (basename) to a vault-relative path, if it exists. */
 export async function resolveLink(name: string): Promise<string | null> {
   const target = name.split("|")[0].split("#")[0].trim();
-  const hits = await findFiles(VAULT, (f) => f === `${target}.md` || f === target);
-  return hits[0] ? path.relative(VAULT, hits[0]) : null;
+  const hits = await findFiles("", (f) => f === `${target}.md` || f === target);
+  return hits[0] ?? null;
 }
 
 async function findFiles(dir: string, pred: (name: string) => boolean, depth = 0): Promise<string[]> {
   if (depth > 6) return [];
   const out: string[] = [];
-  for (const e of await fs.readdir(dir, { withFileTypes: true })) {
-    if (e.name.startsWith(".") || e.name === "node_modules") continue;
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await findFiles(full, pred, depth + 1)));
+  for (const e of await store.readdir(dir)) {
+    if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "_sources") continue;
+    const full = join(dir, e.name);
+    if (e.dir) out.push(...(await findFiles(full, pred, depth + 1)));
     else if (pred(e.name)) out.push(full);
   }
   return out;
@@ -108,12 +101,10 @@ export const studyPlan = () => readJson<Session[]>(`${SYSTEM}/study-plan.json`, 
 export const notifications = () => readJson<Notification[]>(`${SYSTEM}/notifications.json`, []);
 
 export async function needsReview(): Promise<number> {
-  const dir = path.join(VAULT, INBOX);
-  if (!(await exists(dir))) return 0;
   let n = 0;
-  for (const f of await fs.readdir(dir)) {
-    if (!f.endsWith(".md")) continue;
-    const { data } = matter(await fs.readFile(path.join(dir, f), "utf8"));
+  for (const { name: f, dir } of await store.readdir(INBOX)) {
+    if (dir || !f.endsWith(".md")) continue;
+    const { data } = matter(await store.readFile(join(INBOX, f)));
     if (data.status === "needs-review") n++;
   }
   return n;
@@ -123,13 +114,12 @@ export type Material = { kind: "flashcards" | "test" | "review" | "graded"; rel:
 export async function materials(course?: string): Promise<Material[]> {
   const out: Material[] = [];
   for (const [dir, kind] of [["Flashcards", "flashcards"], ["Practice Tests", "test"], ["Unit Reviews", "review"]] as const) {
-    const full = path.join(VAULT, STUDY, dir);
-    if (!(await exists(full))) continue;
-    for (const f of await fs.readdir(full)) {
-      if (!f.endsWith(".md")) continue;
-      const { data } = matter(await fs.readFile(path.join(full, f), "utf8"));
+    const full = join(STUDY, dir);
+    for (const { name: f, dir: isDir } of await store.readdir(full)) {
+      if (isDir || !f.endsWith(".md")) continue;
+      const { data } = matter(await store.readFile(join(full, f)));
       if (course && String(data.course) !== course) continue;
-      out.push({ kind: f.includes("Graded") ? "graded" : kind, rel: path.join(STUDY, dir, f), name: f.slice(0, -3), course: String(data.course ?? ""), unit: String(data.unit ?? "") });
+      out.push({ kind: f.includes("Graded") ? "graded" : kind, rel: join(STUDY, dir, f), name: f.slice(0, -3), course: String(data.course ?? ""), unit: String(data.unit ?? "") });
     }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -157,20 +147,20 @@ function dateStr(v: unknown): string {
 const DEFAULT_PERSONA = `You are Jarvis, a personal assistant modeled on the one from the Iron Man films: calm, precise, unflappable, quietly witty. Address the student as "sir" now and then or by first name, not every sentence. Understated, dry, short sentences, no exclamation marks, no emojis, no em-dashes. Say the thing, then stop. Honest over confident. Offer brief opinions. You can chat like a companion who knows them, then steer back to what helps.`;
 
 export async function persona(): Promise<string> {
-  const p = path.join(VAULT, SYSTEM, "persona.md");
+  const p = join(SYSTEM, "persona.md");
   if (!(await exists(p))) return DEFAULT_PERSONA;
-  const body = matter(await fs.readFile(p, "utf8")).content.replace(/^# Persona[^\n]*\n+[\s\S]*?(?=## )/, "").trim();
+  const body = matter(await store.readFile(p)).content.replace(/^# Persona[^\n]*\n+[\s\S]*?(?=## )/, "").trim();
   return body || DEFAULT_PERSONA;
 }
 export async function memory(): Promise<string> {
-  const p = path.join(VAULT, SYSTEM, "memory.md");
+  const p = join(SYSTEM, "memory.md");
   if (!(await exists(p))) return "";
-  return (await fs.readFile(p, "utf8")).split("\n").filter((l) => l.startsWith("- ")).slice(-60).join("\n");
+  return (await store.readFile(p)).split("\n").filter((l) => l.startsWith("- ")).slice(-60).join("\n");
 }
 export async function remember(text: string): Promise<void> {
-  const p = path.join(VAULT, SYSTEM, "memory.md");
-  if (!(await exists(p))) await fs.writeFile(p, "# Memory\n\nThings the assistant has been asked to remember.\n\n");
-  await fs.appendFile(p, `- ${new Date().toISOString().slice(0, 10)}: ${text.trim().replace(/\s+/g, " ")}\n`);
+  const p = join(SYSTEM, "memory.md");
+  if (!(await exists(p))) await store.writeFile(p, "# Memory\n\nThings the assistant has been asked to remember.\n\n");
+  await store.appendFile(p, `- ${new Date().toISOString().slice(0, 10)}: ${text.trim().replace(/\s+/g, " ")}\n`);
 }
 
 export const brief = () => readJson<{ date: string; time: string; text: string } | null>(`${SYSTEM}/brief.json`, null);
@@ -189,8 +179,7 @@ export async function searchNotes(query: string, course?: string, limit = 8): Pr
   const hits: (Note & { snippet: string; score: number })[] = [];
   for (const c of cs) {
     for (const n of await notesOf(c)) {
-      const full = await fs.readFile(path.join(VAULT, n.rel), "utf8");
-      const body = matter(full).content;
+      const body = matter(await store.readFile(n.rel)).content;
       const lower = `${n.name} ${n.topics.join(" ")} ${n.unit} ${body}`.toLowerCase();
       let score = 0;
       for (const t of terms) {
@@ -234,7 +223,7 @@ export async function readMany(course: string, unit?: string, maxChars = 60_000)
   const notes = await notesOf(course, unit);
   let text = "", included = 0;
   for (const n of notes) {
-    const body = matter(await fs.readFile(path.join(VAULT, n.rel), "utf8")).content.trim();
+    const body = matter(await store.readFile(n.rel)).content.trim();
     const chunk = `\n\n<note title="${n.name}" unit="${n.unit}" type="${n.type}" path="${n.rel}">\n${body}\n</note>`;
     if (text.length + chunk.length > maxChars) break;
     text += chunk; included++;
@@ -244,13 +233,13 @@ export async function readMany(course: string, unit?: string, maxChars = 60_000)
 
 // ---- writes (the only two the app does) ----
 export async function requestMaterial(course: string, unit: string, kind: "flashcards" | "test" | "review"): Promise<void> {
-  const target = unit ? path.join(VAULT, COURSES, course, unit, "_Unit.md") : path.join(VAULT, COURSES, course, "_Course.md");
+  const target = unit ? join(COURSES, course, unit, "_Unit.md") : join(COURSES, course, "_Course.md");
   if (!(await exists(target))) throw new Error("no such course or unit");
-  await fs.appendFile(target, `\n#make-${kind}\n`);
+  await store.appendFile(target, `\n#make-${kind}\n`);
 }
 export async function markRead(ids: string[]): Promise<void> {
-  const p = path.join(VAULT, SYSTEM, "notifications.json");
-  const list = await readJson<Notification[]>(`${SYSTEM}/notifications.json`, []);
+  const p = join(SYSTEM, "notifications.json");
+  const list = await readJson<Notification[]>(p, []);
   for (const n of list) if (ids.length === 0 || ids.includes(n.id)) n.read = true;
-  await fs.writeFile(p, JSON.stringify(list, null, 2));
+  await store.writeFile(p, JSON.stringify(list, null, 2));
 }

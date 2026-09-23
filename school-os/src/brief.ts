@@ -2,17 +2,22 @@
 // looks like. Written to 04 System/Brief.md and brief.json (the dashboard shows it),
 // posted to Discord if a webhook is set.
 //
-//   npm run brief            write today's brief (skips if one exists for today)
+//   npm run brief             write today's brief (skips if one exists for today)
 //   npm run brief -- --force  rewrite it
+//   npm run brief -- --ping   send today's brief to your phone again (no Claude call), to test delivery
+//
+// Sent to your phone when PHONE_NUMBER or NTFY_TOPIC is set (see src/phone.ts).
 import fs from "node:fs/promises";
 import Anthropic from "@anthropic-ai/sdk";
 import matter from "gray-matter";
 import { DIRS, MODEL_BRIEF } from "./config.js";
 import { vaultPath, exists, readCourses, listCourseNotes, readNote, notify, appendLog } from "./vault.js";
 import { recordUsage, money } from "./usage.js";
+import { sendToPhone, plainText, phoneChannels } from "./phone.js";
 
 const force = process.argv.includes("--force");
 const ifDue = process.argv.includes("--if-due");
+const ping = process.argv.includes("--ping");
 
 export async function gatherState() {
   const today = new Date();
@@ -60,6 +65,7 @@ export async function gatherState() {
 
 async function main() {
   const s = await gatherState();
+  if (ping) return resend(s);
   if (!force && s.lastBriefDate === s.todayStr) {
     if (!ifDue) console.log("Today's brief already exists. Use --force to rewrite.");
     return;
@@ -97,10 +103,31 @@ async function main() {
   await fs.writeFile(vaultPath(DIRS.system, "brief.json"), JSON.stringify({ date: s.todayStr, time, text }, null, 2));
   await notify("brief", `Morning brief for ${s.weekday}`, "04 System/Brief.md");
   await appendLog(`brief written for ${s.todayStr} (${money(cost)})`);
-  if (process.env.DISCORD_WEBHOOK_URL) {
-    await fetch(process.env.DISCORD_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: `**Brief for ${s.weekday}**\n${text.replace(/^## /gm, "**").replace(/^(\*\*[^\n]+)$/gm, "$1**")}` }) }).catch(() => {});
-  }
+  await deliver(s.weekday, text);
   console.log(`${text}\n\n(${money(cost)})`);
+}
+
+/** Discord and the phone. Neither failing stops the brief from being written. */
+async function deliver(weekday: string, text: string) {
+  if (process.env.DISCORD_WEBHOOK_URL) {
+    await fetch(process.env.DISCORD_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: `**Brief for ${weekday}**\n${text.replace(/^## /gm, "**").replace(/^(\*\*[^\n]+)$/gm, "$1**")}` }) }).catch(() => {});
+  }
+  if (phoneChannels().length) {
+    const sent = await sendToPhone(`Brief for ${weekday}\n${plainText(text)}`, `Brief for ${weekday}`);
+    await appendLog(sent.length ? `brief sent to phone via ${sent.join(", ")}` : "brief could not be sent to the phone (see the run log)");
+    if (sent.length) console.log(`Sent to your phone via ${sent.join(", ")}.`);
+  }
+}
+
+async function resend(s: Awaited<ReturnType<typeof gatherState>>) {
+  const p = vaultPath(DIRS.system, "brief.json");
+  if (!(await exists(p))) { console.log("No brief yet. Run `npm run brief` first."); return; }
+  const b = JSON.parse(await fs.readFile(p, "utf8")) as { text: string; date: string };
+  const channels = phoneChannels();
+  if (!channels.length) { console.log("Nothing to send with. Set PHONE_NUMBER (iMessage or Twilio) or NTFY_TOPIC in .env."); return; }
+  console.log(`Sending the ${b.date} brief via ${channels.join(", ")}...`);
+  const sent = await sendToPhone(`Brief for ${s.weekday}\n${plainText(b.text)}`, `Brief for ${s.weekday}`);
+  console.log(sent.length ? `Sent via ${sent.join(", ")}. Check your phone.` : "Nothing went through. The reason is printed above.");
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
