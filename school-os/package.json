@@ -32,7 +32,8 @@
     "brief:ping": "tsx src/brief.ts --ping",
     "companion": "cd companion && npm install --no-fund --no-audit && npx electron .",
     "companion:login": "bash companion/companion.sh install",
-    "companion:unlogin": "bash companion/companion.sh remove"
+    "companion:unlogin": "bash companion/companion.sh remove",
+    "companion:app": "bash companion/build-app.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

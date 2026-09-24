@@ -4,3 +4,5 @@ service-account.json
 logs/
 dashboard/.next/
 dashboard/next-env.d.ts
+companion/dist/
+companion/school-os-path.json

@@ -6,7 +6,13 @@ const { app, BrowserWindow, globalShortcut, ipcMain, shell, Tray, Menu, screen, 
 const path = require("node:path");
 const lib = require("./lib");
 
-const cfg = lib.loadConfig(path.join(__dirname, "..", ".env"));
+// .env lives in school-os: next to this folder when run from there, or wherever
+// school-os-path.json points when this is Jarvis.app in Applications.
+function schoolOsDir() {
+  try { const p = require("./school-os-path.json").dir; if (require("node:fs").existsSync(path.join(p, ".env"))) return p; } catch {}
+  return path.join(__dirname, "..");
+}
+const cfg = lib.loadConfig(path.join(schoolOsDir(), ".env"));
 const WIDTH = 440, HEIGHT = 680;
 let win = null, tray = null;
 
