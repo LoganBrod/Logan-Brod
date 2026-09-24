@@ -133,3 +133,22 @@ export const store: Store = MODE === "cloud" ? cloud : local;
 export async function publishedAt(): Promise<string> {
   return MODE === "cloud" ? (await snapshot()).generated : "";
 }
+
+/** What is wrong with the setup, in one sentence, or null when the dashboard has something to show.
+ *  Only ever speaks up on Vercel or when the vault folder is missing, so a fresh local vault stays quiet. */
+export async function setupProblem(): Promise<string | null> {
+  const onVercel = !!process.env.VERCEL;
+  if (MODE === "local") {
+    if (onVercel) return "This copy runs on Vercel but has no Blob store. In the Vercel project open Storage, create a Blob store, connect it to the project, then Deployments → Redeploy.";
+    if (!process.env.VAULT_PATH) return "VAULT_PATH is not set in school-os/.env.";
+    if (!(await local.exists(""))) return `The vault folder was not found at ${VAULT}. Check VAULT_PATH in school-os/.env.`;
+    return null;
+  }
+  try {
+    const snap = await snapshot();
+    if (!Object.keys(snap.files).length) return "No copy of the vault has been published yet. On the Mac, put BLOB_READ_WRITE_TOKEN in school-os/.env and run: npm run publish";
+    return null;
+  } catch (err) {
+    return `Could not read the published copy: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
