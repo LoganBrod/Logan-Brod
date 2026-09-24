@@ -8,6 +8,15 @@ export const maxDuration = 300;
 const MODEL = process.env.MODEL_CHAT || "claude-sonnet-5";
 
 export async function POST(req: Request) {
+  try { return await chat(req); }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("chat:", msg);
+    return NextResponse.json({ error: msg.slice(0, 300) }, { status: 500 });
+  }
+}
+
+async function chat(req: Request) {
   const { messages, voice } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[]; voice?: boolean };
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set (school-os/.env on the computer, Environment Variables on Vercel)" }, { status: 500 });
 
