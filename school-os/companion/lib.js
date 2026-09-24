@@ -13,7 +13,7 @@ function loadConfig(envPath) {
     }
   } catch { /* no .env yet */ }
   return {
-    base: (env.DASHBOARD_URL || "http://localhost:3210").replace(/\/$/, ""),
+    base: withScheme(env.DASHBOARD_URL || "http://localhost:3210"),
     password: env.DASHBOARD_PASSWORD || "",
     elevenKey: env.ELEVENLABS_API_KEY || "",
     name: env.USER_NAME || "",
@@ -21,6 +21,13 @@ function loadConfig(envPath) {
     wake: env.WAKE_WORD || "jarvis",
     shortcut: env.COMPANION_SHORTCUT || "Alt+Space",
   };
+}
+
+/** "school-os-xyz.vercel.app" → "https://school-os-xyz.vercel.app"; localhost gets http. No trailing slash. */
+function withScheme(url) {
+  let u = url.trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(u)) u = (/^(localhost|127\.0\.0\.1)(:|$)/.test(u) ? "http://" : "https://") + u;
+  return u;
 }
 
 let cookie = "";
