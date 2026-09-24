@@ -46,7 +46,10 @@ async function readJson(res) {
     if (!res.ok && data && data.error) throw new Error(data.error);
     return data;
   } catch (e) {
-    if (e instanceof SyntaxError) throw new Error(`the dashboard said ${res.status}${text.trim() ? ": " + text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) : ""}`);
+    if (e instanceof SyntaxError) {
+      if (res.status === 401 && /vercel/i.test(text)) throw new Error("that address is a single deployment's link, which Vercel keeps behind its own login. Set DASHBOARD_URL in .env to the project's main address (Vercel → the project → Domains), then reopen Jarvis.");
+      throw new Error(`the dashboard said ${res.status}${text.trim() ? ": " + text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) : ""}`);
+    }
     throw e;
   }
 }
@@ -57,7 +60,8 @@ async function ask(cfg, messages) {
   try {
     res = await request(cfg, "/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, voice: true }) });
   } catch (e) {
-    throw new Error(`cannot reach the dashboard at ${cfg.base}. Is it running? (npm run dashboard, or set DASHBOARD_URL in .env)`);
+    const why = (e && e.cause && e.cause.message) || (e && e.message) || String(e);
+    throw new Error(`cannot reach the dashboard at ${cfg.base} (${why}). ${/localhost|127\.0\.0\.1/.test(cfg.base) ? "Is it running? (npm run dashboard)" : "Check DASHBOARD_URL in .env: it should be the project's main address from Vercel → Domains, like https://school-os-xxxx.vercel.app."}`);
   }
   const data = await readJson(res);
   return { text: data.text || "", show: data.show || [], navigate: data.navigate || null, steps: data.steps || [] };
