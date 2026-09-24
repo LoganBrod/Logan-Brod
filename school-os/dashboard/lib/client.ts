@@ -16,3 +16,9 @@ export async function readJson<T = Record<string, unknown>>(res: Response): Prom
     throw new Error(`server said ${res.status}: ${hint}`);
   }
 }
+
+export type DeskItem = { id: string; kind: "note" | "doc" | "deck" | "text"; title: string; subtitle?: string; body: string; url?: string };
+/** Hand things to the Desk panel (mounted in the layout) from anywhere in the app. */
+export function showOnDesk(items: DeskItem[]) {
+  window.dispatchEvent(new CustomEvent("desk:show", { detail: items }));
+}

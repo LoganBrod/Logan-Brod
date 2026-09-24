@@ -128,6 +128,25 @@ Every doc in that folder is pulled into the inbox as markdown on the next
 `npm run ingest`. If you keep editing a doc after it was filed, the filed note's
 body is refreshed in place next run; its frontmatter and location stay.
 
+**Jarvis and your Docs.** With the same key, the assistant can also list,
+search and read your Google Docs live ("pull up my essay draft", "what did I
+write in the lab report about friction"). It sees every doc shared with the
+service account's email, not just the sync folder, so share a doc or a folder
+with that address and it is reachable. On Vercel, set
+`GOOGLE_SERVICE_ACCOUNT_KEY` to the whole contents of `service-account.json`
+(open the file, copy everything, paste it as the value).
+
+## The Desk
+
+Ask for something to be put on screen ("show me my slope notes", "pull up
+the unit 1 deck", "open the essay doc", "write me five practice problems on
+this") and it lands on the Desk: a panel of tabs beside whatever page is
+open. Notes and Google Docs render as text, flashcard files as a flippable
+deck, and the assistant can write its own tabs, like a practice set or a
+summary. Tabs stay until you close them, on that phone or computer. A Google
+Doc tab has a "Live view" switch to see the real document and a button to
+open it in Google Docs.
+
 ## Schoology (10 minutes)
 
 In Schoology, click your name → **API**. Copy the consumer key and secret into
@@ -222,7 +241,9 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/brief.ts` | The morning brief |
 | `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
 | `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |
-| `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, make material, run jobs |
+| `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, Google Docs, the Desk, make material, run jobs |
+| `dashboard/lib/gdrive.ts` | Live Google Docs search and read through the service account |
+| `dashboard/components/Desk.tsx` | The panel of tabs the assistant fills |
 | `dashboard/app/api/chat/route.ts` | The assistant's tool loop |
 | `dashboard/` | The Next.js dashboard app (reads the vault via `dashboard/lib/vault.ts`) |
 | `dashboard/lib/store.ts` | Where the dashboard's files come from: the folder on the Mac, or the copy on Vercel |
@@ -307,7 +328,9 @@ password in front, since it is your schoolwork on a public URL.
      site's login), `USER_NAME`, `TZ` (your time zone, e.g.
      `America/New_York`, so "today" is your today), and if you use them
      `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `WAKE_WORD`, `VOICE_NAME`,
-     `MODEL_CHAT`. Do not add `VAULT_PATH`. Without it the app knows it is on
+     `MODEL_CHAT`, and `GOOGLE_SERVICE_ACCOUNT_KEY` as the contents of
+     `service-account.json` if you want Jarvis to reach your Google Docs
+     from the phone. Do not add `VAULT_PATH`. Without it the app knows it is on
      Vercel and reads the copy instead of a folder.
 3. **Storage → Create Database → Blob**, name it `school-os`, connect it to
    the project. Vercel adds `BLOB_READ_WRITE_TOKEN` to the project by itself.
