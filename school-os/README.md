@@ -136,6 +136,40 @@ with that address and it is reachable. On Vercel, set
 `GOOGLE_SERVICE_ACCOUNT_KEY` to the whole contents of `service-account.json`
 (open the file, copy everything, paste it as the value).
 
+## Jarvis on your computer (the companion)
+
+A small floating window that sits over every app on the Mac, like Siri. Press
+Option+Space while you are in Kami, a browser, anything, and ask; what the
+assistant pulls up lands in a Desk inside that window, so your notes sit next
+to whatever you are working on.
+
+```
+npm run companion
+```
+
+The first run downloads Electron (a couple of minutes), then the window
+appears and a small ring shows in the menu bar. Option+Space shows and hides
+it; Esc hides it; drag the top edge to move it. It uses the dashboard on this
+computer, so keep `npm run dashboard` running, or point it at the Vercel copy
+with `DASHBOARD_URL=https://your-project.vercel.app` in `.env` (it logs in
+with `DASHBOARD_PASSWORD`).
+
+Talking: tap the mic (or press Cmd+Space inside the window), say the thing,
+and it stops on its own after a pause. That needs `ELEVENLABS_API_KEY`, which
+you already have for the voice; a few seconds of speech costs a fraction of a
+cent. Without it, type, or press the Mac's dictation key with the box focused.
+Replies are spoken with the same voice as the dashboard.
+
+To have it start when you log in:
+
+```
+npm run companion:login
+```
+
+`npm run companion:unlogin` takes that away. If Option+Space is taken by
+another app (Raycast, Alfred), set `COMPANION_SHORTCUT=Control+Alt+J` or
+similar in `.env`.
+
 ## The Desk
 
 Ask for something to be put on screen ("show me my slope notes", "pull up
@@ -213,6 +247,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run plan:dry` | Show the study sessions it would book |
 | `npm run plan` | Book study sessions into the Study calendar |
 | `npm run brief` | Write today's morning brief |
+| `npm run companion` | Jarvis as a floating window over every app (Option+Space) |
+| `npm run companion:login` | Start the companion when you log in to the Mac |
 | `npm run brief:ping` | Send today's brief to your phone again, to test delivery |
 | `npm run publish` | Upload a copy of the vault to Vercel, apply what the phone wrote |
 | `npm run publish:dry` | Say what `publish` would do |
@@ -244,6 +280,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, Google Docs, the Desk, make material, run jobs |
 | `dashboard/lib/gdrive.ts` | Live Google Docs search and read through the service account |
 | `dashboard/components/Desk.tsx` | The panel of tabs the assistant fills |
+| `companion/` | The floating Jarvis window for the Mac (Electron): `main.js` the window and shortcut, `lib.js` the calls, `renderer/` the screen |
 | `dashboard/app/api/chat/route.ts` | The assistant's tool loop |
 | `dashboard/` | The Next.js dashboard app (reads the vault via `dashboard/lib/vault.ts`) |
 | `dashboard/lib/store.ts` | Where the dashboard's files come from: the folder on the Mac, or the copy on Vercel |

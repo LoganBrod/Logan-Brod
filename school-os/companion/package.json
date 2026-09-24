@@ -1,0 +1,13 @@
+{
+  "name": "school-os-companion",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jarvis as a floating window over any app on the Mac. Talks to the dashboard's assistant.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
