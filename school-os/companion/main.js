@@ -4,15 +4,51 @@
 // Desk inside this window.
 const { app, BrowserWindow, globalShortcut, ipcMain, shell, Tray, Menu, screen, systemPreferences, nativeImage } = require("electron");
 const path = require("node:path");
+const fs = require("node:fs");
+const { spawn } = require("node:child_process");
 const lib = require("./lib");
 
 // .env lives in school-os: next to this folder when run from there, or wherever
 // school-os-path.json points when this is Jarvis.app in Applications.
 function schoolOsDir() {
-  try { const p = require("./school-os-path.json").dir; if (require("node:fs").existsSync(path.join(p, ".env"))) return p; } catch {}
+  try { const p = require("./school-os-path.json").dir; if (fs.existsSync(path.join(p, ".env"))) return p; } catch {}
   return path.join(__dirname, "..");
 }
-const cfg = lib.loadConfig(path.join(schoolOsDir(), ".env"));
+const SCHOOL_OS = schoolOsDir();
+const cfg = lib.loadConfig(path.join(SCHOOL_OS, ".env"));
+
+// ---- the dashboard on this computer, started here when it is not already running ----
+let dashboard = null, starting = null;
+function nodeBinary() {
+  try { const n = require("./school-os-path.json").node; if (n && fs.existsSync(n)) return n; } catch {}
+  for (const c of ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"]) if (fs.existsSync(c)) return c;
+  return "node";
+}
+function status(text) { if (win && !win.isDestroyed()) win.webContents.send("status", text); }
+async function ensureDashboard() {
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(cfg.base)) return;
+  if (await lib.reachable(cfg.base)) return;
+  if (starting) return starting;
+  starting = (async () => {
+    const next = path.join(SCHOOL_OS, "node_modules", "next", "dist", "bin", "next");
+    if (!fs.existsSync(next)) throw new Error(`the dashboard is not installed in ${SCHOOL_OS} (run npm install there)`);
+    const built = fs.existsSync(path.join(SCHOOL_OS, "dashboard", ".next", "BUILD_ID"));
+    const port = new URL(cfg.base).port || "3210";
+    status(built ? "starting the dashboard…" : "starting the dashboard (first time is slow)…");
+    dashboard = spawn(nodeBinary(), [next, built ? "start" : "dev", "dashboard", "-p", port], {
+      cwd: SCHOOL_OS, stdio: "ignore", detached: false,
+      env: { ...process.env, PATH: `${path.dirname(nodeBinary())}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ""}` },
+    });
+    dashboard.on("exit", () => { dashboard = null; });
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (await lib.reachable(cfg.base)) { status(""); return; }
+      if (!dashboard) break;
+    }
+    throw new Error("the dashboard did not start; run npm run dashboard in school-os to see why");
+  })().finally(() => { starting = null; });
+  return starting;
+}
 const WIDTH = 440, HEIGHT = 680;
 let win = null, tray = null;
 
@@ -55,13 +91,15 @@ app.whenReady().then(async () => {
   ]));
   tray.on("click", toggle);
   win.show(); win.focus();
+  ensureDashboard().catch((e) => status(String(e.message || e)));
 });
 
-app.on("will-quit", () => globalShortcut.unregisterAll());
+app.on("will-quit", () => { globalShortcut.unregisterAll(); if (dashboard) dashboard.kill(); });
 app.on("window-all-closed", (e) => e.preventDefault());
 
 ipcMain.handle("config", () => ({ name: cfg.name, voice: cfg.voice, base: cfg.base, shortcut: cfg.shortcut, mic: !!cfg.elevenKey }));
 ipcMain.handle("ask", async (_e, messages) => {
+  await ensureDashboard();
   const r = await lib.ask(cfg, messages);
   if (r.navigate) shell.openExternal(`${cfg.base}${r.navigate}`);
   return r;

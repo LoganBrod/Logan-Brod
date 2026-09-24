@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld("jarvis", {
   open: (url) => ipcRenderer.invoke("open", url),
   hide: () => ipcRenderer.invoke("hide"),
   onFocus: (fn) => ipcRenderer.on("focus-input", fn),
+  onStatus: (fn) => ipcRenderer.on("status", (_e, text) => fn(text)),
 });

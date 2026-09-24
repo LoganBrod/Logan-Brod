@@ -84,4 +84,12 @@ async function speak(cfg, text) {
   } catch { return null; }
 }
 
-module.exports = { loadConfig, ask, transcribe, speak, login };
+/** Is the dashboard answering? Two seconds, then no. */
+async function reachable(base) {
+  try {
+    const res = await fetch(`${base}/login`, { redirect: "manual", signal: AbortSignal.timeout(2000) });
+    return res.status > 0 && res.status < 500;
+  } catch { return false; }
+}
+
+module.exports = { loadConfig, ask, transcribe, speak, login, reachable };
