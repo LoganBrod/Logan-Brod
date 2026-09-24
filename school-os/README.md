@@ -150,9 +150,10 @@ npm run companion
 The first run downloads Electron (a couple of minutes), then the window
 appears and a small ring shows in the menu bar. Option+Space shows and hides
 it; Esc hides it; drag the top edge to move it. It uses the dashboard on this
-computer, so keep `npm run dashboard` running, or point it at the Vercel copy
-with `DASHBOARD_URL=https://your-project.vercel.app` in `.env` (it logs in
-with `DASHBOARD_PASSWORD`).
+computer and starts it by itself when it is not already running (run
+`npm run dashboard:build` once to make that start fast). Or point it at the
+Vercel copy with `DASHBOARD_URL=https://your-project.vercel.app` in `.env`;
+it logs in with `DASHBOARD_PASSWORD`.
 
 Talking: tap the mic (or press Cmd+Space inside the window), say the thing,
 and it stops on its own after a pause. That needs `ELEVENLABS_API_KEY`, which

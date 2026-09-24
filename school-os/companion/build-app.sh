@@ -8,7 +8,7 @@ ARCH="$(uname -m)"; [ "$ARCH" = x86_64 ] && ARCH=x64
 echo "Installing build tools..."
 npm install --no-fund --no-audit >/dev/null
 # The app lives in Applications, so it needs to know where school-os (and .env) is.
-printf '{ "dir": "%s" }\n' "$SCHOOL_OS" > school-os-path.json
+printf '{ "dir": "%s", "node": "%s" }\n' "$SCHOOL_OS" "$(command -v node)" > school-os-path.json
 echo "Building Jarvis.app for $ARCH (a minute or two)..."
 npx @electron/packager . Jarvis --platform=darwin --arch="$ARCH" --icon=assets/icon.icns --out=dist --overwrite \
   --app-bundle-id=com.school-os.jarvis --app-category-type=public.app-category.education \

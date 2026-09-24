@@ -201,6 +201,7 @@ document.addEventListener("keydown", (e) => {
 });
 $("hide").onclick = () => window.jarvis.hide();
 window.jarvis.onFocus(() => { input.focus(); input.select(); });
+window.jarvis.onStatus((text) => { if (!busy) setStatus(text); });
 
 (async () => {
   cfg = await window.jarvis.config();
