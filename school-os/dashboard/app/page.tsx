@@ -2,9 +2,10 @@ import Link from "next/link";
 import { courses, tests, studyPlan, notifications, needsReview, notesOf, daysUntil, materials, idToSlug, brief } from "@/lib/vault";
 import { Markdown } from "@/components/Markdown";
 import { Greeting } from "@/components/Greeting";
+import { setupProblem, publishedAt } from "@/lib/store";
 
 export default async function Home() {
-  const [cs, ts, plan, notes, review, mats, b] = await Promise.all([courses(), tests(), studyPlan(), notifications(), needsReview(), materials(), brief()]);
+  const [cs, ts, plan, notes, review, mats, b, problem, published] = await Promise.all([courses(), tests(), studyPlan(), notifications(), needsReview(), materials(), brief(), setupProblem(), publishedAt()]);
   const briefToday = b && b.date === new Date().toISOString().slice(0, 10) ? b : null;
   const todayStr = new Date().toDateString();
   const todaySessions = plan.filter((s) => new Date(s.start).toDateString() === todayStr);
@@ -15,6 +16,17 @@ export default async function Home() {
   return (
     <div className="grid gap-8">
       <Greeting name={process.env.USER_NAME || ""} hasBrief={Boolean(briefToday)} subtitle={ts.length ? `${ts.length} assessment${ts.length === 1 ? "" : "s"} coming up. ${review ? `${review} note${review === 1 ? "" : "s"} need${review === 1 ? "s" : ""} you.` : "Inbox is clean."}` : "Nothing posted yet."} />
+
+      {problem && (
+        <section className="card p-5 md:p-6 max-w-3xl rise" style={{ ["--i" as string]: 1, borderColor: "var(--line-strong)" }}>
+          <div className="mono text-[11px] mb-2" style={{ color: "var(--faint)" }}>Setup</div>
+          <div className="text-[15px]">{problem}</div>
+          {!process.env.USER_NAME && process.env.VERCEL ? <div className="text-sm mt-2" style={{ color: "var(--muted)" }}>USER_NAME is not set either, so Environment Variables may not have reached this deploy. Adding them takes effect on the next deploy: Deployments → ⋯ → Redeploy.</div> : null}
+        </section>
+      )}
+      {!problem && published && (
+        <div className="mono text-[11px] -mt-4" style={{ color: "var(--faint)" }}>Copy from the Mac · {new Date(published).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}</div>
+      )}
 
       {briefToday && (
         <section className="card p-5 md:p-7 max-w-3xl rise" style={{ ["--i" as string]: 2 }}>
