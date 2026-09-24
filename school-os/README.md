@@ -160,6 +160,18 @@ you already have for the voice; a few seconds of speech costs a fraction of a
 cent. Without it, type, or press the Mac's dictation key with the box focused.
 Replies are spoken with the same voice as the dashboard.
 
+To make it a real Mac app, with an icon in Launchpad and Spotlight:
+
+```
+npm run companion:app
+```
+
+That builds `Jarvis.app` and copies it into Applications. Open it like any
+app; the menu-bar ring and Option+Space work the same. It remembers where
+`school-os` is, so it still reads your `.env`. Rebuild after `npm run update`
+to pick up changes. macOS may say the app is from an unidentified developer
+the first time: right-click it → Open, once.
+
 To have it start when you log in:
 
 ```
@@ -248,6 +260,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run plan` | Book study sessions into the Study calendar |
 | `npm run brief` | Write today's morning brief |
 | `npm run companion` | Jarvis as a floating window over every app (Option+Space) |
+| `npm run companion:app` | Build Jarvis.app and put it in Applications |
 | `npm run companion:login` | Start the companion when you log in to the Mac |
 | `npm run brief:ping` | Send today's brief to your phone again, to test delivery |
 | `npm run publish` | Upload a copy of the vault to Vercel, apply what the phone wrote |

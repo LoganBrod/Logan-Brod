@@ -8,15 +8,20 @@ LABEL="com.school-os.companion"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 case "${1:-install}" in
   install)
-    [ -d node_modules/electron ] || { echo "Run npm run companion once first, so Electron is installed."; exit 1; }
+    [ -d node_modules/electron ] || [ -d /Applications/Jarvis.app ] || [ -d "$HOME/Applications/Jarvis.app" ] || { echo "Run npm run companion (or companion:app) once first."; exit 1; }
     NODE="$(command -v node)"; NPX="$(command -v npx)"
     mkdir -p "$HOME/Library/LaunchAgents" ../logs
+    # Jarvis.app built? Then the login item opens that instead of the folder.
+    ARGS="<string>$NPX</string><string>electron</string><string>.</string>"
+    for APP in /Applications/Jarvis.app "$HOME/Applications/Jarvis.app"; do
+      [ -d "$APP" ] && { ARGS="<string>$APP/Contents/MacOS/Jarvis</string>"; break; }
+    done
     cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>$LABEL</string>
-  <key>ProgramArguments</key><array><string>$NPX</string><string>electron</string><string>.</string></array>
+  <key>ProgramArguments</key><array>$ARGS</array>
   <key>WorkingDirectory</key><string>$(pwd)</string>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>$(dirname "$NODE"):/usr/local/bin:/usr/bin:/bin</string></dict>
   <key>RunAtLoad</key><true/>
