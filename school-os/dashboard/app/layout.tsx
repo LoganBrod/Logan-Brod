@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { Jarvis } from "@/components/Jarvis";
+import { Desk } from "@/components/Desk";
 import { brief, tests, daysUntil } from "@/lib/vault";
 import { cookies } from "next/headers";
 import { COOKIE, isAuthed } from "@/lib/auth";
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Nav />
         <main className="px-4 pt-6 pb-24 md:pb-10 md:pl-64 md:pr-8 max-w-[1400px]">{children}</main>
         <Jarvis wakeWord={process.env.WAKE_WORD || "jarvis"} name={name} voice={process.env.VOICE_NAME} greeting={greeting} />
+        <Desk />
       </body>
     </html>
   );

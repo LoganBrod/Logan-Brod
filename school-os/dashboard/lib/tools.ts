@@ -7,7 +7,11 @@ import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
 import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, remember, MODE } from "./vault";
 import { store } from "./store";
+import { driveConfigured, searchDocs, readDoc, docIdFromUrl } from "./gdrive";
 import matter from "gray-matter";
+
+/** Something to put on the student's Desk: a tab the app keeps until they close it. */
+export type ShowItem = { id: string; kind: "note" | "doc" | "deck" | "text"; title: string; subtitle?: string; body: string; url?: string };
 
 const run = promisify(execFile);
 const BRAIN_DIR = path.join(process.cwd(), "..");
@@ -90,6 +94,34 @@ const allTools: Anthropic.Tool[] = [
         assessment_id: { type: "string", description: "For where=study" },
       },
       required: ["where"], additionalProperties: false,
+    },
+  },
+  {
+    name: "show",
+    description: "Put one thing on the student's Desk, a panel of tabs beside the page: a note (path from search_notes/list_notes), a study file (path from study_material; flashcard decks become a flippable deck), a Google Doc (id from google_docs), or text you write yourself (a practice set, a summary, worked steps) with a title. The student can keep several tabs open. Prefer this over open_page for a single document; use open_page for whole screens like the week or a course.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["note", "material", "doc", "text"] },
+        path: { type: "string", description: "Vault path, for note and material" },
+        id: { type: "string", description: "Google Doc id or link, for doc" },
+        title: { type: "string", description: "Tab title, required for text" },
+        body: { type: "string", description: "Markdown, for text" },
+      },
+      required: ["kind"], additionalProperties: false,
+    },
+  },
+  {
+    name: "google_docs",
+    description: "The student's Google Docs, live. 'recent' lists the newest; 'search' matches words in titles and text; 'read' returns one doc as markdown. Docs already filed as notes are in search_notes too, so search notes first and use this for docs that are not filed yet or when the latest version matters. Only works when Google Docs are connected.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["recent", "search", "read"] },
+        query: { type: "string", description: "For search" },
+        id: { type: "string", description: "Doc id or link, for read" },
+      },
+      required: ["action"], additionalProperties: false,
     },
   },
   {
@@ -185,6 +217,22 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
         where === "week" ? "/week" : where === "inbox" ? "/notifications" : where === "chat" ? "/chat" : "/";
       return { result: JSON.stringify({ navigate: url }), summary: `opened ${where}` };
     }
+    case "show": {
+      const item = await toShow(str("kind") ?? "", str("path"), str("id"), str("title"), str("body"));
+      return { result: JSON.stringify({ shown: item.title, kind: item.kind, chars: item.body.length, preview: item.body.slice(0, 1200), show: item }), summary: `showed ${item.title}` };
+    }
+    case "google_docs": {
+      if (!driveConfigured()) return { result: "Google Docs are not connected. README → Google Docs: a service account key in GOOGLE_SERVICE_ACCOUNT_KEY and the docs shared with its email.", summary: "Google Docs not connected" };
+      const action = str("action");
+      if (action === "read") {
+        const id = docIdFromUrl(str("id") ?? "");
+        if (!id) return { result: "give the doc id or link from a search", summary: "no doc id" };
+        const d = await readDoc(id);
+        return { result: `<doc title="${d.name}" id="${d.id}" modified="${d.modified}">\n${d.body}\n</doc>`, summary: `read Google Doc ${d.name}` };
+      }
+      const docs = await searchDocs(action === "search" ? str("query") ?? "" : "", 12);
+      return { result: docs.length ? JSON.stringify(docs) : "no matching Google Docs (are they shared with the service account?)", summary: action === "search" ? `searched Google Docs for "${str("query")}" · ${docs.length}` : `listed ${docs.length} recent Google Docs` };
+    }
     case "remember": {
       await remember(str("fact") ?? "");
       return { result: "remembered", summary: "remembered that" };
@@ -199,6 +247,26 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
     default:
       return { result: "unknown tool", summary: "unknown tool" };
   }
+}
+
+async function toShow(kind: string, p?: string, id?: string, title?: string, body?: string): Promise<ShowItem> {
+  if (kind === "text") {
+    if (!title || !body) throw new Error("text needs a title and a body");
+    return { id: `text:${Date.now()}`, kind: "text", title: title.slice(0, 80), body };
+  }
+  if (kind === "doc") {
+    const docId = docIdFromUrl(id ?? "");
+    if (!docId) throw new Error("doc needs an id or link from google_docs");
+    const d = await readDoc(docId);
+    return { id: `doc:${d.id}`, kind: "doc", title: d.name, subtitle: `Google Doc · edited ${d.modified}`, body: d.body, url: d.url };
+  }
+  const n = await readNote(p ?? "");
+  if (!n) throw new Error(`no note at ${p}`);
+  const name = path.basename(n.rel, ".md");
+  const gdoc = typeof n.data.gdoc_id === "string" ? `https://docs.google.com/document/d/${n.data.gdoc_id}/edit` : undefined;
+  const isDeck = /Flashcards\//.test(n.rel) || n.body.includes("#flashcards");
+  const parts = [n.data.course, n.data.unit, n.data.type].filter((x) => typeof x === "string" && x).join(" · ");
+  return { id: `note:${n.rel}`, kind: isDeck ? "deck" : "note", title: name, subtitle: parts || undefined, body: n.body, url: gdoc };
 }
 
 export { tests, requestMaterial };

@@ -1,5 +1,5 @@
 "use client";
-import { readJson } from "@/lib/client";
+import { readJson, showOnDesk, type DeskItem } from "@/lib/client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Microphone, PaperPlaneRight, SpeakerHigh, SpeakerSlash, Trash } from "@phosphor-icons/react";
@@ -43,9 +43,10 @@ export function Chat() {
     setMsgs(next); setInput(""); setBusy(true);
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }) });
-      const data = await readJson<{ text?: string; error?: string; navigate?: string; steps?: string[]; usage?: { input: number; output: number } }>(res);
+      const data = await readJson<{ text?: string; error?: string; navigate?: string; show?: DeskItem[]; steps?: string[]; usage?: { input: number; output: number } }>(res);
       const reply = data.error ? `Error: ${data.error}` : (data.text ?? "");
       setMsgs([...next, { role: "assistant", content: reply, steps: data.steps }]);
+      if (data.show?.length) showOnDesk(data.show);
       if (data.navigate) router.push(data.navigate);
       if (speakOn) void speak(reply.split(/\n-{3,}\n/)[0]);
     } catch (e) {

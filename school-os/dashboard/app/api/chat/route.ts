@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { tools, runTool } from "@/lib/tools";
+import { tools, runTool, type ShowItem } from "@/lib/tools";
 import { courses, tests, brief, persona, memory } from "@/lib/vault";
 import { store } from "@/lib/store";
 export const maxDuration = 300;
@@ -37,15 +37,17 @@ Course names are loose in speech ("calc" means the pre-calculus course). Resolve
 
 For any question about a specific test or quiz ("what do I need to know", "what's on it", "help me study for Thursday"), call test_scope first and answer from the teacher's description and the in-scope notes only. Structure the answer by the parts the teacher listed. Do not bring in other units or general knowledge unless the student asks, and if you do, say so. If the description is empty and the notes are thin, say exactly that rather than guessing.
 
-When the student says "pull up", "show me" or "open", use open_page and then answer in one short sentence; the screen does the rest.
+When the student says "pull up", "show me" or "open", put it on the screen and then answer in one short sentence; the screen does the rest. Use show for one thing (a note, a deck, a Google Doc, or something you wrote like a practice set or a summary; the Desk keeps it as a tab beside whatever page is open) and open_page for whole screens (the week, a course, a test's study page). When you write problems or a summary that is worth keeping, show it as text with a clear title instead of only putting it in the reply.
+
+Google Docs: google_docs lists, searches and reads the student's Docs live when connected. Docs the brain has already filed are in search_notes; use google_docs when a doc is not filed yet, when the latest version matters, or when the student names a Doc by title.
 
 Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.${voice ? `
 
 VOICE MODE. The student is talking to you; the reply is spoken and only the first two sentences are heard. Speed matters.
 - Reply in ONE or TWO short sentences, at most 30 words, plain speech, no markdown, no lists.
-- Act before you speak: if there is a screen for it, call open_page, then say what you opened plus the single most useful thing.
+- Act before you speak: if there is a screen for it, call show or open_page, then say what you opened plus the single most useful thing.
 - For a test: call test_scope with depth "summary" (never "full" in voice), open its study page, say what it covers and where to start.
-- Never read lists, problems or note contents aloud. For problems, open the note and say how many there are.
+- Never read lists, problems or note contents aloud. For problems, show the note (or write them out with show as text) and say how many there are.
 - Use at most two tool calls unless the student asked for something that needs more. Do not call read_course_notes in voice.
 - Anything longer that is genuinely useful goes AFTER a line containing only --- (shown on screen, not spoken), at most five short lines.
 - Small talk is fine: answer like a companion, one sentence, and offer one useful thing.` : ""}`,
@@ -61,6 +63,7 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
   const history: Anthropic.MessageParam[] = messages.slice(-30).map((m) => ({ role: m.role, content: m.content }));
   const steps: string[] = [];
   let navigate: string | null = null;
+  const show: ShowItem[] = [];
   let usage = { input: 0, output: 0 };
 
   const maxTurns = voice ? 6 : 12;
@@ -74,7 +77,7 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
     if (res.stop_reason !== "tool_use") {
       const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
       await log(messages.at(-1)?.content ?? "", text, steps, usage);
-      return NextResponse.json({ text, steps, usage, navigate });
+      return NextResponse.json({ text, steps, usage, navigate, show });
     }
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const block of res.content) {
@@ -83,6 +86,7 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
         const { result, summary } = await runTool(block.name, block.input as Record<string, unknown>);
         steps.push(summary);
         if (block.name === "open_page") navigate = JSON.parse(result).navigate;
+        if (block.name === "show") show.push(JSON.parse(result).show);
         results.push({ type: "tool_result", tool_use_id: block.id, content: result });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -92,7 +96,7 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
     }
     history.push({ role: "user", content: results });
   }
-  return NextResponse.json({ text: "I got stuck in a loop of tool calls. Try asking in a smaller step.", steps, usage, navigate });
+  return NextResponse.json({ text: "I got stuck in a loop of tool calls. Try asking in a smaller step.", steps, usage, navigate, show });
 }
 
 async function log(q: string, a: string, steps: string[], usage: { input: number; output: number }) {
