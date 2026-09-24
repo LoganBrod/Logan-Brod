@@ -16,8 +16,11 @@ loadEnv({ path: path.join(process.cwd(), "..", ".env") });
 loadEnv({ path: path.join(process.cwd(), ".env") });
 
 export const VAULT = path.resolve(process.env.VAULT_PATH ?? "");
+// A connected store shows up as BLOB_READ_WRITE_TOKEN, or as BLOB_STORE_ID plus the identity Vercel
+// gives each deployment (the SDK reads both by itself).
+const hasStore = !!process.env.BLOB_READ_WRITE_TOKEN || !!process.env.BLOB_STORE_ID;
 export const MODE: "local" | "cloud" =
-  process.env.VAULT_MODE === "cloud" || (!process.env.VAULT_PATH && (!!process.env.BLOB_READ_WRITE_TOKEN || !!process.env.VAULT_SNAPSHOT_FILE)) ? "cloud" : "local";
+  process.env.VAULT_MODE === "cloud" || (!process.env.VAULT_PATH && (hasStore || !!process.env.VAULT_SNAPSHOT_FILE)) ? "cloud" : "local";
 
 export type Entry = { name: string; dir: boolean };
 export interface Store {
@@ -149,6 +152,8 @@ export async function setupProblem(): Promise<string | null> {
     if (!Object.keys(snap.files).length) return "No copy of the vault has been published yet. On the Mac, put BLOB_READ_WRITE_TOKEN in school-os/.env and run: npm run publish";
     return null;
   } catch (err) {
-    return `Could not read the published copy: ${err instanceof Error ? err.message : String(err)}`;
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/token|oidc|credential/i.test(msg)) return `The store is connected but this deployment cannot sign in to it (${msg}). Fix: in the Vercel project, Settings → Security, turn on "Secure Backend Access with OIDC Federation", then Redeploy. Or add BLOB_READ_WRITE_TOKEN from the store's settings as an Environment Variable and Redeploy.`;
+    return `Could not read the published copy: ${msg}`;
   }
 }
