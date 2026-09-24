@@ -3,16 +3,18 @@
 // New tests get a Discord ping if DISCORD_WEBHOOK_URL is set.
 //
 //   npm run schoology:whoami   check the credentials, list your classes
+//   npm run schoology:grades   can this key see grades? prints what it sees, changes nothing
 //   npm run schoology          sync
 //   npm run schoology:dry      show what would change, write nothing
 import fs from "node:fs/promises";
 import { DIRS, isIgnoredCourse } from "./config.js";
 import { vaultPath, exists, appendLog, notify } from "./vault.js";
-import { me, mySections, sectionAssignments, sectionEvents } from "./schoology.js";
+import { me, mySections, sectionAssignments, sectionEvents, myGrades, type GradeSection } from "./schoology.js";
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const whoami = args.has("--whoami");
+const grades = args.has("--grades");
 
 type Kind = "test" | "quiz" | "project" | "assignment" | "event";
 
@@ -64,6 +66,7 @@ async function main() {
   console.log(`Signed in as ${who.name_display}. ${sections.length} classes:`);
   for (const s of sections) console.log(`  ${s.course_title} · ${s.section_title} (id ${s.id})`);
   if (whoami) return;
+  if (grades) return showGrades(who.uid, sections.map((s) => [String(s.id), s.course_title] as const));
 
   const today = new Date().toISOString().slice(0, 10);
   const items: Item[] = [];
@@ -157,3 +160,28 @@ main().catch((err) => {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 });
+
+/** Prints what the grades endpoint returns for this key. Reads only. */
+async function showGrades(uid: string, sections: readonly (readonly [string, string])[]) {
+  let data: GradeSection[];
+  try {
+    data = await myGrades(uid);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/ 403 /.test(msg)) { console.log("\nNo: Schoology answered 403 on users/{you}/grades. This school's API does not expose grades to student keys."); return; }
+    if (/ 404 /.test(msg)) { console.log("\nNo: Schoology answered 404 on users/{you}/grades. The grades endpoint is not available for this account."); return; }
+    throw err;
+  }
+  if (!data.length) { console.log("\nThe grades call worked but returned nothing. Either no grades are posted yet, or grades are hidden for students at this school."); return; }
+  const name = new Map(sections);
+  console.log(`\nYes: grades are visible. ${data.length} section${data.length === 1 ? "" : "s"} with grade data:`);
+  for (const sec of data) {
+    const items = sec.period.flatMap((p) => p.assignment ?? []);
+    const graded = items.filter((i) => i.grade !== null && i.grade !== undefined && i.grade !== "");
+    const finals = (sec.final_grade ?? []).map((f) => f.grade).filter((g) => g !== undefined && g !== null && g !== "");
+    console.log(`  ${name.get(String(sec.section_id)) ?? `section ${sec.section_id}`}: ${graded.length} graded item${graded.length === 1 ? "" : "s"}${finals.length ? `, overall ${finals.join(" / ")}` : ""}`);
+    for (const i of graded.slice(-3)) console.log(`      assignment ${i.assignment_id}: ${i.grade}${i.max_points ? ` / ${i.max_points}` : ""}`);
+  }
+  console.log("\nNothing was written. Say the word and the brain can start using these (weak topics, \"what do I need on the final\").");
+}
+

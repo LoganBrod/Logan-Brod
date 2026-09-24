@@ -33,7 +33,8 @@
     "companion": "cd companion && npm install --no-fund --no-audit && npx electron .",
     "companion:login": "bash companion/companion.sh install",
     "companion:unlogin": "bash companion/companion.sh remove",
-    "companion:app": "bash companion/build-app.sh"
+    "companion:app": "bash companion/build-app.sh",
+    "schoology:grades": "tsx src/sync-schoology.ts --grades"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
@@ -64,4 +65,4 @@
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
-}
+}\n

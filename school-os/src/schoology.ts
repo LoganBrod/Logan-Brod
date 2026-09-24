@@ -139,3 +139,15 @@ export async function downloadAttachment(downloadPath: string): Promise<Buffer> 
   if (!res.ok) throw new Error(`download ${res.status} for ${downloadPath}`);
   return Buffer.from(await res.arrayBuffer());
 }
+
+// ---- grades: what the student can see of their own marks ----
+export type GradeItem = { assignment_id: number | string; grade: string | number | null; max_points?: number | string; exception?: number; comment?: string; timestamp?: number };
+export type GradePeriod = { period_id: number | string; period_title?: string; assignment: GradeItem[]; final_grade?: { grade?: number | string; weight?: number }[] };
+export type GradeSection = { section_id: number | string; period: GradePeriod[]; final_grade?: { grade?: number | string; period_id?: number | string }[] };
+
+/** Every grade Schoology will show this user. A student's own key normally sees their own; 403 means it is off for this school. */
+export async function myGrades(uid: string, sectionId?: string): Promise<GradeSection[]> {
+  const data = await sget<{ section?: GradeSection[] }>(`users/${uid}/grades${sectionId ? `?section_id=${sectionId}` : ""}`);
+  return data.section ?? [];
+}
+
