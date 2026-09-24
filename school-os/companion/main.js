@@ -17,6 +17,17 @@ function schoolOsDir() {
 const SCHOOL_OS = schoolOsDir();
 const cfg = lib.loadConfig(path.join(SCHOOL_OS, ".env"));
 
+// One copy at a time. Opening the app again, or Option+Space, brings the window back.
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on("second-instance", () => showWindow());
+app.on("activate", () => showWindow());
+
+// Anything that goes wrong lands in school-os/logs/companion.log.
+const LOG = path.join(SCHOOL_OS, "logs", "companion.log");
+function log(msg) { try { fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.appendFileSync(LOG, `${new Date().toISOString()} ${msg}\n`); } catch {} }
+process.on("uncaughtException", (e) => log(`crash: ${e && e.stack || e}`));
+process.on("unhandledRejection", (e) => log(`rejected: ${e && e.stack || e}`));
+
 // ---- the dashboard on this computer, started here when it is not already running ----
 let dashboard = null, starting = null;
 function nodeBinary() {
@@ -66,13 +77,18 @@ function createWindow() {
   win.on("close", (e) => { if (!app.quitting) { e.preventDefault(); win.hide(); } });
 }
 
+function showWindow() {
+  if (!win) return;
+  win.show(); win.focus(); win.webContents.send("focus-input");
+}
 function toggle() {
   if (!win) return;
   if (win.isVisible() && win.isFocused()) { win.hide(); return; }
-  win.show(); win.focus(); win.webContents.send("focus-input");
+  showWindow();
 }
 
 app.whenReady().then(async () => {
+  log(`start: school-os at ${SCHOOL_OS}, dashboard ${cfg.base}`);
   if (process.platform === "darwin") { app.dock.hide(); await systemPreferences.askForMediaAccess("microphone").catch(() => {}); }
   createWindow();
   if (!globalShortcut.register(cfg.shortcut, toggle)) {
@@ -84,14 +100,14 @@ app.whenReady().then(async () => {
   tray = new Tray(icon);
   tray.setToolTip("Jarvis");
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: `Show Jarvis (${cfg.shortcut})`, click: () => { win.show(); win.focus(); win.webContents.send("focus-input"); } },
+    { label: `Show Jarvis (${cfg.shortcut})`, click: showWindow },
     { label: "Open the dashboard", click: () => shell.openExternal(cfg.base) },
     { type: "separator" },
     { label: "Quit", click: () => { app.quitting = true; app.quit(); } },
   ]));
   tray.on("click", toggle);
   win.show(); win.focus();
-  ensureDashboard().catch((e) => status(String(e.message || e)));
+  ensureDashboard().catch((e) => { log(`dashboard: ${e.message || e}`); status(String(e.message || e)); });
 });
 
 app.on("will-quit", () => { globalShortcut.unregisterAll(); if (dashboard) dashboard.kill(); });
