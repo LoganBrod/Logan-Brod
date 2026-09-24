@@ -22,6 +22,12 @@ main() {
     [ -e "$entry" ] || continue
     name="$(basename "$entry")"
     case "$name" in .env|node_modules|service-account.json) continue ;; esac
+    if [ "$name" = companion ] && [ -d ./companion/node_modules ]; then
+      # Electron is a big download; keep the installed copy.
+      mv ./companion/node_modules "$TMP/companion_modules"
+      rm -rf ./companion && cp -R "$entry" ./companion && mv "$TMP/companion_modules" ./companion/node_modules
+      continue
+    fi
     rm -rf "./$name"
     cp -R "$entry" "./$name"
   done

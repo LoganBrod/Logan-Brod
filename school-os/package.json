@@ -29,7 +29,10 @@
     "brief": "tsx src/brief.ts",
     "publish": "tsx src/publish.ts",
     "publish:dry": "tsx src/publish.ts --dry-run",
-    "brief:ping": "tsx src/brief.ts --ping"
+    "brief:ping": "tsx src/brief.ts --ping",
+    "companion": "cd companion && npm install --no-fund --no-audit && npx electron .",
+    "companion:login": "bash companion/companion.sh install",
+    "companion:unlogin": "bash companion/companion.sh remove"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
