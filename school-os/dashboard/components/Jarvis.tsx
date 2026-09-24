@@ -1,4 +1,5 @@
 "use client";
+import { readJson } from "@/lib/client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Waveform } from "@phosphor-icons/react";
@@ -149,8 +150,8 @@ export function Jarvis({ wakeWord, name, voice, greeting }: { wakeWord: string; 
     try {
       history.current = [...history.current.slice(-8), { role: "user", content: q }];
       const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history.current, voice: true }) });
-      const data = await res.json();
-      const text: string = data.error ? `Something went wrong: ${data.error}` : data.text;
+      const data = await readJson<{ text?: string; error?: string; navigate?: string; steps?: string[]; usage?: { input: number; output: number } }>(res);
+      const text: string = data.error ? `Something went wrong: ${data.error}` : (data.text ?? "");
       history.current = [...history.current, { role: "assistant", content: text }];
       if (data.navigate) router.push(data.navigate);
       const [first, ...rest] = text.split(/\n-{3,}\n/);
