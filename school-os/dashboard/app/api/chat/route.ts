@@ -37,7 +37,7 @@ Course names are loose in speech ("calc" means the pre-calculus course). Resolve
 
 For any question about a specific test or quiz ("what do I need to know", "what's on it", "help me study for Thursday"), call test_scope first and answer from the teacher's description and the in-scope notes only. Structure the answer by the parts the teacher listed. Do not bring in other units or general knowledge unless the student asks, and if you do, say so. If the description is empty and the notes are thin, say exactly that rather than guessing.
 
-When the student says "pull up", "show me" or "open", put it on the screen and then answer in one short sentence; the screen does the rest. Use show for one thing (a note, a deck, a Google Doc, or something you wrote like a practice set or a summary; the Desk keeps it as a tab beside whatever page is open) and open_page for whole screens (the week, a course, a test's study page). When you write problems or a summary that is worth keeping, show it as text with a clear title instead of only putting it in the reply.
+When the student says "pull up", "show me" or "open", put it on the screen and then answer in one short sentence; the screen does the rest. Use show for one thing (a note, a deck, a Google Doc, or something you wrote like a practice set or a summary; the Desk keeps it as a tab beside whatever page is open) and open_page for whole screens (the week, a course, a test's study page). When you write problems, a study guide or a summary that is worth keeping, show it as text with a clear title instead of only putting it in the reply. Never claim to have produced something you did not put on the Desk or in the reply.
 
 Google Docs: google_docs lists, searches and reads the student's Docs live when connected. Docs the brain has already filed are in search_notes; use google_docs when a doc is not filed yet, when the latest version matters, or when the student names a Doc by title.
 
@@ -49,7 +49,8 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
 - For a test: call test_scope with depth "summary" (never "full" in voice), open its study page, say what it covers and where to start.
 - Never read lists, problems or note contents aloud. For problems, show the note (or write them out with show as text) and say how many there are.
 - Use at most two tool calls unless the student asked for something that needs more. Do not call read_course_notes in voice.
-- Anything longer that is genuinely useful goes AFTER a line containing only --- (shown on screen, not spoken), at most five short lines.
+- A guide, a summary, a problem set, worked steps, anything longer than five lines: put it on the Desk with show (kind "text", a clear title, the complete markdown), THEN say one sentence about it. The spoken reply is cut off after a few sentences, so never write long content into the reply and never say "here's the guide" unless show was called with it.
+- Anything shorter that is genuinely useful goes AFTER a line containing only --- (shown on screen, not spoken), at most five short lines.
 - Small talk is fine: answer like a companion, one sentence, and offer one useful thing.` : ""}`,
       cache_control: { type: "ephemeral" },
     },
@@ -69,10 +70,18 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
   const maxTurns = voice ? 6 : 12;
   for (let turn = 0; turn < maxTurns; turn++) {
     const res = await client.messages.stream({
-      model: MODEL, max_tokens: voice ? 350 : 4000, system, tools, messages: history,
+      model: MODEL, max_tokens: voice ? 2500 : 4000, system, tools, messages: history,
       output_config: { effort: voice ? "low" : "medium" },
     }).finalMessage();
     usage = { input: usage.input + res.usage.input_tokens + (res.usage.cache_read_input_tokens ?? 0), output: usage.output + res.usage.output_tokens };
+    if (res.stop_reason === "max_tokens" && turn < maxTurns - 1) {
+      // Cut off mid-answer. Ask for the long part to go on the Desk instead of the reply.
+      const said = res.content.filter((c) => c.type === "text");
+      if (said.length) history.push({ role: "assistant", content: said });
+      history.push({ role: "user", content: "[system] That reply hit the length cap and was cut off before it finished. Put the full content on the Desk with the show tool (kind \"text\", a clear title, the complete markdown), then reply in one or two sentences." });
+      steps.push("reply was too long, moving it to the Desk");
+      continue;
+    }
     history.push({ role: "assistant", content: res.content });
     if (res.stop_reason !== "tool_use") {
       const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
