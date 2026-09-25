@@ -113,7 +113,7 @@ async function ask(q) {
     const r = await window.jarvis.ask(history);
     history = [...history, { role: "assistant", content: r.text }];
     const [first, ...rest] = r.text.split(/\n-{3,}\n/);
-    reply.textContent = first.trim();
+    reply.innerHTML = inline(first.trim()).replace(/\n/g, "<br>");
     detail.textContent = rest.join("\n").trim() + (r.steps && r.steps.length ? `\n${r.steps.join(" · ")}` : "");
     showItems(r.show);
     setStatus("");
