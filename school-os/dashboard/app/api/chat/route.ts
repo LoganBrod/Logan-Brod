@@ -84,7 +84,8 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
     }
     history.push({ role: "assistant", content: res.content });
     if (res.stop_reason !== "tool_use") {
-      const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
+      let text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
+      if (!text) text = show.length ? `On the Desk: ${show.map((x) => x.title).join(", ")}.` : navigate ? "Opened." : "I lost the thread on that one. Ask again in a smaller step.";
       await log(messages.at(-1)?.content ?? "", text, steps, usage);
       return NextResponse.json({ text, steps, usage, navigate, show });
     }
