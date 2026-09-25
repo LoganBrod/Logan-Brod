@@ -64,7 +64,7 @@ const allTools: Anthropic.Tool[] = [
   },
   {
     name: "test_scope",
-    description: "What a specific upcoming test, quiz or project covers: the teacher's full description from Schoology, and the notes from that course in the stretch leading up to it (since the previous assessment), in full. ALWAYS call this first when the student asks what to know, what to study, or what is on a test. Pass the assessment id from upcoming, or a title fragment.",
+    description: "What one upcoming test, quiz or project covers: the teacher's description plus the notes in its window. Give the id from upcoming, or a title or course name as the student said it ('stats test', 'Thursday's chem quiz'); with nothing given it takes the next one. Call this first for any question about a specific test.",
     input_schema: { type: "object", properties: { id: { type: "string", description: "Assessment id from upcoming, e.g. a:12345" }, title: { type: "string", description: "Part of the title, if the id is unknown" }, depth: { type: "string", enum: ["summary", "full"], description: "summary: description plus each in-scope note's title, topics and first lines (fast). full: every in-scope note in full (slow; for detailed study help in chat)." } }, additionalProperties: false },
   },
   {
@@ -174,10 +174,14 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       };
     }
     case "test_scope": {
-      const as = await assessments();
-      const id = str("id"), title = (str("title") ?? "").toLowerCase();
-      const a = as.find((x) => x.id === id) ?? as.find((x) => title && x.title.toLowerCase().includes(title));
-      if (!a) return { result: "no such upcoming assessment; call upcoming to see them", summary: "assessment not found" };
+      const as = (await assessments()).filter((x) => ["test", "quiz", "project"].includes(x.kind));
+      const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]/g, "");
+      const id = str("id"), want = norm(str("title") ?? "");
+      const a = as.find((x) => x.id === id)
+        ?? (want ? as.find((x) => norm(x.title).includes(want) || want.includes(norm(x.title))) : undefined)
+        ?? (want ? [...as].sort((x, y) => Number(want.includes(y.kind)) - Number(want.includes(x.kind))).find((x) => norm(x.course).includes(want.replace(/test|quiz|project|exam/g, "")) || want.includes(norm(x.course)) || (str("title") ?? "").toLowerCase().split(/\s+/).some((w) => w.length > 2 && !/^(test|quiz|project|exam|the|my|for)$/.test(w) && norm(x.course).startsWith(norm(w)))) : undefined)
+        ?? (!id && !want ? as[0] : undefined);
+      if (!a) return { result: `no upcoming test, quiz or project matches; the upcoming ones are: ${as.slice(0, 8).map((x) => `${x.course} "${x.title}" (${x.kind}, ${x.when}, id ${x.id})`).join("; ") || "none"}`, summary: "assessment not found" };
       const { notes, from, unit } = await notesForAssessment(a);
       const summary = str("depth") !== "full";
       let text = "", n = 0;
