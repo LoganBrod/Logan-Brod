@@ -142,7 +142,7 @@ export async function notify(kind: NotificationKind, title: string, link?: strin
   const p = vaultPath(DIRS.system, "notifications.json");
   const list: unknown[] = (await exists(p)) ? JSON.parse(await fs.readFile(p, "utf8")) : [];
   list.unshift({
-    id: `n_${Date.now().toString(36)}`,
+    id: `n_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     time: new Date().toISOString(),
     kind,
     title,
