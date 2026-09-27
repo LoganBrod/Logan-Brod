@@ -84,6 +84,21 @@ npm run ingest
 
 Files move. Open Obsidian and look under `01 Courses`.
 
+## Free mode (no Claude key)
+
+Leave `ANTHROPIC_API_KEY` empty and nothing is ever billed. What still works:
+tests and assignments from Schoology, the calendar and study sessions, the
+dashboard on Vercel and the phone, and filing by folder: drop a typed PDF,
+Word file, slides or a markdown note straight into `01 Courses/<Course>/`
+(or into a folder named after the course inside `00 Inbox`) and the next
+`npm run ingest` turns it into a note there. Schoology handouts land in their
+course folder on their own. The morning brief becomes a plain list of what is
+due and booked.
+
+What needs a key: sorting the plain inbox, reading handwriting, flashcards,
+tests, reviews, grading, and the assistant. Add the key later and all of it
+switches on with no other change.
+
 ## Running on its own
 
 ```
@@ -288,7 +303,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/generate-study.ts` | Flashcards, practice tests, unit reviews, grading |
 | `src/build-home.ts` | The Home dashboard note |
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
-| `src/brief.ts` | The morning brief |
+| `src/brief.ts` | The morning brief (a plain template without a key) |
+| `src/file-by-folder.ts` | Files anything dropped into a course folder, no Claude call |
 | `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
 | `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |
 | `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, Google Docs, the Desk, make material, run jobs |

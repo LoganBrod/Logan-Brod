@@ -103,7 +103,11 @@ async function main() {
       if (dryRun) continue;
 
       const bytes = await downloadAttachment(file.download_path);
-      await fs.writeFile(vaultPath(DIRS.inbox, savedAs), bytes);
+      // With a Claude key the inbox sorter picks the unit. Without one, the course folder is
+      // the best home there is, and ingest files it from there for free.
+      const folder = existing.find((e) => sameCourse(e, course)) ?? safeName(course);
+      const dest = process.env.ANTHROPIC_API_KEY ? vaultPath(DIRS.inbox, savedAs) : vaultPath(DIRS.courses, folder, savedAs);
+      await fs.writeFile(dest, bytes);
       state[file.id] = { course, title: label, savedAs, seen: today };
       await appendLog(`schoology materials: pulled "${savedAs}" from ${course} (${from})`);
       downloaded++;
