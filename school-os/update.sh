@@ -38,6 +38,8 @@ main() {
   rm -rf "$TMP"
   echo "Installing packages..."
   npm install --no-fund --no-audit >/dev/null
+  # A background dashboard (npm run dashboard:always) needs a rebuild to pick up the new code.
+  [ -f "$HOME/Library/LaunchAgents/com.school-os.dashboard.plist" ] && bash dashboard.sh restart
   echo "Up to date. Run: npm run sync"
   exit 0
 }

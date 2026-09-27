@@ -34,7 +34,9 @@
     "companion:login": "bash companion/companion.sh install",
     "companion:unlogin": "bash companion/companion.sh remove",
     "companion:app": "bash companion/build-app.sh",
-    "schoology:grades": "tsx src/sync-schoology.ts --grades"
+    "schoology:grades": "tsx src/sync-schoology.ts --grades",
+    "dashboard:always": "bash dashboard.sh install",
+    "dashboard:stop": "bash dashboard.sh remove"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
