@@ -111,6 +111,17 @@ per-run budget still applies, so a big batch spreads across runs.
 `npm run unschedule` removes it. Rerun `npm run schedule` after moving the
 folder or reinstalling Node.
 
+## The dashboard in the background
+
+```
+npm run dashboard:always
+```
+
+Builds the dashboard and runs it in the background at `localhost:3210`,
+starting at login, so the bookmark always works and no Terminal window has
+to stay open. `npm run update` rebuilds and restarts it. `npm run
+dashboard:stop` takes it away.
+
 ## Updating
 
 When there is a newer version on GitHub:
@@ -283,7 +294,9 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run publish:dry` | Say what `publish` would do |
 | `npm run home` | Rewrite `04 System/Home.md` |
 | `npm run sync` | Tests, files, ingest, study, plan, brief, home, publish: the daily command |
-| `npm run dashboard` | Start the dashboard app at localhost:3210 |
+| `npm run dashboard` | Start the dashboard app at localhost:3210 (while the window stays open) |
+| `npm run dashboard:always` | Run the dashboard in the background, from login, no window needed |
+| `npm run dashboard:stop` | Stop the background dashboard |
 | `npm run schedule` | Run `sync` every 30 minutes in the background (Mac) |
 | `npm run unschedule` | Stop the background job |
 | `npm run update` | Pull the latest code from GitHub, keeping `.env` |
