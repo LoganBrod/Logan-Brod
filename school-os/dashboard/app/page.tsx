@@ -113,7 +113,7 @@ export default async function Home() {
           <section>
             <h2 className="text-sm font-medium mb-3" style={{ color: "var(--muted)" }}>New</h2>
             <ul className="grid gap-2 text-sm">
-              {unread.map((n) => <li key={n.id} className="leading-snug">{n.title}<div className="mono text-[11px]" style={{ color: "var(--faint)" }}>{ago(n.time)}</div></li>)}
+              {unread.map((n, i) => <li key={`${n.id}-${i}`} className="leading-snug">{n.title}<div className="mono text-[11px]" style={{ color: "var(--faint)" }}>{ago(n.time)}</div></li>)}
               {unread.length === 0 && <li style={{ color: "var(--muted)" }}>You're caught up.</li>}
             </ul>
           </section>
