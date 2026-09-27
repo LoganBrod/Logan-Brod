@@ -13,8 +13,8 @@ export default async function Notifications() {
       </div>
       {list.length === 0 && <p style={{ color: "var(--muted)" }}>Nothing yet. Tests posted, files pulled and material generated all show up here.</p>}
       <ul className="grid gap-2">
-        {list.slice(0, 100).map((n) => (
-          <li key={n.id} className={`card p-4 flex gap-3 items-start ${n.read ? "opacity-60" : ""}`}>
+        {list.slice(0, 100).map((n, i) => (
+          <li key={`${n.id}-${i}`} className={`card p-4 flex gap-3 items-start ${n.read ? "opacity-60" : ""}`}>
             <span className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${n.read ? "" : "accent-bg"}`} />
             <div className="min-w-0">
               <div className="leading-snug">{n.link ? <Link href={linkFor(n.link)} className="hover:underline underline-offset-4">{n.title}</Link> : n.title}</div>
