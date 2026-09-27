@@ -30,3 +30,12 @@ function same(a: string, b: string): boolean {
   for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
   return diff === 0;
 }
+
+/** A key for the calendar feed URL, since Apple Calendar cannot log in. Empty when there is no password. */
+export async function calendarKey(): Promise<string> {
+  if (!password()) return "";
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(password()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode("school-os calendar v1"));
+  return [...new Uint8Array(sig)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
