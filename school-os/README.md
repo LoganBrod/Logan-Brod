@@ -111,6 +111,18 @@ per-run budget still applies, so a big batch spreads across runs.
 `npm run unschedule` removes it. Rerun `npm run schedule` after moving the
 folder or reinstalling Node.
 
+## Look, calendar, and your phone's calendar app
+
+`DASHBOARD_THEME` in `.env` picks the look: `ink` (black, the default),
+`navy`, `slate`, or `paper` (light). Set the same on Vercel.
+
+The Calendar tab is a month grid of every assignment, test and study
+session, like Schoology's, with a list view on the phone. At the bottom of
+that page is a subscription address: paste it into Apple Calendar (File →
+New Calendar Subscription) or Google Calendar (Other calendars → From URL)
+and everything stays in sync there too. With a password set, the address
+carries a key, so only someone with it can read the feed.
+
 ## The dashboard in the background
 
 ```

@@ -97,6 +97,11 @@ export async function assessments(): Promise<Assessment[]> {
   return Object.entries(state).map(([id, a]) => ({ id, ...a })).filter((a) => a.when >= today()).sort((a, b) => a.when.localeCompare(b.when));
 }
 export const tests = async () => (await assessments()).filter((a) => ["test", "quiz", "project"].includes(a.kind));
+/** Everything Schoology has ever listed, past dates included, for the calendar. */
+export async function allAssessments(): Promise<Assessment[]> {
+  const state = await readJson<Record<string, Omit<Assessment, "id">>>(`${SYSTEM}/schoology-state.json`, {});
+  return Object.entries(state).map(([id, a]) => ({ id, ...a })).filter((a) => a.when).sort((a, b) => a.when.localeCompare(b.when));
+}
 export const studyPlan = () => readJson<Session[]>(`${SYSTEM}/study-plan.json`, []);
 export const notifications = () => readJson<Notification[]>(`${SYSTEM}/notifications.json`, []);
 

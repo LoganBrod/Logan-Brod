@@ -13,12 +13,15 @@ export const metadata: Metadata = { title: "School OS", description: "Notes, tes
 export const viewport: Viewport = { themeColor: "#1a1b20", width: "device-width", initialScale: 1, viewportFit: "cover" };
 export const dynamic = "force-dynamic";
 
+const THEMES = ["ink", "navy", "slate", "paper"];
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const name = process.env.USER_NAME || "";
+  const theme = THEMES.includes((process.env.DASHBOARD_THEME ?? "").toLowerCase()) ? (process.env.DASHBOARD_THEME as string).toLowerCase() : "ink";
   // Logged out (only possible with DASHBOARD_PASSWORD set): a bare page, nothing about the schoolwork in it.
   if (!(await isAuthed((await cookies()).get(COOKIE)?.value))) {
     return (
-      <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <html lang="en" data-theme={theme} className={`${GeistSans.variable} ${GeistMono.variable}`}>
         <body className="min-h-[100dvh]">{children}</body>
       </html>
     );
@@ -30,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const next = ts[0];
   const greeting = `${hello}${name ? `, ${name}` : ""}. ${one ? one : next ? `${next.course} ${next.kind} in ${daysUntil(next.when)} days. Nothing pressing before then.` : "Nothing on the books today."}`;
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" data-theme={theme} className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="min-h-[100dvh]">
         <Nav />
         <main className="px-4 pt-6 pb-24 md:pb-10 md:pl-64 md:pr-8 max-w-[1400px]">{children}</main>
