@@ -98,6 +98,10 @@ Bullets naming the topics behind the wrong or partial answers, most important fi
 Two or three sentences on what to review and how.`;
 
 async function main() {
+  if (!fake && !process.env.ANTHROPIC_API_KEY) {
+    console.log("Study material (flashcards, tests, reviews, grading) needs ANTHROPIC_API_KEY in .env. Tags stay in place until then.");
+    return;
+  }
   const client = fake ? null : new Anthropic();
 
   // Terminal form

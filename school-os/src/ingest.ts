@@ -19,22 +19,39 @@ import {
 import { readSource, SUPPORTED, type Source } from "./reader.js";
 import { classify, fakeClassify, type Classification } from "./classify.js";
 import { gdocsConfigured, pullGoogleDocs } from "./gdocs.js";
+import { fileByFolder } from "./file-by-folder.js";
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const fake = args.has("--fake");
 const retry = args.has("--retry");
+// No Claude key: the free mode. Files dropped into a course folder still get filed; the plain
+// inbox waits, since sorting it is the one thing that needs a model.
+const FREE = !process.env.ANTHROPIC_API_KEY && !fake;
 
 async function main() {
   const courses = await readCourses();
   console.log(`Courses: ${courses.map((c) => c.name).join(", ")}`);
   if (dryRun) console.log("Dry run: nothing will be written or moved. (It still calls Claude and costs the same as a real run; --fake is free.)\n");
-  if (!fake) console.log(`Sorting with ${MODEL_SORT}; stopping this run at ${money(MAX_SPEND_PER_RUN)}.\n`);
+  if (FREE) console.log("No ANTHROPIC_API_KEY: free mode. Files in a course folder are filed; the plain inbox waits.\n");
+  else if (!fake) console.log(`Sorting with ${MODEL_SORT}; stopping this run at ${money(MAX_SPEND_PER_RUN)}.\n`);
 
   if (gdocsConfigured()) {
     console.log("Pulling Google Docs...");
     const n = await pullGoogleDocs(dryRun);
     console.log(`  ${n} doc(s) pulled.\n`);
+  }
+
+  // Anything already sitting in a course folder files by folder, no call needed.
+  const byFolder = await fileByFolder(courses, dryRun);
+  if (byFolder.filed || byFolder.waiting) console.log(`By folder: ${byFolder.filed} filed, ${byFolder.waiting} waiting for Claude.\n`);
+  if (!dryRun && byFolder.filed > 0) await notify("notes_sorted", `${byFolder.filed} note${byFolder.filed === 1 ? "" : "s"} filed`);
+
+  if (FREE) {
+    const left = (await listInbox()).filter((f) => !f.endsWith(".md") || true).length;
+    if (left) console.log(`${left} file${left === 1 ? "" : "s"} in the inbox. To file one for free, move it into 01 Courses/<the course>/ (or a folder named after the course inside 00 Inbox). Add ANTHROPIC_API_KEY to .env to have them sorted automatically.`);
+    else console.log("Inbox is empty.");
+    return;
   }
 
   const client = fake ? null : new Anthropic();

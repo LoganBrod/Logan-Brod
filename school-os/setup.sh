@@ -41,7 +41,9 @@ else
     exit 1
   fi
   echo "Keys are not shown as you paste them. Paste, then press Enter."
-  askq "Claude API key (platform.claude.com)";  ANTHROPIC="$REPLY"
+  echo "The Claude key is optional. Leave it empty for the free mode: tests, calendar and"
+  echo "notes filed by folder, but no automatic sorting, study material or Jarvis."
+  askq "Claude API key (platform.claude.com, or Enter to skip)";  ANTHROPIC="$REPLY"
   askq "Schoology consumer key";                 SKEY="$REPLY"
   askq "Schoology consumer secret";              SSECRET="$REPLY"
   cat > .env <<ENV
@@ -71,7 +73,8 @@ npm run -s ingest:fake
 say "Setup finished."
 cat <<'NEXT'
 Next, in this same window:
-  npm run ingest:dry     first real Claude call; shows the plan, moves nothing
-  npm run ingest         files the inbox for real
   npm run schoology      writes 03 Calendar/Upcoming Tests.md
+  npm run ingest         files the inbox (with a Claude key) and anything dropped in a course folder (free)
+  npm run schedule       run everything every 30 minutes on its own
+  npm run dashboard      the app at localhost:3210
 NEXT

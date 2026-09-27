@@ -83,6 +83,13 @@ async function main() {
     `Notes waiting for the student to review in the inbox: ${s.inboxWaiting}.`,
   ].join("\n");
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Free mode: the same three headings, filled from the facts with no prose.
+    const text = templateBrief(s);
+    await save(s, text, 0);
+    console.log(`${text}\n\n(no Claude key: template brief, free)`);
+    return;
+  }
   const client = new Anthropic();
   const stream = client.messages.stream({
     model: MODEL_BRIEF,
@@ -97,14 +104,35 @@ async function main() {
   const res = await stream.finalMessage();
   const cost = await recordUsage("brief", MODEL_BRIEF, s.todayStr, res.usage);
   const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  await save(s, text, cost);
+  console.log(`${text}\n\n(${money(cost)})`);
+}
 
+async function save(s: Awaited<ReturnType<typeof gatherState>>, text: string, cost: number) {
   const time = new Date().toISOString();
   await fs.writeFile(vaultPath(DIRS.system, "Brief.md"), matter.stringify(`# Brief for ${s.weekday}\n\n${text}\n`, { generated_by: "agent", date: s.todayStr }));
   await fs.writeFile(vaultPath(DIRS.system, "brief.json"), JSON.stringify({ date: s.todayStr, time, text }, null, 2));
   await notify("brief", `Morning brief for ${s.weekday}`, "04 System/Brief.md");
-  await appendLog(`brief written for ${s.todayStr} (${money(cost)})`);
+  await appendLog(`brief written for ${s.todayStr} (${cost ? money(cost) : "free"})`);
   await deliver(s.weekday, text);
-  console.log(`${text}\n\n(${money(cost)})`);
+}
+
+/** The brief with no model: what is due, what is coming, one thing to do. */
+export function templateBrief(s: Awaited<ReturnType<typeof gatherState>>): string {
+  const soon = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  const today: string[] = [];
+  const dueToday = s.dueSoon.filter((a) => a.when === s.todayStr), dueTomorrow = s.dueSoon.filter((a) => a.when === soon(1));
+  const testsToday = s.testsSoon.filter((a) => a.when === s.todayStr);
+  for (const a of testsToday) today.push(`- ${a.course ?? ""} ${a.kind}: ${a.title} is today`);
+  for (const a of dueToday) today.push(`- Due today: ${a.course ?? ""} ${a.title}`);
+  for (const a of dueTomorrow) today.push(`- Due tomorrow: ${a.course ?? ""} ${a.title}`);
+  for (const x of s.sessionsToday) today.push(`- Study ${fmt(x.start)} to ${fmt(x.end)}: ${x.course} for ${x.title}`);
+  if (s.newSinceLast.length) today.push(`- New since the last brief: ${s.newSinceLast.slice(0, 4).map((n) => n.title).join("; ")}`);
+  if (s.inboxWaiting) today.push(`- ${s.inboxWaiting} note${s.inboxWaiting === 1 ? "" : "s"} waiting in the inbox`);
+  const coming = s.testsSoon.filter((a) => a.when !== s.todayStr).slice(0, 5).map((a) => `- ${a.course ?? ""} ${a.kind}: ${a.title}, ${a.when}`);
+  const next = s.testsSoon.find((a) => a.when >= s.todayStr);
+  const one = next ? `Open the study page for the ${next.course ?? ""} ${next.kind} (${next.title}, ${next.when}) and read the notes in its window.` : dueToday[0] ? `Finish ${dueToday[0].title} for ${dueToday[0].course ?? ""}.` : "Nothing is due. Scan today's notes into the inbox so they are ready before the next test.";
+  return [`## Today`, today.length ? today.join("\n") : "Nothing due and nothing booked.", ``, `## Coming up`, coming.length ? coming.join("\n") : "No tests in the next ten days.", ``, `## One thing`, one].join("\n");
 }
 
 /** Discord and the phone. Neither failing stops the brief from being written. */
