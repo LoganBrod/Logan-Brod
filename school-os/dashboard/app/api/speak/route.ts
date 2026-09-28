@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       text: text.slice(0, 900),
       model_id: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",
-      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.2 },
+      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.1, speed: Number(process.env.VOICE_SPEED || 1.12) },
     }),
   });
   if (!res.ok) return NextResponse.json({ error: `ElevenLabs ${res.status}: ${(await res.text()).slice(0, 200)}` }, { status: 502 });

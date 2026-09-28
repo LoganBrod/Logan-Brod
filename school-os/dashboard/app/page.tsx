@@ -65,7 +65,7 @@ export default async function Home() {
                     <Link href={`/study/${idToSlug(s.id)}`} className="card pressable flex items-center gap-4 p-4 hover:bg-[var(--surface-2)]" style={{ ["--accent" as string]: hue(s.course) }}>
                       <span className="mono text-sm w-24 shrink-0">{time(s.start)}–{time(s.end)}</span>
                       <span className="w-1.5 h-8 rounded-full accent-bg shrink-0" />
-                      <span><span className="font-medium">{s.course}</span> <span style={{ color: "var(--muted)" }}>· {s.title}</span></span>
+                      <span className="min-w-0"><span className="font-medium">{s.course}</span> <span style={{ color: "var(--muted)" }}>· {s.title}</span>{s.task ? <div className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>{s.task}</div> : null}</span>
                     </Link>
                   </li>
                 ))}

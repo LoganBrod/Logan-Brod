@@ -13,7 +13,7 @@ export type Note = {
 };
 export type Course = { name: string; units: string[]; hue: number; noteCount: number };
 export type Assessment = { id: string; title: string; when: string; kind: string; course: string; description?: string; url?: string };
-export type Session = { start: string; end: string; label: string; course: string; title: string; kind: string; when: string; id: string };
+export type Session = { start: string; end: string; label: string; course: string; title: string; kind: string; when: string; id: string; task?: string };
 export type Notification = { id: string; time: string; kind: string; title: string; link: string | null; read: boolean };
 
 /** Schoology ids look like "a:123"; a colon in a URL segment never reaches a Next.js page. */
@@ -193,23 +193,43 @@ export async function searchNotes(query: string, course?: string, limit = 8): Pr
 
 /** The notes that a test most plausibly covers: same course, dated in the stretch since the previous
  *  assessment in that course (at least 14, at most 45 days before), plus anything in a unit the test names. */
-export async function notesForAssessment(a: Assessment): Promise<{ notes: Note[]; from: string; unit: string | null }> {
-  const all = await assessments();
-  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+export async function notesForAssessment(a: Assessment): Promise<{ notes: Note[]; from: string; unit: string | null; guessed: boolean; why: string }> {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]/g, "");
   const cs = await courses();
   const c = cs.find((x) => norm(x.name) === norm(a.course) || norm(x.name).startsWith(norm(a.course)) || norm(a.course).startsWith(norm(x.name)));
-  if (!c) return { notes: [], from: "", unit: null };
-  const prev = all.filter((x) => x.course === a.course && ["test", "quiz", "project"].includes(x.kind) && x.when < a.when).map((x) => x.when).sort().pop();
+  if (!c) return { notes: [], from: "", unit: null, guessed: false, why: "no course folder matches" };
+  const all = (await notesOf(c.name)).filter((n) => n.type !== "course info");
+  const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
+  const bare = (u: string) => u.toLowerCase().replace(/^(unit|chapter|ch\.?|topic|module)\s*\d+\s*[-:.]?\s*/, "").trim();
+  const num = (x: string) => x.match(/\b(?:unit|chapter|chap|ch|topic|module|test|exam)\s*#?\s*(\d+)\b/i)?.[1] ?? null;
+
+  // 1. The test names its unit, by name or by number.
+  let unit = c.units.find((u) => text.includes(u.toLowerCase()) || (bare(u).length > 3 && text.includes(bare(u)))) ?? null;
+  let why = unit ? "the test names this unit" : "";
+  if (!unit) {
+    const n = num(text);
+    const hit = n ? c.units.find((u) => num(u) === n || new RegExp(`\\b${n}\\b`).test(u)) : null;
+    if (hit) { unit = hit; why = `the test says ${n} and this unit is number ${n}`; }
+  }
+  // 2. Otherwise the current unit: the latest of the teacher's folders that has notes in it.
+  let guessed = false;
+  if (!unit && c.units.length) {
+    const withNotes = c.units.filter((u) => all.some((n) => n.unit === u));
+    unit = withNotes.at(-1) ?? null;
+    guessed = !!unit;
+    why = unit ? "guessed: the latest unit with notes; nothing in the test's title or description names a unit" : "";
+  }
+  if (unit) return { notes: all.filter((n) => n.unit === unit), from: "", unit, guessed, why };
+
+  // 3. No units at all in this course: fall back to the stretch since the previous assessment.
+  const prev = (await assessments()).filter((x) => x.course === a.course && ["test", "quiz", "project"].includes(x.kind) && x.when < a.when).map((x) => x.when).sort().pop();
   const when = new Date(a.when + "T12:00:00");
   const floor = new Date(when); floor.setDate(floor.getDate() - 45);
   const cap = new Date(when); cap.setDate(cap.getDate() - 14);
   let from = prev ? new Date(prev + "T12:00:00") : cap;
   if (from > cap) from = cap; if (from < floor) from = floor;
   const fromStr = from.toISOString().slice(0, 10);
-  const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
-  const unit = c.units.find((u) => text.includes(u.toLowerCase()) || text.includes(u.toLowerCase().replace(/^unit \d+\s*-\s*/, ""))) ?? null;
-  const notes = (await notesOf(c.name)).filter((n) => (n.date && n.date >= fromStr && n.date <= a.when) || (unit && n.unit === unit));
-  return { notes, from: fromStr, unit };
+  return { notes: all.filter((n) => n.date && n.date >= fromStr && n.date <= a.when), from: fromStr, unit: null, guessed: true, why: "this course has no units yet, so this is everything dated in the weeks before the test" };
 }
 
 /** Every note of a course (or unit), concatenated, capped. For "pull up all the problems on X". */

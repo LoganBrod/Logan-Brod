@@ -182,7 +182,7 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
         ?? (want ? [...as].sort((x, y) => Number(want.includes(y.kind)) - Number(want.includes(x.kind))).find((x) => norm(x.course).includes(want.replace(/test|quiz|project|exam/g, "")) || want.includes(norm(x.course)) || (str("title") ?? "").toLowerCase().split(/\s+/).some((w) => w.length > 2 && !/^(test|quiz|project|exam|the|my|for)$/.test(w) && norm(x.course).startsWith(norm(w)))) : undefined)
         ?? (!id && !want ? as[0] : undefined);
       if (!a) return { result: `no upcoming test, quiz or project matches; the upcoming ones are: ${as.slice(0, 8).map((x) => `${x.course} "${x.title}" (${x.kind}, ${x.when}, id ${x.id})`).join("; ") || "none"}`, summary: "assessment not found" };
-      const { notes, from, unit } = await notesForAssessment(a);
+      const { notes, from, unit, guessed, why } = await notesForAssessment(a);
       const summary = str("depth") !== "full";
       let text = "", n = 0;
       for (const note of notes) {
@@ -193,7 +193,8 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
         if (text.length + chunk.length > (summary ? 12_000 : 70_000)) break;
         text += chunk; n++;
       }
-      const head = `ASSESSMENT: ${a.course} — ${a.title} (${a.kind}) on ${a.when}\nTEACHER'S DESCRIPTION:\n${a.description || "(none posted)"}\n\nNOTES IN SCOPE: ${n} of ${notes.length} (course notes dated ${from} to ${a.when}${unit ? `, plus unit "${unit}"` : ""}). Notes outside this window are NOT in scope unless the description points to them.`;
+      const files = notes.map((x) => `${x.name}${x.type ? ` [${x.type}]` : ""}`);
+      const head = `ASSESSMENT: ${a.course} — ${a.title} (${a.kind}) on ${a.when}\nTEACHER'S DESCRIPTION:\n${a.description || "(none posted)"}\n\nUNIT: ${unit ?? "(none)"} — ${why}${guessed ? "\nTHE UNIT WAS GUESSED. Before making anything from it, tell the student the unit and ask if it is right." : ""}\nSOURCES (${notes.length} file${notes.length === 1 ? "" : "s"}${from ? `, dated ${from} to ${a.when}` : ""}): ${files.join("; ") || "none"}\nOnly these are in scope. Do not bring in other units unless the student asks; if these are thin, say so.`;
       return { result: head + (text || "\n\n(no notes filed in that window yet)"), summary: `scoped "${a.title}" · ${n} notes` };
     }
     case "study_material": {

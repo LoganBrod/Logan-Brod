@@ -70,7 +70,7 @@ export default async function StudyPage({ params, searchParams }: { params: Prom
             <div className="card p-4">
               <div className="text-sm font-medium mb-2">Sessions</div>
               <ul className="grid gap-1 text-sm mono">
-                {sessions.map((s) => <li key={s.start}>{new Date(s.start).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</li>)}
+                {sessions.map((s) => <li key={s.start}><span className="mono text-xs" style={{ color: "var(--faint)" }}>{new Date(s.start).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>{s.task ? <div className="text-sm">{s.task}</div> : null}</li>)}
               </ul>
             </div>
           )}

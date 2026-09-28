@@ -13,6 +13,7 @@ import ical, { type VEvent } from "node-ical";
 import matter from "gray-matter";
 import { DIRS, GOOGLE_SERVICE_ACCOUNT_KEY } from "./config.js";
 import { vaultPath, exists, readCourses, appendLog, notify, listCourseNotes, type Course } from "./vault.js";
+import { scopeFor, tasksFor } from "./scope.js";
 
 const dryRun = process.argv.includes("--dry-run");
 const ifConfigured = process.argv.includes("--if-configured");
@@ -37,7 +38,7 @@ type Rules = {
   days_ahead: number;
 };
 type Slot = { start: Date; end: Date };
-type Session = Slot & { a: Assessment; label: string };
+type Session = Slot & { a: Assessment; label: string; task?: string };
 
 const DEFAULT_RULES: Rules = {
   windows: { weekday: ["16:00-21:30"], saturday: ["10:00-18:00"], sunday: ["12:00-20:00"] },
@@ -112,11 +113,12 @@ async function main() {
   const noteCounts: Record<string, number> = {};
   for (const c of courses) noteCounts[c.name] = (await listCourseNotes(c.name)).length;
   const placed = placeSessions(upcoming, rules, busy, courses, noteCounts, today);
+  await assignTasks(placed, upcoming, courses);
 
   // Report
   console.log(`\nPlanned ${placed.length} session(s) for ${upcoming.length} assessment(s):`);
   for (const s of [...placed].sort((x, y) => x.start.getTime() - y.start.getTime()))
-    console.log(`  ${fmt(s.start)} – ${fmtTime(s.end)}  ${s.label}`);
+    console.log(`  ${fmt(s.start)} – ${fmtTime(s.end)}  ${s.label}${s.task ? `\n      ${s.task}` : ""}`);
   if (dryRun) { console.log("\nDry run: calendar untouched."); return; }
 
   // Write: delete our old events for these assessments, insert the new ones
@@ -127,7 +129,7 @@ async function main() {
       calendarId: STUDY_CAL,
       requestBody: {
         summary: s.label,
-        description: `${s.a.kind} on ${s.a.when}. Open the study page for this unit, run flashcards, then a practice test.\n[school-os:${s.a.id}]`,
+        description: `${s.task ?? "Open the study page for this unit, run flashcards, then a practice test."}\n\n${s.a.kind} on ${s.a.when}.\n[school-os:${s.a.id}]`,
         start: { dateTime: s.start.toISOString() },
         end: { dateTime: s.end.toISOString() },
         colorId: s.a.kind === "test" ? "11" : s.a.kind === "quiz" ? "5" : "9",
@@ -159,6 +161,17 @@ async function icalBusy(url: string, from: Date, to: Date): Promise<Slot[]> {
     }
   }
   return out;
+}
+
+/** Each session gets one concrete job, from what the test's unit actually contains. */
+export async function assignTasks(placed: Session[], upcoming: Assessment[], courses: Course[]) {
+  for (const a of upcoming) {
+    const mine = placed.filter((s) => s.a.id === a.id).sort((x, y) => x.start.getTime() - y.start.getTime());
+    if (!mine.length) continue;
+    const scope = await scopeFor(a, courses);
+    const tasks = tasksFor(scope, mine.length, a.kind);
+    mine.forEach((s, i) => { s.task = tasks[i]; if (scope.unit) s.label = `Study: ${a.course} — ${scope.unit}`; });
+  }
 }
 
 /** Pure placement: nearest assessment first, sessions walk back from the day before it. */
@@ -231,13 +244,13 @@ async function writePlan(placed: Session[], rules: Rules) {
   for (const day of Object.keys(byDay).sort()) {
     lines.push(`## ${new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`, "");
     for (const s of byDay[day].sort((x, y) => x.start.getTime() - y.start.getTime()))
-      lines.push(`- ${fmtTime(s.start)}–${fmtTime(s.end)} · **${s.a.course}** · ${s.a.title} _(${s.a.kind} on ${s.a.when})_`);
+      lines.push(`- ${fmtTime(s.start)}–${fmtTime(s.end)} · **${s.a.course}** · ${s.a.title} _(${s.a.kind} on ${s.a.when})_${s.task ? `\n  - ${s.task}` : ""}`);
     lines.push("");
   }
   await fs.writeFile(vaultPath("03 Calendar", "Study Plan.md"), matter.stringify(lines.join("\n"), { generated_by: "agent" }));
   await fs.writeFile(
     vaultPath(DIRS.system, "study-plan.json"),
-    JSON.stringify(placed.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString(), label: s.label, course: s.a.course, title: s.a.title, kind: s.a.kind, when: s.a.when, id: s.a.id })), null, 2),
+    JSON.stringify(placed.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString(), label: s.label, course: s.a.course, title: s.a.title, kind: s.a.kind, when: s.a.when, id: s.a.id, task: s.task ?? "" })), null, 2),
   );
 }
 

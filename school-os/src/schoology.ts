@@ -151,3 +151,35 @@ export async function myGrades(uid: string, sectionId?: string): Promise<GradeSe
   return data.section ?? [];
 }
 
+// ---- Materials folders: the teacher's own structure ----
+export type FolderItem = { id: string | number; type: string; title: string; body?: string; location?: string };
+
+/** Items directly inside one Materials folder (0 = the top level). */
+export async function sectionFolder(sectionId: string, folderId: string | number = 0): Promise<FolderItem[]> {
+  const data = await sget<{ "folder-item"?: FolderItem[] }>(`sections/${sectionId}/folder/${folderId}`);
+  return data["folder-item"] ?? [];
+}
+
+/**
+ * Every item in a section's Materials, keyed "type:id", with the folder path it sits in.
+ * The first folder name is what the vault treats as the unit. Folder order is kept in `order`.
+ */
+export async function folderMap(sectionId: string): Promise<{ paths: Map<string, string[]>; order: string[] }> {
+  const paths = new Map<string, string[]>();
+  const order: string[] = [];
+  async function walk(folderId: string | number, trail: string[], depth: number) {
+    if (depth > 4) return;
+    for (const item of await sectionFolder(sectionId, folderId)) {
+      const title = (item.title ?? "").trim();
+      if (item.type === "folder") {
+        if (depth === 0 && title && !order.includes(title)) order.push(title);
+        await walk(item.id, [...trail, title], depth + 1);
+      } else {
+        paths.set(`${item.type}:${item.id}`, trail);
+      }
+    }
+  }
+  await walk(0, [], 0);
+  return { paths, order };
+}
+
