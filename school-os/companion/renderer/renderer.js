@@ -128,7 +128,8 @@ form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value); }
 // ---- speaking ----
 let audio = null;
 async function say(text) {
-  const spoken = text.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ").slice(0, 280);
+  const parts = text.split(/(?<=[.!?])\s+/);
+  const spoken = parts.slice(0, /\?\s*$/.test(text.trim()) ? 2 : 1).join(" ").slice(0, 220);
   if (!spoken) return;
   stopSpeaking();
   try {

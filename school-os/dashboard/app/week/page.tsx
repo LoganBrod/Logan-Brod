@@ -31,8 +31,9 @@ export default async function Week() {
                 ))}
                 {sess.map((s) => (
                   <li key={s.start} style={{ ["--accent" as string]: hue(s.course) }}>
-                    <Link href={`/study/${idToSlug(s.id)}`} className="block rounded-lg px-2 py-1.5 text-xs accent-tint accent-ring">
+                    <Link href={`/study/${idToSlug(s.id)}`} title={s.task} className="block rounded-lg px-2 py-1.5 text-xs accent-tint accent-ring">
                       <span className="mono">{new Date(s.start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span> {s.course}
+                      {s.task ? <div className="mt-0.5 line-clamp-2" style={{ color: "var(--muted)" }}>{s.task}</div> : null}
                     </Link>
                   </li>
                 ))}

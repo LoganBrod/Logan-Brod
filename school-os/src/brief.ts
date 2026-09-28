@@ -28,7 +28,7 @@ export async function gatherState() {
 
   const state = await readJson<Record<string, { title: string; when: string; kind: string; course?: string; description?: string }>>(`${DIRS.system}/schoology-state.json`, {});
   const upcoming = Object.values(state).filter((a) => a.when >= todayStr).sort((a, b) => a.when.localeCompare(b.when));
-  const plan = await readJson<{ start: string; end: string; course: string; title: string; kind: string; when: string }[]>(`${DIRS.system}/study-plan.json`, []);
+  const plan = await readJson<{ start: string; end: string; course: string; title: string; kind: string; when: string; task?: string }[]>(`${DIRS.system}/study-plan.json`, []);
   const notifications = await readJson<{ time: string; kind: string; title: string }[]>(`${DIRS.system}/notifications.json`, []);
   const last = await readJson<{ date: string; time: string }>(`${DIRS.system}/brief.json`, { date: "", time: "1970-01-01T00:00:00Z" });
   const courses = await readCourses();
@@ -76,7 +76,7 @@ async function main() {
     `Today: ${s.weekday} ${s.todayStr}.`,
     `Tests/quizzes/projects in the next 10 days: ${s.testsSoon.map((a) => `${a.course ?? "?"} "${a.title}" (${a.kind}) on ${a.when}${a.description ? ` — teacher says: ${a.description.replace(/\s+/g, " ").slice(0, 240)}` : ""}`).join("; ") || "none"}.`,
     `Assignments due today or tomorrow: ${s.dueSoon.map((a) => `${a.course ?? "?"} "${a.title}" due ${a.when}`).join("; ") || "none"}.`,
-    `Study sessions booked today: ${s.sessionsToday.map((x) => `${fmt(x.start)}-${fmt(x.end)} ${x.course} for "${x.title}"`).join("; ") || "none"}.`,
+    `Study sessions booked today: ${s.sessionsToday.map((x) => `${fmt(x.start)}-${fmt(x.end)} ${x.course} for "${x.title}"${x.task ? ` (plan: ${x.task})` : ""}`).join("; ") || "none"}.`,
     `Tomorrow: ${s.sessionsTomorrow.map((x) => `${fmt(x.start)} ${x.course}`).join("; ") || "none"}.`,
     `New since the last brief: ${s.newSinceLast.map((n) => n.title).join("; ") || "nothing"}.`,
     `Known weak topics: ${s.weak.join(" | ") || "none recorded yet"}.`,
@@ -126,7 +126,7 @@ export function templateBrief(s: Awaited<ReturnType<typeof gatherState>>): strin
   for (const a of testsToday) today.push(`- ${a.course ?? ""} ${a.kind}: ${a.title} is today`);
   for (const a of dueToday) today.push(`- Due today: ${a.course ?? ""} ${a.title}`);
   for (const a of dueTomorrow) today.push(`- Due tomorrow: ${a.course ?? ""} ${a.title}`);
-  for (const x of s.sessionsToday) today.push(`- Study ${fmt(x.start)} to ${fmt(x.end)}: ${x.course} for ${x.title}`);
+  for (const x of s.sessionsToday) today.push(`- Study ${fmt(x.start)} to ${fmt(x.end)}: ${x.course} for ${x.title}${x.task ? `. ${x.task}` : ""}`);
   if (s.newSinceLast.length) today.push(`- New since the last brief: ${s.newSinceLast.slice(0, 4).map((n) => n.title).join("; ")}`);
   if (s.inboxWaiting) today.push(`- ${s.inboxWaiting} note${s.inboxWaiting === 1 ? "" : "s"} waiting in the inbox`);
   const coming = s.testsSoon.filter((a) => a.when !== s.todayStr).slice(0, 5).map((a) => `- ${a.course ?? ""} ${a.kind}: ${a.title}, ${a.when}`);

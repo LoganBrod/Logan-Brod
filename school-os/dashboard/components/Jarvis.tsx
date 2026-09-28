@@ -156,7 +156,7 @@ export function Jarvis({ wakeWord, name, voice, greeting }: { wakeWord: string; 
       if (data.show?.length) showOnDesk(data.show);
       if (data.navigate) router.push(data.navigate);
       const [first, ...rest] = text.split(/\n-{3,}\n/);
-      const spoken = firstSentences(first, 2);
+      const spoken = firstSentences(first, /\?\s*$/.test(first.trim()) ? 2 : 1);
       await say(spoken, rest.length ? `${first.trim()}\n\n${rest.join("\n---\n").trim()}` : text, data.steps ?? []);
       // Keep listening for a follow-up without the wake word; longer if he asked you something.
       awake.current = true; setState("awake"); setHeard(""); segments.current = [];

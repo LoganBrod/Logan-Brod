@@ -156,9 +156,12 @@ async function generate(client: Anthropic | null, kind: Kind, course: string, un
 
   const dir = { flashcards: "Flashcards", test: "Practice Tests", review: "Unit Reviews" }[kind];
   const base = kind === "test" ? await nextTestName(vaultPath("02 Study", dir), label) : safeName(label);
+  const names = notes.map((p) => path.basename(p, ".md"));
+  const cited = `Sources: ${names.map((n) => `[[${n}]]`).join(", ")}\n\n${text}`;
+  const meta = { course, unit, kind, generated_by: "agent", sources: notes.length, source_notes: names };
   const target = kind === "test"
-    ? await writeNote(vaultPath("02 Study", dir), base, { course, unit, kind, generated_by: "agent", sources: notes.length }, text)
-    : await overwriteNote(vaultPath("02 Study", dir, `${base}.md`), { course, unit, kind, generated_by: "agent", sources: notes.length }, text);
+    ? await writeNote(vaultPath("02 Study", dir), base, meta, cited)
+    : await overwriteNote(vaultPath("02 Study", dir, `${base}.md`), meta, cited);
 
   const rel = path.relative(vaultPath(), target);
   console.log(`  wrote ${rel}`);

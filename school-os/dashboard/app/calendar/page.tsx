@@ -67,7 +67,7 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
                 ))}
                 {sess.slice(0, 2).map((s) => (
                   <li key={s.start}>
-                    <Link href={`/study/${idToSlug(s.id)}`} className="block rounded-md px-1.5 py-1 text-[11px] leading-tight truncate accent-tint accent-ring">
+                    <Link href={`/study/${idToSlug(s.id)}`} title={s.task} className="block rounded-md px-1.5 py-1 text-[11px] leading-tight truncate accent-tint accent-ring">
                       <span className="mono">{new Date(s.start).toLocaleTimeString([], { hour: "numeric" })}</span> study {short(s.course)}
                     </Link>
                   </li>

@@ -274,7 +274,39 @@ settings → Integrations → Webhooks → copy URL).
 
 Run it as often as you like; it only announces what it has not seen before.
 
-## Units
+## Units come from Schoology
+
+The teacher's Materials folders on Schoology are the course's units. `npm run
+materials` reads them, adds them to `_Course.md` in the teacher's order, and
+puts every handout in its unit's folder, where ingest turns it into a note
+with the unit already set, no guessing. Files pulled before this existed are
+moved into their units on the next run. `npm run materials:folders` prints
+each class's folder tree as Schoology has it.
+
+Every note also gets a rough type from its name: slides, practice, past test,
+answer key, reading, handout, course info. The assistant and the planner use
+those to tell a problem set from a syllabus.
+
+When the assistant scopes a test it goes by unit: the unit named in the test's
+title or description, or by number ("Test 2" → the unit numbered 2), or, when
+nothing names one, the latest unit that has notes, in which case it says so
+and asks before building anything. Dates are only used when a course has no
+units at all.
+
+**Check, then build.** Before a study guide, deck or practice test the
+assistant says which unit and which files it would use and asks "go?", so a
+wrong pick costs a second, not a bad guide. Everything it writes starts with
+a "Sources:" line naming the files, and generated material carries them in
+its frontmatter.
+
+**Sessions carry a task.** Each study session the planner books says what
+to do in it, built from that unit's files: read the slides first, then
+problem sets, and a timed past test with its answer key last. The task is in
+the calendar event, the Today list, the study page, the brief, and the
+assistant knows it when you ask "what should I do now". Tell it which
+problems you missed afterwards and it remembers the weak topics.
+
+## Units by hand
 
 You do not have to know a course's units up front. Leave `units: []` in its
 `_Course.md` and the brain fills it in two ways:
@@ -312,7 +344,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run schoology:dry` | Show upcoming items and what is new, write nothing |
 | `npm run schoology` | Rewrite Upcoming Tests.md, ping Discord for new tests |
 | `npm run materials:dry` | List Schoology files it would download |
-| `npm run materials` | Download new Schoology files into the inbox |
+| `npm run materials` | Download new Schoology files into their unit folders, refile old ones |
+| `npm run materials:folders` | Print each class's Materials folders as Schoology has them |
 | `npm run study` | Act on `#make-*` and `#grade-me` tags |
 | `npm run plan:dry` | Show the study sessions it would book |
 | `npm run plan` | Book study sessions into the Study calendar |
@@ -348,7 +381,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/build-home.ts` | The Home dashboard note |
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
 | `src/brief.ts` | The morning brief (a plain template without a key) |
-| `src/file-by-folder.ts` | Files anything dropped into a course folder, no Claude call |
+| `src/file-by-folder.ts` | Files anything dropped into a course or unit folder, no Claude call; guesses the note type |
+| `src/scope.ts` | What a test covers (its unit and files) and the task for each study session |
 | `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
 | `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |
 | `dashboard/lib/tools.ts` | What the assistant can do: search and read notes, upcoming work, Google Docs, the Desk, make material, run jobs |
