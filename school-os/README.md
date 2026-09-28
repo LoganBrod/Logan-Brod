@@ -221,6 +221,25 @@ npm run companion:login
 another app (Raycast, Alfred), set `COMPANION_SHORTCUT=Control+Alt+J` or
 similar in `.env`.
 
+## Writing on the iPad
+
+Open the dashboard on the iPad (the Vercel address, or the Mac's
+`localhost:3210` on the same wifi), Share → Add to Home Screen, and it opens
+full screen. The **Write** tab is the notebook:
+
+- **Import** a PDF or photos, or **From <course>** to open slides and
+  handouts the brain already pulled from Schoology. Each page becomes paper
+  you write on with the Apple Pencil: pen in four colours and three sizes, a
+  highlighter, an eraser, undo and redo, blank pages in between. Fingers
+  scroll once the Pencil has been used; the "Pencil only" switch controls it.
+- **Type** for typed notes, markdown welcome.
+- **Save** puts it in the vault's inbox under the course. A typed note is
+  filed for free. Handwritten pages become one PDF, and with a Claude key the
+  sorter transcribes and files it; without one it waits in the course folder.
+
+The note in progress is kept on the iPad until you save, so switching apps
+or a dead battery loses nothing.
+
 ## The Desk
 
 Ask for something to be put on screen ("show me my slope notes", "pull up

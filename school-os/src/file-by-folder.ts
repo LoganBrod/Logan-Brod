@@ -43,6 +43,13 @@ export async function fileByFolder(courses: Course[], dryRun: boolean): Promise<
     const name = path.basename(file);
     const source = await readSource(file);
     if (!source || source.kind === "scan" || !source.verbatimBody?.trim()) {
+      if (process.env.ANTHROPIC_API_KEY && source && !source.refuse && !path.dirname(file).endsWith(vaultPath(DIRS.inbox)) ) {
+        // Handwriting or a photo with a known course: hand it to the sorter with the course in its name.
+        const tagged = name.toLowerCase().startsWith(course.toLowerCase()) ? name : `${course} - ${name}`;
+        console.log(`to Claude  ${name} → inbox as "${tagged}"${dryRun ? " (dry run)" : ""}`);
+        if (!dryRun) { await fs.mkdir(vaultPath(DIRS.inbox), { recursive: true }); await fs.rename(file, vaultPath(DIRS.inbox, tagged)); }
+        continue;
+      }
       waiting++;
       console.log(`waits   ${name}  (${course}: ${source?.refuse ?? "a scan or photo; reading it needs Claude"})`);
       continue;

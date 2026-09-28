@@ -24,7 +24,8 @@ const KEEP = /\.(md|json)$/i;
 const MAX_BYTES = 40 * 1024 * 1024;
 
 type Snapshot = { v: 1; generated: string; files: Record<string, { text: string; mtime: number }> };
-type Op = { type: "append" | "write"; rel: string; text: string; at?: string };
+type Op = { type: "append" | "write" | "write-b64"; rel: string; text: string; at?: string };
+const BINARY = /\.(pdf|png|jpe?g|webp)$/i;
 
 const dry = process.argv.includes("--dry-run");
 const ifConfigured = process.argv.includes("--if-configured");
@@ -42,20 +43,22 @@ async function walk(dir: string, rel: string, out: Snapshot["files"]) {
 }
 
 /** A vault-relative path the phone is allowed to write: inside the vault, a note or a system json. */
-export function safeRel(rel: string): string | null {
+export function safeRel(rel: string, binary = false): string | null {
   const n = path.posix.normalize(rel.replace(/\\/g, "/")).replace(/^\/+/, "");
   if (!n || n.startsWith("..") || n.includes("/../") || path.isAbsolute(n)) return null;
-  if (!KEEP.test(n)) return null;
+  if (!(binary ? BINARY : KEEP).test(n)) return null;
   if (n.split("/").some((p) => p.startsWith("."))) return null;
   return n;
 }
 
 export async function applyOp(op: Op, root = VAULT_PATH): Promise<string> {
-  const rel = safeRel(op.rel);
-  if (!rel || (op.type !== "append" && op.type !== "write") || typeof op.text !== "string") throw new Error(`bad op ${JSON.stringify(op).slice(0, 120)}`);
+  const binary = op.type === "write-b64";
+  const rel = safeRel(op.rel, binary);
+  if (!rel || !["append", "write", "write-b64"].includes(op.type) || typeof op.text !== "string") throw new Error(`bad op ${JSON.stringify(op).slice(0, 120)}`);
   const full = path.join(root, rel);
   await fs.mkdir(path.dirname(full), { recursive: true });
   if (op.type === "append") await fs.appendFile(full, op.text);
+  else if (binary) await fs.writeFile(full, Buffer.from(op.text, "base64"));
   else await fs.writeFile(full, op.text);
   return rel;
 }

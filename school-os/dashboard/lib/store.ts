@@ -31,6 +31,8 @@ export interface Store {
   mtime(rel: string): Promise<number>;
   writeFile(rel: string, text: string): Promise<void>;
   appendFile(rel: string, text: string): Promise<void>;
+  /** A PDF or image, e.g. handwriting from the iPad. Not part of the snapshot; it goes to the Mac to be read. */
+  writeBinary(rel: string, bytes: Uint8Array): Promise<void>;
 }
 
 /** Join vault-relative pieces with forward slashes, whatever the platform. */
@@ -47,6 +49,7 @@ const local: Store = {
   mtime: async (rel) => (await fs.stat(abs(rel))).mtimeMs,
   async writeFile(rel, text) { await fs.mkdir(path.dirname(abs(rel)), { recursive: true }); await fs.writeFile(abs(rel), text); },
   async appendFile(rel, text) { await fs.mkdir(path.dirname(abs(rel)), { recursive: true }); await fs.appendFile(abs(rel), text); },
+  async writeBinary(rel, bytes) { await fs.mkdir(path.dirname(abs(rel)), { recursive: true }); await fs.writeFile(abs(rel), bytes); },
 };
 function abs(rel: string) {
   const full = path.resolve(VAULT, rel);
@@ -89,7 +92,7 @@ async function snapshot(): Promise<Snapshot> {
   return loading;
 }
 
-async function outbox(op: { type: "append" | "write"; rel: string; text: string }) {
+async function outbox(op: { type: "append" | "write" | "write-b64"; rel: string; text: string }) {
   const body = JSON.stringify({ ...op, at: new Date().toISOString() });
   if (process.env.VAULT_SNAPSHOT_FILE) { await fs.appendFile(process.env.VAULT_SNAPSHOT_FILE + ".outbox.jsonl", body + "\n"); return; }
   const { put } = await import("@vercel/blob");
@@ -127,6 +130,9 @@ const cloud: Store = {
     const r = norm(rel), snap = await snapshot();
     snap.files[r] = { text: (snap.files[r]?.text ?? "") + text, mtime: Date.now() };
     await outbox({ type: "append", rel: r, text });
+  },
+  async writeBinary(rel, bytes) {
+    await outbox({ type: "write-b64", rel: norm(rel), text: Buffer.from(bytes).toString("base64") });
   },
 };
 
