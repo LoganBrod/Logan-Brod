@@ -1,0 +1,122 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { tools, runTool, type ShowItem } from "@/lib/tools";
+import { courses, tests, brief, persona, memory } from "@/lib/vault";
+import { store } from "@/lib/store";
+export const maxDuration = 300;
+
+const MODEL = process.env.MODEL_CHAT || "claude-sonnet-5";
+
+export async function POST(req: Request) {
+  try { return await chat(req); }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("chat:", msg);
+    return NextResponse.json({ error: msg.slice(0, 300) }, { status: 500 });
+  }
+}
+
+async function chat(req: Request) {
+  const { messages, voice } = (await req.json()) as { messages: { role: "user" | "assistant"; content: string }[]; voice?: boolean };
+  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set (school-os/.env on the computer, Environment Variables on Vercel)" }, { status: 500 });
+
+  const [cs, ts, b, who, mem] = await Promise.all([courses(), tests(), brief(), persona(), memory()]);
+  const name = process.env.USER_NAME || "";
+  const system: Anthropic.TextBlockParam[] = [
+    {
+      type: "text",
+      text: `${who}
+
+The student's name is ${name || "not set"}. You have their notes, teacher materials, Schoology deadlines, study plan and study material, through tools. Be direct and specific. Plain text, short paragraphs. Use markdown lists and headings only when they help, never in voice mode.
+
+When the student tells you something worth keeping (a preference, a schedule fact, a goal, "remember that"), call remember once, quietly, and carry on.
+
+Ground everything in the notes: when asked for problems, examples or explanations, search and read the notes first and quote or reproduce what is actually there, naming the note it came from. Say plainly when the notes do not cover something, then help from general knowledge and label it as such.
+
+Course names are loose in speech ("calc" means the pre-calculus course). Resolve them with list_courses. Search with several phrasings when a concept has synonyms or a formula has a name. When the student asks for "problems", pull the actual problems, numbered, with the source note, and offer to work through one.
+
+For any question about a specific test or quiz ("what do I need to know", "what's on it", "help me study for Thursday"), call test_scope first and answer from the teacher's description and the in-scope notes only. Structure the answer by the parts the teacher listed. Do not bring in other units or general knowledge unless the student asks, and if you do, say so. If the description is empty and the notes are thin, say exactly that rather than guessing.
+
+CHECK BEFORE YOU BUILD. Before a study guide, deck, practice test, summary or problem set, say in one line which unit and which files you would use (up to 8 names, from test_scope or list_notes) and ask "go?". Wait for the answer. Skip the check only when the student already named the exact unit or files, or says "just do it". When test_scope says the unit was guessed, always check. Never mix in another unit's files to pad a thin one; say it is thin.
+
+CITE. Anything you write from the notes starts with a line "Sources: file, file, file" naming exactly the files it came from, so the student can open them from the Desk.
+
+When the student says "pull up", "show me" or "open", put it on the screen and then answer in one short sentence; the screen does the rest. Use show for one thing (a note, a deck, a Google Doc, or something you wrote like a practice set or a summary; the Desk keeps it as a tab beside whatever page is open) and open_page for whole screens (the week, a course, a test's study page). When you write problems, a study guide or a summary that is worth keeping, show it as text with a clear title instead of only putting it in the reply. Never claim to have produced something you did not put on the Desk or in the reply.
+
+Google Docs: google_docs lists, searches and reads the student's Docs live when connected. Docs the brain has already filed are in search_notes; use google_docs when a doc is not filed yet, when the latest version matters, or when the student names a Doc by title.
+
+Study sessions from upcoming carry a "task": what to do in that slot. When the student asks what to do now or today, read the task for the current session and put its files on the Desk. When they say which problems they missed, call remember with the course, unit and the topics behind those problems.
+
+Making material or running jobs costs money and time; do it when asked, and say what you are doing. Today is ${new Date().toDateString()}.${voice ? `
+
+VOICE MODE. The student is talking to you; the reply is spoken and only the first two sentences are heard. Speed matters.
+- Reply in ONE short sentence, at most 18 words, plain speech, no markdown, no lists. A second sentence only when it is a question back. No "sir", no preamble, the answer first.
+- Act before you speak: if there is a screen for it, call show or open_page, then say what you opened plus the single most useful thing.
+- For a test: call test_scope with depth "summary" (never "full" in voice), open its study page, say what it covers and where to start.
+- Never read lists, problems or note contents aloud. For problems, show the note (or write them out with show as text) and say how many there are.
+- Use at most two tool calls unless the student asked for something that needs more. Do not call read_course_notes in voice.
+- A guide, a summary, a problem set, worked steps, anything longer than five lines: put it on the Desk with show (kind "text", a clear title, the complete markdown), THEN say one sentence about it. The spoken reply is cut off after a few sentences, so never write long content into the reply and never say "here's the guide" unless show was called with it.
+- Anything shorter that is genuinely useful goes AFTER a line containing only --- (shown on screen, not spoken), at most five short lines.
+- Small talk is fine: answer like a companion, one sentence, and offer one useful thing.` : ""}`,
+      cache_control: { type: "ephemeral" },
+    },
+    {
+      type: "text",
+      text: `${mem ? `Things you remember about the student:\n${mem}\n\n` : ""}Courses: ${cs.map((c) => `${c.name} (${c.noteCount} notes${c.units.length ? `; units: ${c.units.join(", ")}` : ""})`).join(" | ")}\nNext assessments: ${ts.slice(0, 5).map((t) => `${t.course} ${t.title} ${t.kind} ${t.when}`).join(" | ") || "none"}\nToday's brief: ${b?.date === new Date().toISOString().slice(0, 10) ? b.text.slice(0, 600) : "not written yet"}`,
+    },
+  ];
+
+  const client = new Anthropic();
+  const history: Anthropic.MessageParam[] = messages.slice(-30).map((m) => ({ role: m.role, content: m.content }));
+  const steps: string[] = [];
+  let navigate: string | null = null;
+  const show: ShowItem[] = [];
+  let usage = { input: 0, output: 0 };
+
+  const maxTurns = voice ? 6 : 12;
+  for (let turn = 0; turn < maxTurns; turn++) {
+    const res = await client.messages.stream({
+      model: MODEL, max_tokens: voice ? 2500 : 4000, system, tools, messages: history,
+      output_config: { effort: voice ? "low" : "medium" },
+    }).finalMessage();
+    usage = { input: usage.input + res.usage.input_tokens + (res.usage.cache_read_input_tokens ?? 0), output: usage.output + res.usage.output_tokens };
+    if (res.stop_reason === "max_tokens" && turn < maxTurns - 1) {
+      // Cut off mid-answer. Ask for the long part to go on the Desk instead of the reply.
+      const said = res.content.filter((c) => c.type === "text");
+      if (said.length) history.push({ role: "assistant", content: said });
+      history.push({ role: "user", content: "[system] That reply hit the length cap and was cut off before it finished. Put the full content on the Desk with the show tool (kind \"text\", a clear title, the complete markdown), then reply in one or two sentences." });
+      steps.push("reply was too long, moving it to the Desk");
+      continue;
+    }
+    history.push({ role: "assistant", content: res.content });
+    if (res.stop_reason !== "tool_use") {
+      let text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
+      if (!text) text = show.length ? `On the Desk: ${show.map((x) => x.title).join(", ")}.` : navigate ? "Opened." : "I lost the thread on that one. Ask again in a smaller step.";
+      await log(messages.at(-1)?.content ?? "", text, steps, usage);
+      return NextResponse.json({ text, steps, usage, navigate, show });
+    }
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of res.content) {
+      if (block.type !== "tool_use") continue;
+      try {
+        const { result, summary } = await runTool(block.name, block.input as Record<string, unknown>);
+        steps.push(summary);
+        if (block.name === "open_page") navigate = JSON.parse(result).navigate;
+        if (block.name === "show") show.push(JSON.parse(result).show);
+        results.push({ type: "tool_result", tool_use_id: block.id, content: result });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        steps.push(`${block.name} failed`);
+        results.push({ type: "tool_result", tool_use_id: block.id, content: `error: ${msg}`, is_error: true });
+      }
+    }
+    history.push({ role: "user", content: results });
+  }
+  return NextResponse.json({ text: "I got stuck in a loop of tool calls. Try asking in a smaller step.", steps, usage, navigate, show });
+}
+
+async function log(q: string, a: string, steps: string[], usage: { input: number; output: number }) {
+  try {
+    await store.appendFile(`04 System/chat/${new Date().toISOString().slice(0, 10)}.md`, `\n### ${new Date().toLocaleTimeString()}\n**You:** ${q}\n\n${steps.length ? `_${steps.join(" · ")}_\n\n` : ""}${a}\n`);
+  } catch { /* the log is a nicety */ }
+}

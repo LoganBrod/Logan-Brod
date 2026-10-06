@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Jarvis</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+  <header class="bar drag">
+    <span class="brand">Jarvis</span>
+    <span id="status" class="status"></span>
+    <span class="grow"></span>
+    <button id="hide" class="icon no-drag" title="Hide (Esc)">×</button>
+  </header>
+
+  <section id="ask" class="ask no-drag">
+    <form id="form">
+      <input id="input" type="text" placeholder="Ask, or say what to pull up…" autocomplete="off" spellcheck="false" />
+      <button id="mic" type="button" class="mic" title="Hold to talk, or tap to start and stop">●</button>
+    </form>
+    <div id="reply" class="reply"></div>
+    <div id="detail" class="detail"></div>
+  </section>
+
+  <section id="desk" class="desk no-drag hidden">
+    <div class="tabs">
+      <span class="label">Desk</span>
+      <div id="tabs" class="tablist"></div>
+      <button id="external" class="icon hidden" title="Open">↗</button>
+    </div>
+    <div id="tabtitle" class="tabtitle"></div>
+    <div id="content" class="content"></div>
+  </section>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>
