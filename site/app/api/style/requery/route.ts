@@ -6,6 +6,7 @@ import { MAX_REQUERIES, rewriteQueries, type TriedQuery } from "@/lib/requery";
 import { StyleProfileSchema } from "@/lib/schemas";
 import { readPreferences } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -22,6 +23,8 @@ const MAX_NOTES_CHARS = 1200;
  * allowance, because it is part of the run that already did.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: {
     profile?: unknown;
     tried?: unknown;

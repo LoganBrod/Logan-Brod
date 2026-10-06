@@ -7,6 +7,7 @@ import { hasSizes } from "@/lib/sizing";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import { webSearchConfigured } from "@/lib/websearch";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // A search, up to three page fetches, and a high-effort pass over all of them.
@@ -88,6 +89,8 @@ export async function PUT(req: Request) {
  * harder to explain.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   // Before anything else, and before the cookie is even read: the meter below
   // counts against an id the caller can mint by dropping a cookie, so it tells
   // an honest person they have used their three and does nothing whatsoever

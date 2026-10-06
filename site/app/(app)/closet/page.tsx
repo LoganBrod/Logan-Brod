@@ -6,6 +6,7 @@ import StyleRunner from "@/app/components/StyleRunner";
 import { CLOSET_COOKIE, readCloset, type Closet } from "@/lib/closet";
 
 import PageHeader from "@/app/components/PageHeader";
+import { generationsPaused } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function Home({
         changes forces a remount, which is the only thing that resets state a
         component owns.
       */}
-      <StyleRunner key={closet?.code ?? "fresh"} initialCloset={closet} />
+      <StyleRunner key={closet?.code ?? "fresh"} initialCloset={closet} paused={generationsPaused()} />
 
       <div className="mt-8">
         <Sources />

@@ -165,3 +165,13 @@ export const sources = {
     { name: "The brands themselves", note: "Read from each shop's own catalogue, straight from the people who make it." },
   ],
 } as const;
+
+/**
+ * What the site says when it has been paused.
+ *
+ * Lives here rather than in lib/paused.ts because that file imports
+ * NextResponse, and pulling `next/server` into a client component breaks the
+ * browser bundle. The switch is server-side; the sentence is shared.
+ */
+export const PAUSED_MESSAGE =
+  "Clozet is not available right now. We are sorting out what it costs to run. Nothing you saved is gone, and your code still opens it.";

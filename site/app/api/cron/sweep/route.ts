@@ -9,6 +9,7 @@ import { recordSwept, sweepWatch } from "@/lib/sweep";
 import { listWatchers, readWatches } from "@/lib/watches";
 import { tasteIdFor } from "@/lib/viewer";
 import type { Owner } from "@/lib/library";
+import { generationsPaused } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // Several people's watches, each doing a search and a vision pass.
@@ -50,6 +51,18 @@ function authorized(req: Request): boolean {
 export async function GET(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Not authorized." }, { status: 401 });
+  }
+
+  // Answers 200 rather than the 503 every other paused route gives, because
+  // the caller here is .github/workflows/sweep.yml, which treats anything but
+  // a 200 as a failure and exits 1. A pause is a deliberate state, not a
+  // broken deployment, and it should not turn the schedule red twice a day for
+  // as long as it lasts.
+  if (generationsPaused()) {
+    return NextResponse.json(
+      { paused: true, people: 0, watches: 0, found: 0, emailed: 0, errors: [] },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   const started = Date.now();

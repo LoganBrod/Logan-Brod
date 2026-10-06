@@ -11,6 +11,7 @@ import { shop } from "@/lib/sources";
 import { conflictsWithSizes, hasSizes } from "@/lib/sizing";
 import { readPreferences, readSizes, tasteMemo } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // One cheap planning call, ten searches, and two curation batches.
@@ -35,6 +36,8 @@ const MAX_ACCESSORY_BATCHES = 2;
  * batching for it would be a lot of machinery for a much smaller thing.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: { kinds?: unknown; min?: unknown; max?: unknown; code?: unknown };
   try {
     body = (await req.json()) as typeof body;

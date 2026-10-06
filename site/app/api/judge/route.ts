@@ -6,6 +6,7 @@ import { tasteMemo } from "@/lib/taste";
 import { fetchThumbnail } from "@/lib/thumbnails";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { identify } from "@/lib/viewer";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // A page fetch, an image fetch, and one vision call.
@@ -26,6 +27,8 @@ const MAX_BASE64 = 8 * 1024 * 1024;
  * didn't say.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: {
     url?: unknown;
     photo?: unknown;

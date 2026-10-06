@@ -7,6 +7,7 @@ import { readViewer } from "@/lib/viewer";
 import { readSeen, siftSeen } from "@/lib/seen";
 import { asMarket } from "@/lib/market";
 import { isValidRunId, recordFound } from "@/lib/yield";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // Ten queries fanned across two sources, plus a possible taxonomy lookup on a
@@ -22,6 +23,8 @@ const MAX_QUERIES = 10;
  * can be judged on its own before any model cost is involved.
  */
 export async function GET(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   const { searchParams } = new URL(req.url);
   const queries = searchParams.getAll("q").map((q) => q.trim()).filter(Boolean);
   const min = Number(searchParams.get("min") ?? 0);
