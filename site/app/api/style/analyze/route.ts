@@ -9,6 +9,7 @@ import { allowance, limitMessage, spend } from "@/lib/plans";
 import { tasteCookie } from "@/lib/taste";
 import { identify } from "@/lib/viewer";
 import { readOwned, renderOwned } from "@/lib/wardrobeOwned";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // Vision over several photos at high effort is slow; the platform default of
@@ -32,6 +33,8 @@ function mint(id: string | null): Record<string, string> {
 }
 
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: AnalyzeBody;
   try {
     body = (await req.json()) as AnalyzeBody;

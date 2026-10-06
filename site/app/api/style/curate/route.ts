@@ -10,6 +10,7 @@ import { readPreferences, tasteMemo } from "@/lib/taste";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readViewer } from "@/lib/viewer";
 import type { ProductListing } from "@/lib/sources/types";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 // One batch of candidate photos, not the whole pool. The client fans several of
@@ -36,6 +37,8 @@ const MAX_REFERENCE_BASE64_CHARS = 256 * 1024;
  * batches and keeps the best overall.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: {
     profile?: unknown;
     candidates?: unknown;

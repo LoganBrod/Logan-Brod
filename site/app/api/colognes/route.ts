@@ -12,6 +12,7 @@ import { renderPreferences } from "@/lib/preferences";
 import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { readPreferences } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,6 +29,8 @@ export const maxDuration = 60;
  * page.
  */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   let body: { slot?: unknown; budget?: unknown; code?: unknown };
   try {
     body = (await req.json()) as typeof body;

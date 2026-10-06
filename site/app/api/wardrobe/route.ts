@@ -6,6 +6,7 @@ import { LIMITS, clientIp, rateLimit } from "@/lib/ratelimit";
 import { redisConfigured } from "@/lib/redis";
 import { tasteMemo } from "@/lib/taste";
 import { readViewer } from "@/lib/viewer";
+import { generationsPaused, pausedResponse } from "@/lib/paused";
 import {
   buildOutfits,
   readOwned,
@@ -25,6 +26,8 @@ const MAX_TOTAL_BASE64 = 16 * 1024 * 1024;
 
 /** GET /api/wardrobe — what you own, and optionally outfits from it. */
 export async function GET(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   const { owner, plan, tasteId } = await readViewer(req);
   const cap = limitsFor(plan).wardrobe;
 
@@ -73,6 +76,8 @@ export async function GET(req: Request) {
 
 /** POST /api/wardrobe — read a batch of photos into the inventory. */
 export async function POST(req: Request) {
+  if (generationsPaused()) return pausedResponse();
+
   // A vision call per batch of photos. The plan gate below stops the public;
   // this stops an account.
   const burst = await rateLimit("wardrobe", clientIp(req), LIMITS.wardrobe);

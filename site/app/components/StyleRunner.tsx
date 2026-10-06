@@ -25,6 +25,7 @@ import PreferenceSummary from "./PreferenceSummary";
 import ScanPrompt, { scanPromptMuted } from "./ScanPrompt";
 import { STANDING_SCANS } from "@/lib/features";
 import ShareCard from "./ShareCard";
+import { PAUSED_MESSAGE } from "@/lib/copy";
 
 // Derived from the progress module rather than restated, so a new stage can't
 // be added to the pipeline without the progress bar learning about it.
@@ -78,7 +79,20 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return json as T;
 }
 
-export default function StyleRunner({ initialCloset }: { initialCloset: Closet | null }) {
+export default function StyleRunner({
+  initialCloset,
+  paused = false,
+}: {
+  initialCloset: Closet | null;
+  /**
+   * Read from the server on the closet page. When true the form is still here
+   * and still readable, but the button that spends money is off and says so.
+   * Loading a saved closet by code goes on working, because reading one back
+   * costs nothing and is the one thing somebody arriving on a paused site
+   * actually still wants.
+   */
+  paused?: boolean;
+}) {
   const [photos, setPhotos] = useState<Selected[]>([]);
   const [min, setMin] = useState(50);
   const [max, setMax] = useState(250);
@@ -1027,12 +1041,18 @@ export default function StyleRunner({ initialCloset }: { initialCloset: Closet |
           <button
             type="button"
             onClick={run}
-            disabled={busy || photos.length === 0}
+            disabled={busy || paused || photos.length === 0}
             className="btn-primary col-span-2 w-full sm:ml-auto sm:w-auto"
           >
-            {busy ? "Building\u2026" : "Build my clozet"}
+            {paused ? "Paused" : busy ? "Building\u2026" : "Build my clozet"}
           </button>
         </div>
+
+        {paused && (
+          <p className="mt-5 rounded-xl border border-room-line bg-room-raised px-4 py-3 text-sm text-room-muted">
+            {PAUSED_MESSAGE}
+          </p>
+        )}
 
         {error && (
           <p className="mt-5 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800">
