@@ -39,3 +39,19 @@ export async function calendarKey(): Promise<string> {
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode("school-os calendar v1"));
   return [...new Uint8Array(sig)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** A key for the Chinese checker's API, for tools that cannot log in (the Google Docs add-on).
+ *  It only opens /api/chinese. Changing the password changes it. Empty when there is no password. */
+export async function chineseApiKey(): Promise<string> {
+  if (!password()) return "";
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(password()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode("school-os chinese api v1"));
+  return "sos_zh_" + [...new Uint8Array(sig)].slice(0, 20).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function bearerOpensChinese(header: string | null): Promise<boolean> {
+  const got = header?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (!got || !password()) return false;
+  return same(got, await chineseApiKey());
+}

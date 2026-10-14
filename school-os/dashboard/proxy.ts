@@ -1,11 +1,13 @@
 // Runs before every request. With DASHBOARD_PASSWORD set, anyone without the session cookie is
 // sent to /login (pages) or told 401 (APIs). Without it, this does nothing.
 import { NextResponse, type NextRequest } from "next/server";
-import { COOKIE, isAuthed } from "@/lib/auth";
+import { COOKIE, isAuthed, bearerOpensChinese } from "@/lib/auth";
 
 export async function proxy(req: NextRequest) {
   if (await isAuthed(req.cookies.get(COOKIE)?.value)) return NextResponse.next();
   const { pathname, search } = req.nextUrl;
+  // The Google Docs add-on carries a key that opens the Chinese checker and nothing else.
+  if (pathname === "/api/chinese" && (await bearerOpensChinese(req.headers.get("authorization")))) return NextResponse.next();
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "login required" }, { status: 401 });
   const url = req.nextUrl.clone();
   url.pathname = "/login";
