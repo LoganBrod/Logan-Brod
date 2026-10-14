@@ -7,6 +7,8 @@ import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
 import { courses, notesOf, readNote, searchNotes, readMany, tests, assessments, studyPlan, materials, requestMaterial, notesForAssessment, remember, MODE } from "./vault";
 import { store } from "./store";
+import { loadChinese, fixChinese } from "./chinese-fix";
+import { check as chineseCheck } from "./chinese";
 import { driveConfigured, searchDocs, readDoc, docIdFromUrl } from "./gdrive";
 import matter from "gray-matter";
 
@@ -125,6 +127,15 @@ const allTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "chinese_check",
+    description: "Check the student's Chinese writing against everything in their own Chinese material (every year): flags words and grammar structures they have not learned. With fix=true, also corrects grammar using only words and structures they have learned, and the correction is machine-verified. Use for any request to check, correct or proofread Chinese. Show the result on the Desk.",
+    input_schema: {
+      type: "object",
+      properties: { text: { type: "string", description: "The Chinese text, exactly as the student wrote it." }, fix: { type: "boolean" } },
+      required: ["text"], additionalProperties: false,
+    },
+  },
+  {
     name: "remember",
     description: "Save a fact about the student for future conversations: preferences, schedule facts, goals, how they like to study, things they told you to remember. One short sentence. It is read before every reply from now on.",
     input_schema: { type: "object", properties: { fact: { type: "string" } }, required: ["fact"], additionalProperties: false },
@@ -237,6 +248,25 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       }
       const docs = await searchDocs(action === "search" ? str("query") ?? "" : "", 12);
       return { result: docs.length ? JSON.stringify(docs) : "no matching Google Docs (are they shared with the service account?)", summary: action === "search" ? `searched Google Docs for "${str("query")}" · ${docs.length}` : `listed ${docs.length} recent Google Docs` };
+    }
+    case "chinese_check": {
+      const text = str("text") ?? "";
+      const { lex, list } = await loadChinese();
+      if (!lex) return { result: "No Chinese lexicon yet; the student runs npm run chinese on the Mac once.", summary: "no Chinese lexicon" };
+      const fixIt = input.fix === true && !!process.env.ANTHROPIC_API_KEY;
+      const fx = fixIt ? await fixChinese(text, lex, list) : null;
+      const r = fx ? fx.result : chineseCheck(text, lex, list);
+      const marked = r.tokens.map((t) => t.status === "unknown" ? `**${t.text}**⚠` : t.status === "new" ? `*${t.text}*` : t.text).join("");
+      const body = [
+        fx ? (fx.verified ? "Verified: every word and structure is from the student's material." : `NOT verified: still outside the material: ${[...fx.violations.words, ...fx.violations.structures].join(", ")}`) : "",
+        `## ${fx ? "Corrected" : "Checked"}\n\n${marked}`,
+        fx?.changes.length ? `## Changes\n\n${fx.changes.map((c) => `- ${c.original} → **${c.corrected}**: ${c.why}`).join("\n")}` : "",
+        fx?.note ? `## Could not fix with what you've learned\n\n${fx.note}` : "",
+        r.flagged.length ? `## Not in your material\n\n${r.flagged.map((f) => `- ${f.word}${f.status === "new" ? " (known characters, new word)" : ` (unknown: ${f.unknownChars})`}`).join("\n")}` : "",
+        r.structures.length ? `## Structures\n\n${r.structures.map((s) => `- ${s.learned ? "✓" : "✗ not learned"} ${s.name}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n\n");
+      const show: ShowItem = { id: `text:chinese-${Date.now()}`, kind: "text", title: fx ? "Chinese, corrected" : "Chinese, checked", body };
+      return { result: JSON.stringify({ summary: `${r.flagged.length} words and ${r.structures.filter((s) => !s.learned).length} structures outside the material${fx ? `; correction ${fx.verified ? "verified" : "NOT verified"}` : ""}`, show }), summary: fx ? "corrected Chinese" : "checked Chinese" };
     }
     case "remember": {
       await remember(str("fact") ?? "");

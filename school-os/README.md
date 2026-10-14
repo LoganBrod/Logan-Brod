@@ -240,6 +240,40 @@ full screen. The **Write** tab is the notebook:
 The note in progress is kept on the iPad until you save, so switching apps
 or a dead battery loses nothing.
 
+## Chinese checker
+
+The 中文 tab checks Chinese writing against everything in your own Chinese
+material, every year of it, and nothing else.
+
+**Feeding it.** Everything in a course folder whose name says Chinese (or
+`CHINESE_COURSES=Chinese IV,Chinese Archive` in `.env`) counts: slides,
+vocab lists, homework, tests, notes. Earlier years go in unit folders such as
+`01 Courses/Chinese IV/Chinese I`; scans are transcribed like any other note.
+Every sync rebuilds the index (`04 System/chinese-lexicon.json`), or run
+`npm run chinese` after dropping a batch in. It records every word, every
+character, and which of about fifty grammar structures (虽然…但是, 把, 被,
+越来越, 一…就, 不但…而且 and so on) appear, and in which file. Anything the
+assistant generated is left out, so it cannot teach itself words; syllabi too.
+Prefer graded work with corrections over raw drafts, since a mistake you made
+in homework counts as "seen".
+
+**Check (free, no model).** Paste writing. Words not in your material get a
+wavy underline, new words made only of characters you know get a dotted one,
+and each structure shows ✓ learned or ✗ not, with the file it was learned in
+on hover. "I've learned this" adds a word to your list.
+
+**Fix (needs a Claude key).** Claude corrects grammar under hard rules: only
+your words, only your structures, smallest change. The answer is then checked
+by the same program. Anything outside your material is sent back with "replace
+these", up to three tries, and whatever still fails is shown as failing, never
+accepted quietly. A green "Verified" means every word and structure came from
+your files. Jarvis does the same with "check my Chinese" or "fix this
+paragraph", and puts the result on the Desk.
+
+**Your list.** `04 System/Chinese list.md` is yours and never overwritten:
+allow words, allow structures, block structures you have not really learned,
+and skip units posted ahead of the class.
+
 ## The Desk
 
 Ask for something to be put on screen ("show me my slope notes", "pull up
@@ -353,6 +387,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `npm run companion` | Jarvis as a floating window over every app (Option+Space) |
 | `npm run companion:app` | Build Jarvis.app and put it in Applications |
 | `npm run companion:login` | Start the companion when you log in to the Mac |
+| `npm run chinese` | Rebuild the Chinese lexicon from every Chinese course folder |
+| `npm run chinese -- "…"` | Check a sentence in the terminal |
 | `npm run brief:ping` | Send today's brief to your phone again, to test delivery |
 | `npm run publish` | Upload a copy of the vault to Vercel, apply what the phone wrote |
 | `npm run publish:dry` | Say what `publish` would do |
@@ -382,6 +418,8 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/plan-study.ts` | Books study sessions into Google Calendar |
 | `src/brief.ts` | The morning brief (a plain template without a key) |
 | `src/file-by-folder.ts` | Files anything dropped into a course or unit folder, no Claude call; guesses the note type |
+| `src/chinese.ts`, `dashboard/lib/chinese.ts` | The Chinese lexicon, structure catalogue and checker |
+| `dashboard/lib/chinese-fix.ts` | The constrained, verified Chinese fixer |
 | `src/scope.ts` | What a test covers (its unit and files) and the task for each study session |
 | `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
 | `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |

@@ -39,6 +39,8 @@ For any question about a specific test or quiz ("what do I need to know", "what'
 
 CHECK BEFORE YOU BUILD. Before a study guide, deck, practice test, summary or problem set, say in one line which unit and which files you would use (up to 8 names, from test_scope or list_notes) and ask "go?". Wait for the answer. Skip the check only when the student already named the exact unit or files, or says "just do it". When test_scope says the unit was guessed, always check. Never mix in another unit's files to pad a thin one; say it is thin.
 
+CHINESE. To check or correct the student's Chinese, call chinese_check (fix=true to correct). Never correct Chinese from your own knowledge: the student may only use what their class has taught, and the tool enforces that. Say whether the correction was verified.
+
 CITE. Anything you write from the notes starts with a line "Sources: file, file, file" naming exactly the files it came from, so the student can open them from the Desk.
 
 When the student says "pull up", "show me" or "open", put it on the screen and then answer in one short sentence; the screen does the rest. Use show for one thing (a note, a deck, a Google Doc, or something you wrote like a practice set or a summary; the Desk keeps it as a tab beside whatever page is open) and open_page for whole screens (the week, a course, a test's study page). When you write problems, a study guide or a summary that is worth keeping, show it as text with a clear title instead of only putting it in the reply. Never claim to have produced something you did not put on the Desk or in the reply.
@@ -102,7 +104,7 @@ VOICE MODE. The student is talking to you; the reply is spoken and only the firs
         const { result, summary } = await runTool(block.name, block.input as Record<string, unknown>);
         steps.push(summary);
         if (block.name === "open_page") navigate = JSON.parse(result).navigate;
-        if (block.name === "show") show.push(JSON.parse(result).show);
+        if (block.name === "show" || block.name === "chinese_check") { const item = JSON.parse(result).show; if (item) show.push(item); }
         results.push({ type: "tool_result", tool_use_id: block.id, content: result });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
