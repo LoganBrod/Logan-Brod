@@ -274,6 +274,40 @@ paragraph", and puts the result on the Desk.
 allow words, allow structures, block structures you have not really learned,
 and skip units posted ahead of the class.
 
+## Chinese checker in Google Docs
+
+The same checker as a 中文 menu inside Google Docs. Check highlights unlearned
+words right in your document (red: not in your material, yellow: new word made
+of characters you know) and shows ✓/✗ for each grammar structure. Fix shows a
+correction that was verified against your material, and nothing in the
+document changes until you press Apply on a change (or Apply all), so your
+formatting stays. Select a paragraph to work on just that part. It talks to
+your Vercel site with a key that opens the Chinese checker and nothing else.
+
+**Set up once, about 5 minutes** (the files are in `school-os/google-docs/`):
+
+1. Make a new Google Doc called `Chinese template`.
+2. Extensions → Apps Script. Replace everything in `Code.gs` with the
+   contents of `google-docs/Code.gs`.
+3. Click + next to Files → HTML, name it `Sidebar` (exactly), and paste
+   `google-docs/Sidebar.html` into it.
+4. Project Settings (gear icon) → tick "Show appsscript.json manifest file
+   in editor". Back in the editor, open `appsscript.json` and replace it with
+   `google-docs/appsscript.json`. Save (Cmd+S).
+5. Reload the Google Doc. A 中文 menu appears. 中文 → Settings: paste your
+   Vercel address and the key shown on the 中文 page of your site, under "Use
+   it inside Google Docs".
+6. The first time, Google says it hasn't verified this app. That is because
+   it is your own script: Advanced → Go to (unsafe) → Allow. It can only read
+   and edit the document it is in and call your site.
+
+**Each assignment:** File → Make a copy of `Chinese template`. The menu comes
+with the copy and your settings carry over. For a doc that already exists,
+paste its text into a copy of the template, or repeat steps 2 to 4 in it.
+
+If your school Google account blocks scripts, do this with your personal
+Gmail; the checker works the same.
+
 ## The Desk
 
 Ask for something to be put on screen ("show me my slope notes", "pull up
@@ -420,6 +454,7 @@ If a unit does not exist yet, add it to that course's `_Course.md` first.
 | `src/file-by-folder.ts` | Files anything dropped into a course or unit folder, no Claude call; guesses the note type |
 | `src/chinese.ts`, `dashboard/lib/chinese.ts` | The Chinese lexicon, structure catalogue and checker |
 | `dashboard/lib/chinese-fix.ts` | The constrained, verified Chinese fixer |
+| `google-docs/` | The 中文 menu and sidebar for Google Docs (Apps Script) |
 | `src/scope.ts` | What a test covers (its unit and files) and the task for each study session |
 | `src/phone.ts` | Texts you: iMessage from the Mac, Twilio SMS, or an ntfy push |
 | `src/publish.ts` | Copies the vault to Vercel Blob and applies the phone's outbox |
